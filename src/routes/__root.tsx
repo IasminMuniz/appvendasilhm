@@ -85,6 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "App de vendas comercial para gestão de clientes, produtos e pedidos." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Vendas Comercial" },
+      { name: "twitter:description", content: "App de vendas comercial para gestão de clientes, produtos e pedidos." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/9fbafaf6-e3e0-4615-aa37-9d438c94d325" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/9fbafaf6-e3e0-4615-aa37-9d438c94d325" },
     ],
     links: [
       {
