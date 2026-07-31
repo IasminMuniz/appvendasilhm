@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 
 const orderStatusSchema = z.enum(["pendente", "em_andamento", "concluido", "cancelado"]);
@@ -17,7 +17,7 @@ const createOrderSchema = z.object({
 });
 
 export const listOrders = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("orders")
@@ -29,7 +29,7 @@ export const listOrders = createServerFn({ method: "GET" })
   });
 
 export const getOrder = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { data: order, error } = await context.supabase
@@ -43,7 +43,7 @@ export const getOrder = createServerFn({ method: "GET" })
   });
 
 export const createOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((data) => createOrderSchema.parse(data))
   .handler(async ({ data, context }) => {
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
@@ -80,7 +80,7 @@ export const createOrder = createServerFn({ method: "POST" })
   });
 
 export const updateOrderStatus = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((data: { id: string; status: string }) =>
     z.object({ id: z.string().uuid(), status: orderStatusSchema }).parse(data)
   )

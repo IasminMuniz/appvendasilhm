@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 
 const productSchema = z.object({
@@ -10,7 +10,7 @@ const productSchema = z.object({
 });
 
 export const listProducts = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("products")
@@ -22,7 +22,7 @@ export const listProducts = createServerFn({ method: "GET" })
   });
 
 export const createProduct = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((data) => productSchema.parse(data))
   .handler(async ({ data, context }) => {
     const { data: roles } = await context.supabase
@@ -49,7 +49,7 @@ export const createProduct = createServerFn({ method: "POST" })
   });
 
 export const getProduct = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { data: product, error } = await context.supabase
