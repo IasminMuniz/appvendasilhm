@@ -80,8 +80,11 @@ const emptyLead = {
 function LeadsPage() {
   const queryClient = useQueryClient();
   const { data: leads } = useSuspenseQuery(leadsQueryOptions());
+  const { data: pipeline } = useSuspenseQuery(pipelineQueryOptions());
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyLead);
+  const [lossTarget, setLossTarget] = useState<{ id: string; name: string } | null>(null);
+  const [loss, setLoss] = useState({ loss_reason: "", loss_detail: "" });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["leads"] });
 
@@ -98,7 +101,11 @@ function LeadsPage() {
 
   const moveMutation = useMutation({
     mutationFn: moveLeadStage,
-    onSuccess: () => invalidate(),
+    onSuccess: () => {
+      setLossTarget(null);
+      setLoss({ loss_reason: "", loss_detail: "" });
+      invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -112,15 +119,23 @@ function LeadsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const handleStageChange = (lead: { id: string; name: string }, stage: string) => {
+    if (stage === "perdido") {
+      setLossTarget(lead);
+      return;
+    }
+    moveMutation.mutate({ data: { id: lead.id, stage } });
+  };
+
   const totalValue = leads.reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Leads</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Pipeline de Oportunidades</h1>
           <p className="text-muted-foreground">
-            {leads.length} leads no funil · {formatCurrency(totalValue)} em oportunidades
+            {leads.length} registros no funil · {formatCurrency(totalValue)} em oportunidades
           </p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
