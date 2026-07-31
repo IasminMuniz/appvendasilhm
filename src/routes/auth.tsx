@@ -2,11 +2,20 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { AuthForm } from "@/components/auth/auth-form";
 import { supabase } from "@/integrations/supabase/client";
 
+function safeNext(value: unknown): string | undefined {
+  return typeof value === "string" && value.startsWith("/") && !value.startsWith("//")
+    ? value
+    : undefined;
+}
+
 export const Route = createFileRoute("/auth")({
   component: AuthPage,
-  beforeLoad: async () => {
+  validateSearch: (s: Record<string, unknown>) => ({ next: safeNext(s.next) }),
+  beforeLoad: async ({ search }) => {
     const { data } = await supabase.auth.getUser();
     if (data.user) {
+      const next = safeNext(search.next);
+      if (next) throw redirect({ href: next });
       throw redirect({ to: "/dashboard" });
     }
   },
