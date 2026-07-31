@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { supabase } from "@/integrations/supabase/client";
 
-export function AuthForm() {
+export function AuthForm({ next }: { next?: string }) {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -31,10 +31,14 @@ export function AuthForm() {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: next ? `${window.location.origin}${next}` : window.location.origin,
           },
         });
         if (error) throw error;
+      }
+      if (next) {
+        window.location.href = next;
+        return;
       }
       navigate({ to: "/dashboard" });
     } catch (err) {
