@@ -252,6 +252,46 @@ function LeadsPage() {
         </Dialog>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { label: "Oportunidades abertas", value: String(pipeline.openCount) },
+          { label: "Valor em aberto", value: formatCurrency(pipeline.openValue) },
+          { label: "Previsão ponderada", value: formatCurrency(pipeline.forecast) },
+          {
+            label: "Taxa de conversão",
+            value: `${pipeline.conversionRate.toFixed(1)}%`,
+            hint: `Ciclo médio ${pipeline.averageCycleDays.toFixed(0)} dias`,
+          },
+        ].map((card) => (
+          <Card key={card.label}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                {card.label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{card.value}</p>
+              {card.hint && <p className="text-xs text-muted-foreground">{card.hint}</p>}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {pipeline.lossReasons.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Principais motivos de perda</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            {pipeline.lossReasons.map((r) => (
+              <Badge key={r.reason} variant="outline">
+                {r.reason} · {r.count}
+              </Badge>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
           const stageLeads = leads.filter((l) => l.stage === stage.value);
@@ -281,6 +321,17 @@ function LeadsPage() {
                     <p className="mt-1 text-xs font-medium">
                       {formatCurrency(Number(lead.estimated_value ?? 0))} · {lead.probability}%
                     </p>
+                    {lead.expected_close_date && (
+                      <p className="text-xs text-muted-foreground">
+                        Previsão:{" "}
+                        {new Date(lead.expected_close_date).toLocaleDateString("pt-BR")}
+                      </p>
+                    )}
+                    {lead.loss_reason && (
+                      <Badge variant="destructive" className="mt-1 text-[10px]">
+                        {lead.loss_reason}
+                      </Badge>
+                    )}
                     {lead.next_action && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         {lead.next_action}
@@ -293,7 +344,7 @@ function LeadsPage() {
                       <Select
                         value={lead.stage}
                         onValueChange={(value) =>
-                          moveMutation.mutate({ data: { id: lead.id, stage: value } })
+                          handleStageChange({ id: lead.id, name: lead.name }, value)
                         }
                       >
                         <SelectTrigger className="h-7 text-xs">
@@ -327,6 +378,58 @@ function LeadsPage() {
           );
         })}
       </div>
+
+      <Dialog open={lossTarget !== null} onOpenChange={(o) => !o && setLossTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marcar {lossTarget?.name} como perdido</DialogTitle>
+          </DialogHeader>
+          <form
+            className="space-y-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!lossTarget) return;
+              moveMutation.mutate({
+                data: { id: lossTarget.id, stage: "perdido", ...loss },
+              });
+            }}
+          >
+            <div className="space-y-1">
+              <Label>Motivo da perda *</Label>
+              <Select
+                value={loss.loss_reason}
+                onValueChange={(value) => setLoss({ ...loss, loss_reason: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o motivo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {LOSS_REASONS.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="loss_detail">Detalhamento</Label>
+              <Textarea
+                id="loss_detail"
+                value={loss.loss_detail}
+                onChange={(e) => setLoss({ ...loss, loss_detail: e.target.value })}
+              />
+            </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={!loss.loss_reason || moveMutation.isPending}
+            >
+              {moveMutation.isPending ? "Salvando..." : "Confirmar perda"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
