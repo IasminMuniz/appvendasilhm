@@ -17,6 +17,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedExportacaoRouteImport } from './routes/_authenticated/exportacao'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
@@ -72,6 +73,11 @@ const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExportacaoRoute = AuthenticatedExportacaoRouteImport.update({
+  id: '/exportacao',
+  path: '/exportacao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedIntegracoesRoute =
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/exportacao': typeof AuthenticatedExportacaoRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/exportacao': typeof AuthenticatedExportacaoRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/exportacao': typeof AuthenticatedExportacaoRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
@@ -241,6 +250,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/clientes'
     | '/dashboard'
+    | '/exportacao'
     | '/integracoes'
     | '/leads'
     | '/metas'
@@ -265,6 +275,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/clientes'
     | '/dashboard'
+    | '/exportacao'
     | '/integracoes'
     | '/leads'
     | '/metas'
@@ -290,6 +301,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/clientes'
     | '/_authenticated/dashboard'
+    | '/_authenticated/exportacao'
     | '/_authenticated/integracoes'
     | '/_authenticated/leads'
     | '/_authenticated/metas'
@@ -374,6 +386,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exportacao': {
+      id: '/_authenticated/exportacao'
+      path: '/exportacao'
+      fullPath: '/exportacao'
+      preLoaderRoute: typeof AuthenticatedExportacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/integracoes': {
@@ -544,6 +563,7 @@ const AuthenticatedProdutosRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedExportacaoRoute: typeof AuthenticatedExportacaoRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
@@ -555,6 +575,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedExportacaoRoute: AuthenticatedExportacaoRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
