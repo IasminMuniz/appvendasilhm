@@ -255,8 +255,72 @@ export const getDashboard = createServerFn({ method: "GET" })
       .sort((a, b) => b.days - a.days)
       .slice(0, 10);
 
+    // Ranking por região
+    const byRegion = new Map<string, number>();
+    for (const order of validOrders) {
+      const region = regionByCustomer.get(order.customer_id) ?? "Sem região";
+      byRegion.set(region, (byRegion.get(region) ?? 0) + Number(order.total ?? 0));
+    }
+    const regionRanking = [...byRegion.entries()]
+      .map(([region, total]) => ({ region, total }))
+      .sort((a, b) => b.total - a.total);
+
+    // Ranking por equipe
+    const teamOf = new Map<string, string>();
+    for (const m of members) teamOf.set(m.user_id, m.team_id);
+    const byTeam = new Map<string, number>();
+    for (const order of validOrders) {
+      const teamId = teamOf.get(order.seller_id);
+      if (!teamId) continue;
+      byTeam.set(teamId, (byTeam.get(teamId) ?? 0) + Number(order.total ?? 0));
+    }
+    const teamRanking = [...byTeam.entries()]
+      .map(([teamId, total]) => ({
+        teamId,
+        name: teams.find((t) => t.id === teamId)?.name ?? "Equipe",
+        total,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // Motivos de perda
+    const lossByReason = new Map<string, number>();
+    for (const lead of leads.filter((l) => l.stage === "perdido")) {
+      const reason = (lead.loss_reason as string | null) ?? "Não informado";
+      lossByReason.set(reason, (lossByReason.get(reason) ?? 0) + 1);
+    }
+    const lossReasons = [...lossByReason.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Previsão de fechamento (pipeline ponderado)
+    const forecast = leads
+      .filter((l) => l.stage !== "ganho" && l.stage !== "perdido")
+      .reduce(
+        (sum, l) => sum + (Number(l.estimated_value ?? 0) * Number(l.probability ?? 0)) / 100,
+        0,
+      );
+
     return {
-      roles: rolesRes.data?.map((r) => r.role) ?? [],
+      roles,
+      view,
+      filterOptions: {
+        sellers: (profilesRes.data ?? []).map((p) => ({
+          id: p.id,
+          name: p.full_name || p.email || "Usuário",
+        })),
+        teams: teams.map((t) => ({ id: t.id, name: t.name })),
+        regions: [...new Set(allCustomers.map((c) => c.region).filter(Boolean))] as string[],
+        products: [...new Set((ordersRes.data ?? []).flatMap((o) =>
+          (o.order_items ?? []).map((i) => i.products?.name).filter(Boolean),
+        ))] as string[],
+      },
+      regionRanking,
+      teamRanking,
+      lossReasons,
+      forecast,
+      pipelineValue: leads
+        .filter((l) => l.stage !== "ganho" && l.stage !== "perdido")
+        .reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0),
       totals: {
         revenue,
         monthRevenue,
