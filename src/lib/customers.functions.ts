@@ -283,6 +283,45 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
         user_name: profileMap[i.user_id] ?? null,
       })),
       orders,
+      contacts: contactsRes.data ?? [],
+      nextActions: (actionsRes.data ?? []).map((a) => ({
+        ...a,
+        assigned_to_name: profileMap[a.assigned_to] ?? null,
+      })),
+      opportunities: leadsRes.data ?? [],
+      quotes: quotesRes.data ?? [],
+      timeline: [
+        ...(interactionsRes.data ?? []).map((i) => ({
+          id: `i-${i.id}`,
+          type: "interacao" as const,
+          date: i.created_at as string,
+          title: `Interação · ${i.kind}`,
+          description: i.content as string,
+        })),
+        ...orders.map((o) => ({
+          id: `o-${o.id}`,
+          type: "pedido" as const,
+          date: o.created_at as string,
+          title: `Pedido ${o.status}`,
+          description: `Total ${Number(o.total ?? 0).toFixed(2)}`,
+        })),
+        ...(quotesRes.data ?? []).map((q) => ({
+          id: `q-${q.id}`,
+          type: "orcamento" as const,
+          date: q.created_at as string,
+          title: `Orçamento #${q.number} · ${q.status}`,
+          description: `Total ${Number(q.total ?? 0).toFixed(2)}`,
+        })),
+        ...(ownerHistoryRes.data ?? []).map((h) => ({
+          id: `h-${h.id}`,
+          type: "carteira" as const,
+          date: h.created_at as string,
+          title: "Troca de responsável",
+          description: `${h.previous_owner_id ? profileMap[h.previous_owner_id] ?? "—" : "—"} → ${
+            h.new_owner_id ? profileMap[h.new_owner_id] ?? "—" : "—"
+          }`,
+        })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       sellers: profilesRes.data ?? [],
       ownerName:
         profileMap[customerRes.data.owner_id ?? customerRes.data.seller_id] ?? "Não definido",
