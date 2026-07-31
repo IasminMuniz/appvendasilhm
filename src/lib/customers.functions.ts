@@ -12,6 +12,9 @@ const customerSchema = z.object({
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
+  segment: z.string().max(60).optional().or(z.literal("")),
+  company_size: z.string().max(40).optional().or(z.literal("")),
+  region: z.string().max(60).optional().or(z.literal("")),
 });
 
 export const listCustomers = createServerFn({ method: "GET" })
