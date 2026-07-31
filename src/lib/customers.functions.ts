@@ -168,26 +168,56 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
 
-    const [customerRes, ownerHistoryRes, interactionsRes, ordersRes, profilesRes] =
-      await Promise.all([
-        supabase.from("customers").select("*").eq("id", data.id).single(),
-        supabase
-          .from("customer_owner_history")
-          .select("*")
-          .eq("customer_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("customer_interactions")
-          .select("*")
-          .eq("customer_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("orders")
-          .select("*, order_items(*, products(name))")
-          .eq("customer_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase.from("profiles").select("id, full_name, email"),
-      ]);
+    const [
+      customerRes,
+      ownerHistoryRes,
+      interactionsRes,
+      ordersRes,
+      profilesRes,
+      contactsRes,
+      actionsRes,
+      leadsRes,
+      quotesRes,
+    ] = await Promise.all([
+      supabase.from("customers").select("*").eq("id", data.id).single(),
+      supabase
+        .from("customer_owner_history")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("customer_interactions")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("orders")
+        .select("*, order_items(*, products(name))")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, full_name, email"),
+      supabase
+        .from("customer_contacts")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("is_primary", { ascending: false })
+        .order("name"),
+      supabase
+        .from("customer_next_actions")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("due_date", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("leads")
+        .select("*")
+        .eq("converted_customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("quotes")
+        .select("id, number, status, total, created_at, valid_until")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+    ]);
 
     if (customerRes.error) throw new Error(customerRes.error.message);
 
