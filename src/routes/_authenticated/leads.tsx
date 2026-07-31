@@ -210,6 +210,15 @@ function LeadsPage() {
                 />
               </div>
               <div className="space-y-1">
+                <Label htmlFor="expected_close_date">Previsão de fechamento</Label>
+                <Input
+                  id="expected_close_date"
+                  type="date"
+                  value={form.expected_close_date}
+                  onChange={(e) => setForm({ ...form, expected_close_date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
                 <Label>Estágio</Label>
                 <Select
                   value={form.stage}
