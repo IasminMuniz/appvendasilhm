@@ -108,6 +108,7 @@ export const updateLead = createServerFn({ method: "POST" })
       .update({
         ...rest,
         next_action_date: rest.next_action_date || null,
+        expected_close_date: rest.expected_close_date || null,
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
@@ -116,14 +117,23 @@ export const updateLead = createServerFn({ method: "POST" })
 
 export const moveLeadStage = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data: { id: string; stage: string; note?: string }) =>
-    z
-      .object({
-        id: z.string().uuid(),
-        stage: stageSchema,
-        note: z.string().max(500).optional().or(z.literal("")),
-      })
-      .parse(data),
+  .inputValidator(
+    (data: {
+      id: string;
+      stage: string;
+      note?: string;
+      loss_reason?: string;
+      loss_detail?: string;
+    }) =>
+      z
+        .object({
+          id: z.string().uuid(),
+          stage: stageSchema,
+          note: z.string().max(500).optional().or(z.literal("")),
+          loss_reason: z.string().max(120).optional().or(z.literal("")),
+          loss_detail: z.string().max(1000).optional().or(z.literal("")),
+        })
+        .parse(data),
   )
   .handler(async ({ data, context }) => {
     const { data: current, error: readError } = await context.supabase
@@ -134,9 +144,17 @@ export const moveLeadStage = createServerFn({ method: "POST" })
     if (readError) throw new Error(readError.message);
     if (current.stage === data.stage) return { ok: true };
 
+    if (data.stage === "perdido" && !data.loss_reason) {
+      throw new Error("Informe o motivo da perda para mover a oportunidade.");
+    }
+
     const { error } = await context.supabase
       .from("leads")
-      .update({ stage: data.stage })
+      .update({
+        stage: data.stage,
+        loss_reason: data.stage === "perdido" ? data.loss_reason : null,
+        loss_detail: data.stage === "perdido" ? data.loss_detail || null : null,
+      })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
@@ -145,10 +163,71 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       from_stage: current.stage,
       to_stage: data.stage,
       changed_by: context.userId,
-      note: data.note || null,
+      note: data.note || (data.loss_reason ? `Perda: ${data.loss_reason}` : null),
     });
 
     return { ok: true };
+  });
+
+/** Indicadores do funil: valores por etapa, previsão ponderada, conversão e tempo médio. */
+export const getPipelineMetrics = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const [leadsRes, historyRes] = await Promise.all([
+      context.supabase.from("leads").select("*"),
+      context.supabase.from("lead_stage_history").select("lead_id, to_stage, created_at"),
+    ]);
+    const leads = leadsRes.data ?? [];
+    const history = historyRes.data ?? [];
+
+    const open = leads.filter((l) => l.stage !== "ganho" && l.stage !== "perdido");
+    const won = leads.filter((l) => l.stage === "ganho");
+    const lost = leads.filter((l) => l.stage === "perdido");
+
+    const byStage = new Map<string, { count: number; value: number }>();
+    for (const l of leads) {
+      const e = byStage.get(l.stage) ?? { count: 0, value: 0 };
+      e.count += 1;
+      e.value += Number(l.estimated_value ?? 0);
+      byStage.set(l.stage, e);
+    }
+
+    // Tempo médio de fechamento (criação -> ganho)
+    const createdAt = new Map(leads.map((l) => [l.id, l.created_at as string]));
+    const wonEvents = history.filter((h) => h.to_stage === "ganho");
+    const durations = wonEvents
+      .map((h) => {
+        const start = createdAt.get(h.lead_id);
+        if (!start) return null;
+        return (new Date(h.created_at).getTime() - new Date(start).getTime()) / 86400000;
+      })
+      .filter((v): v is number => v !== null && v >= 0);
+    const averageCycleDays = durations.length
+      ? durations.reduce((a, b) => a + b, 0) / durations.length
+      : 0;
+
+    const lossByReason = new Map<string, number>();
+    for (const l of lost) {
+      const reason = (l.loss_reason as string | null) ?? "Não informado";
+      lossByReason.set(reason, (lossByReason.get(reason) ?? 0) + 1);
+    }
+
+    return {
+      openCount: open.length,
+      openValue: open.reduce((s, l) => s + Number(l.estimated_value ?? 0), 0),
+      forecast: open.reduce(
+        (s, l) => s + (Number(l.estimated_value ?? 0) * Number(l.probability ?? 0)) / 100,
+        0,
+      ),
+      wonCount: won.length,
+      lostCount: lost.length,
+      conversionRate: won.length + lost.length ? (won.length / (won.length + lost.length)) * 100 : 0,
+      averageCycleDays,
+      byStage: [...byStage.entries()].map(([stage, v]) => ({ stage, ...v })),
+      lossReasons: [...lossByReason.entries()]
+        .map(([reason, count]) => ({ reason, count }))
+        .sort((a, b) => b.count - a.count),
+    };
   });
 
 export const convertLeadToCustomer = createServerFn({ method: "POST" })
