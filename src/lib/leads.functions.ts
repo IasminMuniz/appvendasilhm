@@ -80,6 +80,7 @@ export const createLead = createServerFn({ method: "POST" })
         next_action: data.next_action || null,
         next_action_date: data.next_action_date || null,
         notes: data.notes || null,
+        expected_close_date: data.expected_close_date || null,
         owner_id: context.userId,
       })
       .select()
