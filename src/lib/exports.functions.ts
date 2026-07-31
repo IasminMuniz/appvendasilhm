@@ -50,7 +50,7 @@ export const exportDataset = createServerFn({ method: "POST" })
       .select(selects[data.dataset]!);
     if (error) throw new Error(error.message);
 
-    const list = (rows ?? []) as Record<string, unknown>[];
+    const list = (rows ?? []) as unknown as Record<string, unknown>[];
     const content =
       data.format === "json" ? JSON.stringify(list, null, 2) : toCsv(list);
     const fileName = `${data.dataset}-${new Date().toISOString().slice(0, 10)}.${data.format}`;
