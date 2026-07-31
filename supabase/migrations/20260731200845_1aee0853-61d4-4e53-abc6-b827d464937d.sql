@@ -1,0 +1,1 @@
+ALTER TABLE public.quote_sends ADD COLUMN IF NOT EXISTS pdf_path text;
