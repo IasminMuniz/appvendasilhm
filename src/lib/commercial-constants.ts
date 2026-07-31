@@ -57,6 +57,40 @@ export const HEALTH_LABELS: Record<string, string> = {
   inativo: "Sem compras",
 };
 
+export const CUSTOMER_SEGMENTS = [
+  "Indústria",
+  "Distribuição",
+  "Varejo",
+  "Serviços",
+  "Governo",
+  "Outro",
+] as const;
+
+export const COMPANY_SIZES = ["Micro", "Pequeno", "Médio", "Grande"] as const;
+
+export const LOSS_REASONS = [
+  "Preço",
+  "Prazo de entrega",
+  "Concorrência",
+  "Sem orçamento",
+  "Sem resposta",
+  "Escopo não atendido",
+  "Outro",
+] as const;
+
+export const NEXT_ACTION_STATUSES = [
+  { value: "pendente", label: "Pendente" },
+  { value: "concluida", label: "Concluída" },
+  { value: "cancelada", label: "Cancelada" },
+] as const;
+
+export const INTERACTION_KINDS = ["nota", "ligacao", "reuniao", "email", "visita"] as const;
+
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
+}
+
+export function formatDate(value?: string | null): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleDateString("pt-BR");
 }
