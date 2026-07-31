@@ -30,9 +30,10 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthPage() {
+  const { next } = Route.useSearch();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
-      <AuthForm />
+      <AuthForm next={next} />
     </div>
   );
 }
