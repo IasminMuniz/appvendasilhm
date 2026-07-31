@@ -25,6 +25,7 @@ import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
 import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
+import { Route as AuthenticatedOrcamentosIdRouteImport } from './routes/_authenticated/orcamentos.$id'
 import { Route as AuthenticatedOrcamentosNovoRouteImport } from './routes/_authenticated/orcamentos.novo'
 import { Route as AuthenticatedPedidosIdRouteImport } from './routes/_authenticated/pedidos.$id'
 import { Route as AuthenticatedPedidosNovoRouteImport } from './routes/_authenticated/pedidos.novo'
@@ -113,6 +114,12 @@ const AuthenticatedClientesNovoRoute =
     path: '/novo',
     getParentRoute: () => AuthenticatedClientesRoute,
   } as any)
+const AuthenticatedOrcamentosIdRoute =
+  AuthenticatedOrcamentosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedOrcamentosRoute,
+  } as any)
 const AuthenticatedOrcamentosNovoRoute =
   AuthenticatedOrcamentosNovoRouteImport.update({
     id: '/novo',
@@ -153,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
+  '/orcamentos/$id': typeof AuthenticatedOrcamentosIdRoute
   '/orcamentos/novo': typeof AuthenticatedOrcamentosNovoRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -174,6 +182,7 @@ export interface FileRoutesByTo {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
+  '/orcamentos/$id': typeof AuthenticatedOrcamentosIdRoute
   '/orcamentos/novo': typeof AuthenticatedOrcamentosNovoRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -197,6 +206,7 @@ export interface FileRoutesById {
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/_authenticated/clientes/novo': typeof AuthenticatedClientesNovoRoute
+  '/_authenticated/orcamentos/$id': typeof AuthenticatedOrcamentosIdRoute
   '/_authenticated/orcamentos/novo': typeof AuthenticatedOrcamentosNovoRoute
   '/_authenticated/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/_authenticated/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -220,6 +230,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/clientes/$id'
     | '/clientes/novo'
+    | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/pedidos/$id'
     | '/pedidos/novo'
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/clientes/$id'
     | '/clientes/novo'
+    | '/orcamentos/$id'
     | '/orcamentos/novo'
     | '/pedidos/$id'
     | '/pedidos/novo'
@@ -263,6 +275,7 @@ export interface FileRouteTypes {
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/clientes/$id'
     | '/_authenticated/clientes/novo'
+    | '/_authenticated/orcamentos/$id'
     | '/_authenticated/orcamentos/novo'
     | '/_authenticated/pedidos/$id'
     | '/_authenticated/pedidos/novo'
@@ -394,6 +407,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientesNovoRouteImport
       parentRoute: typeof AuthenticatedClientesRoute
     }
+    '/_authenticated/orcamentos/$id': {
+      id: '/_authenticated/orcamentos/$id'
+      path: '/$id'
+      fullPath: '/orcamentos/$id'
+      preLoaderRoute: typeof AuthenticatedOrcamentosIdRouteImport
+      parentRoute: typeof AuthenticatedOrcamentosRoute
+    }
     '/_authenticated/orcamentos/novo': {
       id: '/_authenticated/orcamentos/novo'
       path: '/novo'
@@ -441,11 +461,13 @@ const AuthenticatedClientesRouteWithChildren =
   )
 
 interface AuthenticatedOrcamentosRouteChildren {
+  AuthenticatedOrcamentosIdRoute: typeof AuthenticatedOrcamentosIdRoute
   AuthenticatedOrcamentosNovoRoute: typeof AuthenticatedOrcamentosNovoRoute
 }
 
 const AuthenticatedOrcamentosRouteChildren: AuthenticatedOrcamentosRouteChildren =
   {
+    AuthenticatedOrcamentosIdRoute: AuthenticatedOrcamentosIdRoute,
     AuthenticatedOrcamentosNovoRoute: AuthenticatedOrcamentosNovoRoute,
   }
 
