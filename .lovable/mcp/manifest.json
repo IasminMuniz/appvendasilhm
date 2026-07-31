@@ -1,0 +1,278 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://tskyepsdoyqelzhorpwl.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "cloud-journey-begins",
+      "version": "0.1.0",
+      "title": "Cloud Journey Begins"
+    },
+    "tools": [
+      {
+        "name": "list_customers",
+        "title": "Listar clientes",
+        "description": "Lista os clientes visíveis para o usuário autenticado, com busca opcional por nome.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "search": {
+              "description": "Filtro parcial pelo nome do cliente.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de clientes (padrão 25).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_customer",
+        "title": "Criar cliente",
+        "description": "Cadastra um novo cliente vinculado ao usuário autenticado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome do cliente."
+            },
+            "email": {
+              "description": "E-mail do cliente.",
+              "type": "string"
+            },
+            "phone": {
+              "description": "Telefone do cliente.",
+              "type": "string"
+            },
+            "city": {
+              "description": "Cidade.",
+              "type": "string"
+            },
+            "state": {
+              "description": "Estado (UF).",
+              "type": "string"
+            },
+            "notes": {
+              "description": "Observações internas.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_products",
+        "title": "Listar produtos",
+        "description": "Lista os produtos do catálogo, opcionalmente apenas os ativos.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "only_active": {
+              "description": "Se verdadeiro, retorna apenas produtos ativos.",
+              "type": "boolean"
+            },
+            "search": {
+              "description": "Filtro parcial pelo nome do produto.",
+              "type": "string"
+            },
+            "limit": {
+              "description": "Máximo de produtos (padrão 50).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_orders",
+        "title": "Listar pedidos",
+        "description": "Lista pedidos com cliente e itens, com filtro opcional por status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filtra pedidos por status.",
+              "type": "string",
+              "enum": [
+                "pendente",
+                "em_andamento",
+                "concluido",
+                "cancelado"
+              ]
+            },
+            "limit": {
+              "description": "Máximo de pedidos (padrão 25).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_order",
+        "title": "Criar pedido",
+        "description": "Cria um pedido para um cliente com um ou mais itens de produto. O total é calculado automaticamente.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "customer_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "ID do cliente (use list_customers)."
+            },
+            "notes": {
+              "description": "Observações do pedido.",
+              "type": "string"
+            },
+            "items": {
+              "minItems": 1,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "product_id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "ID do produto (use list_products)."
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991,
+                    "description": "Quantidade."
+                  },
+                  "unit_price": {
+                    "description": "Preço unitário; padrão é o preço do produto.",
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "product_id",
+                  "quantity"
+                ]
+              },
+              "description": "Itens do pedido."
+            }
+          },
+          "required": [
+            "customer_id",
+            "items"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_order_status",
+        "title": "Atualizar status do pedido",
+        "description": "Atualiza o status de um pedido existente.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "order_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "ID do pedido (use list_orders)."
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "pendente",
+                "em_andamento",
+                "concluido",
+                "cancelado"
+              ],
+              "description": "Novo status do pedido."
+            }
+          },
+          "required": [
+            "order_id",
+            "status"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "sales_summary",
+        "title": "Resumo de vendas",
+        "description": "Retorna um resumo dos pedidos: contagem por status e valor total.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "since": {
+              "description": "Data ISO inicial, ex. 2026-01-01.",
+              "type": "string"
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
