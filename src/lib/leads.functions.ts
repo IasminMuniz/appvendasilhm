@@ -28,6 +28,9 @@ const leadSchema = z.object({
   next_action: z.string().max(300).optional().or(z.literal("")),
   next_action_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
+  loss_reason: z.string().max(120).optional().or(z.literal("")),
+  loss_detail: z.string().max(1000).optional().or(z.literal("")),
+  expected_close_date: z.string().optional().or(z.literal("")),
 });
 
 export const listLeads = createServerFn({ method: "GET" })
