@@ -21,6 +21,7 @@ import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
 import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
 import { Route as AuthenticatedPedidosIdRouteImport } from './routes/_authenticated/pedidos.$id'
 import { Route as AuthenticatedPedidosNovoRouteImport } from './routes/_authenticated/pedidos.novo'
@@ -88,6 +89,11 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedClientesIdRoute = AuthenticatedClientesIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedClientesRoute,
+} as any)
 const AuthenticatedClientesNovoRoute =
   AuthenticatedClientesNovoRouteImport.update({
     id: '/novo',
@@ -124,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/produtos': typeof AuthenticatedProdutosRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -141,6 +148,7 @@ export interface FileRoutesByTo {
   '/produtos': typeof AuthenticatedProdutosRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/clientes/novo': typeof AuthenticatedClientesNovoRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/_authenticated/produtos': typeof AuthenticatedProdutosRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRoute
   '/_authenticated/clientes/novo': typeof AuthenticatedClientesNovoRoute
   '/_authenticated/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/_authenticated/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/clientes/$id'
     | '/clientes/novo'
     | '/pedidos/$id'
     | '/pedidos/novo'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/produtos'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/clientes/$id'
     | '/clientes/novo'
     | '/pedidos/$id'
     | '/pedidos/novo'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/_authenticated/produtos'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/clientes/$id'
     | '/_authenticated/clientes/novo'
     | '/_authenticated/pedidos/$id'
     | '/_authenticated/pedidos/novo'
@@ -317,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/clientes/$id': {
+      id: '/_authenticated/clientes/$id'
+      path: '/$id'
+      fullPath: '/clientes/$id'
+      preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
+      parentRoute: typeof AuthenticatedClientesRoute
+    }
     '/_authenticated/clientes/novo': {
       id: '/_authenticated/clientes/novo'
       path: '/novo'
@@ -349,10 +368,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedClientesRouteChildren {
+  AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRoute
   AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
 }
 
 const AuthenticatedClientesRouteChildren: AuthenticatedClientesRouteChildren = {
+  AuthenticatedClientesIdRoute: AuthenticatedClientesIdRoute,
   AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
 }
 
