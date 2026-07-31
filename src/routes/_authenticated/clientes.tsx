@@ -48,14 +48,19 @@ function CustomersPage() {
           ) : (
             <div className="divide-y">
               {customers.map((customer) => (
-                <div key={customer.id} className="flex items-center justify-between py-3">
+                <Link
+                  key={customer.id}
+                  to="/clientes/$id"
+                  params={{ id: customer.id }}
+                  className="flex items-center justify-between py-3 hover:opacity-80"
+                >
                   <div>
                     <p className="font-medium">{customer.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {customer.email || customer.phone || "Sem contato"}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
