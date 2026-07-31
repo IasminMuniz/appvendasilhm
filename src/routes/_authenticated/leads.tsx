@@ -26,24 +26,36 @@ import {
 import {
   convertLeadToCustomer,
   createLead,
+  getPipelineMetrics,
   listLeads,
   moveLeadStage,
 } from "@/lib/leads.functions";
-import { LEAD_STAGES, formatCurrency } from "@/lib/commercial-constants";
+import { LEAD_STAGES, LOSS_REASONS, formatCurrency } from "@/lib/commercial-constants";
 
 const leadsQueryOptions = () =>
   queryOptions({ queryKey: ["leads"], queryFn: () => listLeads() });
 
+const pipelineQueryOptions = () =>
+  queryOptions({ queryKey: ["leads", "pipeline"], queryFn: () => getPipelineMetrics() });
+
 export const Route = createFileRoute("/_authenticated/leads")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(leadsQueryOptions()),
+  loader: ({ context }) => {
+    context.queryClient.ensureQueryData(leadsQueryOptions());
+    context.queryClient.ensureQueryData(pipelineQueryOptions());
+  },
   component: LeadsPage,
   head: () => ({
     meta: [
-      { title: "Leads - Plataforma Comercial" },
+      { title: "Pipeline de Oportunidades - Plataforma Comercial" },
       {
         name: "description",
-        content: "Funil de leads em kanban com estágios, valor estimado e conversão em clientes.",
+        content:
+          "Funil de leads em kanban com previsão de fechamento, motivos de perda e conversão em clientes.",
       },
+      { property: "og:title", content: "Pipeline de Oportunidades" },
+      { property: "og:description", content: "Funil comercial de leads a clientes." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
 });
@@ -61,6 +73,7 @@ const emptyLead = {
   probability: 0,
   next_action: "",
   next_action_date: "",
+  expected_close_date: "",
   notes: "",
 };
 
