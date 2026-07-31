@@ -338,3 +338,108 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
       },
     };
   });
+
+/* ============ Contatos do cliente ============ */
+
+const contactSchema = z.object({
+  customer_id: z.string().uuid(),
+  name: z.string().min(1, "Nome é obrigatório").max(120),
+  role: z.string().max(120).optional().or(z.literal("")),
+  email: z.string().email("E-mail inválido").optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  is_primary: z.boolean().default(false),
+  notes: z.string().max(1000).optional().or(z.literal("")),
+});
+
+export const addCustomerContact = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => contactSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    if (data.is_primary) {
+      await context.supabase
+        .from("customer_contacts")
+        .update({ is_primary: false })
+        .eq("customer_id", data.customer_id);
+    }
+    const { error } = await context.supabase.from("customer_contacts").insert({
+      customer_id: data.customer_id,
+      name: data.name,
+      role: data.role || null,
+      email: data.email || null,
+      phone: data.phone || null,
+      is_primary: data.is_primary,
+      notes: data.notes || null,
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteCustomerContact = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("customer_contacts")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* ============ Próximas ações ============ */
+
+export const addCustomerNextAction = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator(
+    (data: {
+      customer_id: string;
+      title: string;
+      description?: string;
+      due_date?: string;
+      assigned_to?: string;
+    }) =>
+      z
+        .object({
+          customer_id: z.string().uuid(),
+          title: z.string().min(1, "Informe a ação").max(200),
+          description: z.string().max(1000).optional().or(z.literal("")),
+          due_date: z.string().optional().or(z.literal("")),
+          assigned_to: z.string().uuid().optional().or(z.literal("")),
+        })
+        .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("customer_next_actions").insert({
+      customer_id: data.customer_id,
+      title: data.title,
+      description: data.description || null,
+      due_date: data.due_date || null,
+      assigned_to: data.assigned_to || context.userId,
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updateCustomerNextActionStatus = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string; status: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["pendente", "concluida", "cancelada"]),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("customer_next_actions")
+      .update({
+        status: data.status,
+        completed_at: data.status === "concluida" ? new Date().toISOString() : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
