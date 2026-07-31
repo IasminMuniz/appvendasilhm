@@ -9,26 +9,110 @@ function monthKey(date: string) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-/** Painel comercial consolidado: vendas, funil, metas e rankings. */
+export type DashboardView = "empresa" | "gerente" | "supervisor" | "vendedor";
+
+const filtersSchema = z.object({
+  from: z.string().optional().or(z.literal("")),
+  to: z.string().optional().or(z.literal("")),
+  sellerId: z.string().optional().or(z.literal("")),
+  teamId: z.string().optional().or(z.literal("")),
+  region: z.string().optional().or(z.literal("")),
+  product: z.string().optional().or(z.literal("")),
+});
+
+export type DashboardFilters = z.infer<typeof filtersSchema>;
+
+/** Painel comercial consolidado: vendas, funil, metas e rankings, com filtros e visão por perfil. */
 export const getDashboard = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((data?: Partial<DashboardFilters>) => filtersSchema.parse(data ?? {}))
+  .handler(async ({ data: filters, context }) => {
     const supabase = context.supabase;
-    const [ordersRes, leadsRes, quotesRes, customersRes, goalsRes, profilesRes, rolesRes] =
-      await Promise.all([
-        supabase.from("orders").select("*, order_items(*, products(name))"),
-        supabase.from("leads").select("*"),
-        supabase.from("quotes").select("*"),
-        supabase.from("customers").select("id, name, company_name, owner_id, created_at"),
-        supabase.from("goals").select("*"),
-        supabase.from("profiles").select("id, full_name, email"),
-        supabase.from("user_roles").select("role").eq("user_id", context.userId),
-      ]);
+    const [
+      ordersRes,
+      leadsRes,
+      quotesRes,
+      customersRes,
+      goalsRes,
+      profilesRes,
+      rolesRes,
+      teamsRes,
+      membersRes,
+    ] = await Promise.all([
+      supabase.from("orders").select("*, order_items(*, products(name))"),
+      supabase.from("leads").select("*"),
+      supabase.from("quotes").select("*"),
+      supabase
+        .from("customers")
+        .select("id, name, company_name, owner_id, seller_id, region, segment, created_at"),
+      supabase.from("goals").select("*"),
+      supabase.from("profiles").select("id, full_name, email"),
+      supabase.from("user_roles").select("role").eq("user_id", context.userId),
+      supabase.from("teams").select("*"),
+      supabase.from("team_members").select("*"),
+    ]);
 
-    const orders = ordersRes.data ?? [];
-    const leads = leadsRes.data ?? [];
-    const quotes = quotesRes.data ?? [];
-    const customers = customersRes.data ?? [];
+    const roles = rolesRes.data?.map((r) => r.role as string) ?? [];
+    const view: DashboardView = roles.includes("admin")
+      ? "empresa"
+      : roles.includes("gerente")
+        ? "gerente"
+        : roles.includes("supervisor")
+          ? "supervisor"
+          : "vendedor";
+
+    const allCustomers = customersRes.data ?? [];
+    const teams = teamsRes.data ?? [];
+    const members = membersRes.data ?? [];
+
+    const teamSellerIds = filters.teamId
+      ? new Set(members.filter((m) => m.team_id === filters.teamId).map((m) => m.user_id))
+      : null;
+
+    const regionByCustomer = new Map(allCustomers.map((c) => [c.id, c.region ?? "Sem região"]));
+
+    const inRange = (date: string) => {
+      const day = date.slice(0, 10);
+      if (filters.from && day < filters.from) return false;
+      if (filters.to && day > filters.to) return false;
+      return true;
+    };
+
+    const orders = (ordersRes.data ?? []).filter((o) => {
+      if (!inRange(o.created_at)) return false;
+      if (filters.sellerId && o.seller_id !== filters.sellerId) return false;
+      if (teamSellerIds && !teamSellerIds.has(o.seller_id)) return false;
+      if (filters.region && regionByCustomer.get(o.customer_id) !== filters.region) return false;
+      if (
+        filters.product &&
+        !(o.order_items ?? []).some((i) => i.products?.name === filters.product)
+      )
+        return false;
+      return true;
+    });
+
+    const leads = (leadsRes.data ?? []).filter((l) => {
+      if (!inRange(l.created_at)) return false;
+      if (filters.sellerId && l.owner_id !== filters.sellerId) return false;
+      if (teamSellerIds && !teamSellerIds.has(l.owner_id)) return false;
+      return true;
+    });
+
+    const quotes = (quotesRes.data ?? []).filter((q) => {
+      if (!inRange(q.created_at)) return false;
+      if (filters.sellerId && q.seller_id !== filters.sellerId) return false;
+      if (teamSellerIds && !teamSellerIds.has(q.seller_id)) return false;
+      return true;
+    });
+
+    const customers = allCustomers.filter((c) => {
+      if (filters.region && (c.region ?? "Sem região") !== filters.region) return false;
+      const owner = c.owner_id ?? c.seller_id;
+      if (filters.sellerId && owner !== filters.sellerId) return false;
+      if (teamSellerIds && !teamSellerIds.has(owner)) return false;
+      return true;
+    });
+
     const goals = goalsRes.data ?? [];
     const profileMap = Object.fromEntries(
       (profilesRes.data ?? []).map((p) => [p.id, p.full_name || p.email || "Usuário"]),
@@ -171,8 +255,72 @@ export const getDashboard = createServerFn({ method: "GET" })
       .sort((a, b) => b.days - a.days)
       .slice(0, 10);
 
+    // Ranking por região
+    const byRegion = new Map<string, number>();
+    for (const order of validOrders) {
+      const region = regionByCustomer.get(order.customer_id) ?? "Sem região";
+      byRegion.set(region, (byRegion.get(region) ?? 0) + Number(order.total ?? 0));
+    }
+    const regionRanking = [...byRegion.entries()]
+      .map(([region, total]) => ({ region, total }))
+      .sort((a, b) => b.total - a.total);
+
+    // Ranking por equipe
+    const teamOf = new Map<string, string>();
+    for (const m of members) teamOf.set(m.user_id, m.team_id);
+    const byTeam = new Map<string, number>();
+    for (const order of validOrders) {
+      const teamId = teamOf.get(order.seller_id);
+      if (!teamId) continue;
+      byTeam.set(teamId, (byTeam.get(teamId) ?? 0) + Number(order.total ?? 0));
+    }
+    const teamRanking = [...byTeam.entries()]
+      .map(([teamId, total]) => ({
+        teamId,
+        name: teams.find((t) => t.id === teamId)?.name ?? "Equipe",
+        total,
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    // Motivos de perda
+    const lossByReason = new Map<string, number>();
+    for (const lead of leads.filter((l) => l.stage === "perdido")) {
+      const reason = (lead.loss_reason as string | null) ?? "Não informado";
+      lossByReason.set(reason, (lossByReason.get(reason) ?? 0) + 1);
+    }
+    const lossReasons = [...lossByReason.entries()]
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count);
+
+    // Previsão de fechamento (pipeline ponderado)
+    const forecast = leads
+      .filter((l) => l.stage !== "ganho" && l.stage !== "perdido")
+      .reduce(
+        (sum, l) => sum + (Number(l.estimated_value ?? 0) * Number(l.probability ?? 0)) / 100,
+        0,
+      );
+
     return {
-      roles: rolesRes.data?.map((r) => r.role) ?? [],
+      roles,
+      view,
+      filterOptions: {
+        sellers: (profilesRes.data ?? []).map((p) => ({
+          id: p.id,
+          name: p.full_name || p.email || "Usuário",
+        })),
+        teams: teams.map((t) => ({ id: t.id, name: t.name })),
+        regions: [...new Set(allCustomers.map((c) => c.region).filter(Boolean))] as string[],
+        products: [...new Set((ordersRes.data ?? []).flatMap((o) =>
+          (o.order_items ?? []).map((i) => i.products?.name).filter(Boolean),
+        ))] as string[],
+      },
+      regionRanking,
+      teamRanking,
+      lossReasons,
+      forecast,
+      pipelineValue: leads
+        .filter((l) => l.stage !== "ganho" && l.stage !== "perdido")
+        .reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0),
       totals: {
         revenue,
         monthRevenue,

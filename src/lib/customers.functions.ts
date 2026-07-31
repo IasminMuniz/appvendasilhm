@@ -12,6 +12,9 @@ const customerSchema = z.object({
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
+  segment: z.string().max(60).optional().or(z.literal("")),
+  company_size: z.string().max(40).optional().or(z.literal("")),
+  region: z.string().max(60).optional().or(z.literal("")),
 });
 
 export const listCustomers = createServerFn({ method: "GET" })
@@ -42,6 +45,9 @@ export const createCustomer = createServerFn({ method: "POST" })
         city: data.city || null,
         state: data.state || null,
         notes: data.notes || null,
+        segment: data.segment || null,
+        company_size: data.company_size || null,
+        region: data.region || null,
         seller_id: context.userId,
         owner_id: context.userId,
         updated_by: context.userId,
@@ -84,6 +90,9 @@ export const updateCustomer = createServerFn({ method: "POST" })
         city: rest.city || null,
         state: rest.state || null,
         notes: rest.notes || null,
+        segment: rest.segment || null,
+        company_size: rest.company_size || null,
+        region: rest.region || null,
         updated_by: context.userId,
       })
       .eq("id", id);
@@ -159,26 +168,56 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const supabase = context.supabase;
 
-    const [customerRes, ownerHistoryRes, interactionsRes, ordersRes, profilesRes] =
-      await Promise.all([
-        supabase.from("customers").select("*").eq("id", data.id).single(),
-        supabase
-          .from("customer_owner_history")
-          .select("*")
-          .eq("customer_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("customer_interactions")
-          .select("*")
-          .eq("customer_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("orders")
-          .select("*, order_items(*, products(name))")
-          .eq("customer_id", data.id)
-          .order("created_at", { ascending: false }),
-        supabase.from("profiles").select("id, full_name, email"),
-      ]);
+    const [
+      customerRes,
+      ownerHistoryRes,
+      interactionsRes,
+      ordersRes,
+      profilesRes,
+      contactsRes,
+      actionsRes,
+      leadsRes,
+      quotesRes,
+    ] = await Promise.all([
+      supabase.from("customers").select("*").eq("id", data.id).single(),
+      supabase
+        .from("customer_owner_history")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("customer_interactions")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("orders")
+        .select("*, order_items(*, products(name))")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("profiles").select("id, full_name, email"),
+      supabase
+        .from("customer_contacts")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("is_primary", { ascending: false })
+        .order("name"),
+      supabase
+        .from("customer_next_actions")
+        .select("*")
+        .eq("customer_id", data.id)
+        .order("due_date", { ascending: true, nullsFirst: false }),
+      supabase
+        .from("leads")
+        .select("*")
+        .eq("converted_customer_id", data.id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("quotes")
+        .select("id, number, status, total, created_at, valid_until")
+        .eq("customer_id", data.id)
+        .order("created_at", { ascending: false }),
+    ]);
 
     if (customerRes.error) throw new Error(customerRes.error.message);
 
@@ -244,6 +283,45 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
         user_name: profileMap[i.user_id] ?? null,
       })),
       orders,
+      contacts: contactsRes.data ?? [],
+      nextActions: (actionsRes.data ?? []).map((a) => ({
+        ...a,
+        assigned_to_name: profileMap[a.assigned_to] ?? null,
+      })),
+      opportunities: leadsRes.data ?? [],
+      quotes: quotesRes.data ?? [],
+      timeline: [
+        ...(interactionsRes.data ?? []).map((i) => ({
+          id: `i-${i.id}`,
+          type: "interacao" as const,
+          date: i.created_at as string,
+          title: `Interação · ${i.kind}`,
+          description: i.content as string,
+        })),
+        ...orders.map((o) => ({
+          id: `o-${o.id}`,
+          type: "pedido" as const,
+          date: o.created_at as string,
+          title: `Pedido ${o.status}`,
+          description: `Total ${Number(o.total ?? 0).toFixed(2)}`,
+        })),
+        ...(quotesRes.data ?? []).map((q) => ({
+          id: `q-${q.id}`,
+          type: "orcamento" as const,
+          date: q.created_at as string,
+          title: `Orçamento #${q.number} · ${q.status}`,
+          description: `Total ${Number(q.total ?? 0).toFixed(2)}`,
+        })),
+        ...(ownerHistoryRes.data ?? []).map((h) => ({
+          id: `h-${h.id}`,
+          type: "carteira" as const,
+          date: h.created_at as string,
+          title: "Troca de responsável",
+          description: `${h.previous_owner_id ? profileMap[h.previous_owner_id] ?? "—" : "—"} → ${
+            h.new_owner_id ? profileMap[h.new_owner_id] ?? "—" : "—"
+          }`,
+        })),
+      ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       sellers: profilesRes.data ?? [],
       ownerName:
         profileMap[customerRes.data.owner_id ?? customerRes.data.seller_id] ?? "Não definido",
@@ -259,4 +337,109 @@ export const getCustomerDetail = createServerFn({ method: "GET" })
         health,
       },
     };
+  });
+
+/* ============ Contatos do cliente ============ */
+
+const contactSchema = z.object({
+  customer_id: z.string().uuid(),
+  name: z.string().min(1, "Nome é obrigatório").max(120),
+  role: z.string().max(120).optional().or(z.literal("")),
+  email: z.string().email("E-mail inválido").optional().or(z.literal("")),
+  phone: z.string().max(50).optional().or(z.literal("")),
+  is_primary: z.boolean().default(false),
+  notes: z.string().max(1000).optional().or(z.literal("")),
+});
+
+export const addCustomerContact = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => contactSchema.parse(data))
+  .handler(async ({ data, context }) => {
+    if (data.is_primary) {
+      await context.supabase
+        .from("customer_contacts")
+        .update({ is_primary: false })
+        .eq("customer_id", data.customer_id);
+    }
+    const { error } = await context.supabase.from("customer_contacts").insert({
+      customer_id: data.customer_id,
+      name: data.name,
+      role: data.role || null,
+      email: data.email || null,
+      phone: data.phone || null,
+      is_primary: data.is_primary,
+      notes: data.notes || null,
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteCustomerContact = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("customer_contacts")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/* ============ Próximas ações ============ */
+
+export const addCustomerNextAction = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator(
+    (data: {
+      customer_id: string;
+      title: string;
+      description?: string;
+      due_date?: string;
+      assigned_to?: string;
+    }) =>
+      z
+        .object({
+          customer_id: z.string().uuid(),
+          title: z.string().min(1, "Informe a ação").max(200),
+          description: z.string().max(1000).optional().or(z.literal("")),
+          due_date: z.string().optional().or(z.literal("")),
+          assigned_to: z.string().uuid().optional().or(z.literal("")),
+        })
+        .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("customer_next_actions").insert({
+      customer_id: data.customer_id,
+      title: data.title,
+      description: data.description || null,
+      due_date: data.due_date || null,
+      assigned_to: data.assigned_to || context.userId,
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updateCustomerNextActionStatus = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string; status: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: z.enum(["pendente", "concluida", "cancelada"]),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("customer_next_actions")
+      .update({
+        status: data.status,
+        completed_at: data.status === "concluida" ? new Date().toISOString() : null,
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

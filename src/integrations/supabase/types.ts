@@ -14,6 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      commercial_alerts: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          kind: string
+          message: string
+          read_at: string | null
+          severity: string
+          title: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          kind: string
+          message: string
+          read_at?: string | null
+          severity?: string
+          title: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          kind?: string
+          message?: string
+          read_at?: string | null
+          severity?: string
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      customer_contacts: {
+        Row: {
+          created_at: string
+          created_by: string
+          customer_id: string
+          email: string | null
+          id: string
+          is_primary: boolean
+          name: string
+          notes: string | null
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          customer_id: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_interactions: {
         Row: {
           content: string
@@ -42,6 +131,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customer_interactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_next_actions: {
+        Row: {
+          assigned_to: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          customer_id: string
+          description: string | null
+          due_date: string | null
+          id: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          customer_id: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          customer_id?: string
+          description?: string | null
+          due_date?: string | null
+          id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_next_actions_customer_id_fkey"
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
@@ -92,6 +231,7 @@ export type Database = {
           address: string | null
           city: string | null
           company_name: string | null
+          company_size: string | null
           created_at: string
           document: string | null
           email: string | null
@@ -100,6 +240,8 @@ export type Database = {
           notes: string | null
           owner_id: string | null
           phone: string | null
+          region: string | null
+          segment: string | null
           seller_id: string
           state: string | null
           updated_at: string
@@ -109,6 +251,7 @@ export type Database = {
           address?: string | null
           city?: string | null
           company_name?: string | null
+          company_size?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
@@ -117,6 +260,8 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          region?: string | null
+          segment?: string | null
           seller_id: string
           state?: string | null
           updated_at?: string
@@ -126,6 +271,7 @@ export type Database = {
           address?: string | null
           city?: string | null
           company_name?: string | null
+          company_size?: string | null
           created_at?: string
           document?: string | null
           email?: string | null
@@ -134,6 +280,8 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          region?: string | null
+          segment?: string | null
           seller_id?: string
           state?: string | null
           updated_at?: string
@@ -318,7 +466,10 @@ export type Database = {
           created_at: string
           email: string | null
           estimated_value: number
+          expected_close_date: string | null
           id: string
+          loss_detail: string | null
+          loss_reason: string | null
           name: string
           next_action: string | null
           next_action_date: string | null
@@ -338,7 +489,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           estimated_value?: number
+          expected_close_date?: string | null
           id?: string
+          loss_detail?: string | null
+          loss_reason?: string | null
           name: string
           next_action?: string | null
           next_action_date?: string | null
@@ -358,7 +512,10 @@ export type Database = {
           created_at?: string
           email?: string | null
           estimated_value?: number
+          expected_close_date?: string | null
           id?: string
+          loss_detail?: string | null
+          loss_reason?: string | null
           name?: string
           next_action?: string | null
           next_action_date?: string | null
