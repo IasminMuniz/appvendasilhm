@@ -7,6 +7,11 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  KanbanSquare,
+  FileText,
+  Target,
+  Plug,
+  Download,
 } from "lucide-react";
 
 import {
@@ -27,9 +32,14 @@ import { supabase } from "@/integrations/supabase/client";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Leads", url: "/leads", icon: KanbanSquare },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Produtos", url: "/produtos", icon: Package },
+  { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Pedidos", url: "/pedidos", icon: ShoppingCart },
+  { title: "Metas", url: "/metas", icon: Target },
+  { title: "Integrações", url: "/integracoes", icon: Plug },
+  { title: "Exportação", url: "/exportacao", icon: Download },
 ];
 
 export function AppSidebar() {

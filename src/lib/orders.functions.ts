@@ -2,7 +2,18 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 
-const orderStatusSchema = z.enum(["pendente", "em_andamento", "concluido", "cancelado"]);
+const orderStatusSchema = z.enum([
+  "pendente",
+  "em_andamento",
+  "concluido",
+  "cancelado",
+  "criado",
+  "aguardando_aprovacao",
+  "aprovado",
+  "processamento",
+  "faturado",
+  "finalizado",
+]);
 
 const orderItemSchema = z.object({
   product_id: z.string().uuid(),
@@ -21,7 +32,7 @@ export const listOrders = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("orders")
-      .select("*, customers(name), order_items(*, products(name))")
+      .select("*, customers(name, company_name), order_items(*, products(name))")
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
@@ -32,14 +43,33 @@ export const getOrder = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    const { data: order, error } = await context.supabase
-      .from("orders")
-      .select("*, customers(*), order_items(*, products(name))")
-      .eq("id", data.id)
-      .single();
+    const [orderRes, historyRes, profilesRes] = await Promise.all([
+      context.supabase
+        .from("orders")
+        .select("*, customers(*), order_items(*, products(name))")
+        .eq("id", data.id)
+        .single(),
+      context.supabase
+        .from("order_status_history")
+        .select("*")
+        .eq("order_id", data.id)
+        .order("created_at", { ascending: false }),
+      context.supabase.from("profiles").select("id, full_name, email"),
+    ]);
 
-    if (error) throw new Error(error.message);
-    return order;
+    if (orderRes.error) throw new Error(orderRes.error.message);
+
+    const profileMap = Object.fromEntries(
+      (profilesRes.data ?? []).map((p) => [p.id, p.full_name || p.email || "Usuário"]),
+    );
+
+    return {
+      order: orderRes.data,
+      history: (historyRes.data ?? []).map((h) => ({
+        ...h,
+        changed_by_name: profileMap[h.changed_by] ?? "Usuário",
+      })),
+    };
   });
 
 export const createOrder = createServerFn({ method: "POST" })
@@ -54,6 +84,7 @@ export const createOrder = createServerFn({ method: "POST" })
         customer_id: data.customer_id,
         seller_id: context.userId,
         notes: data.notes || null,
+        status: "criado",
         total,
       })
       .select()
@@ -76,15 +107,36 @@ export const createOrder = createServerFn({ method: "POST" })
       throw new Error(itemsError.message);
     }
 
+    await context.supabase.from("order_status_history").insert({
+      order_id: order.id,
+      from_status: null,
+      to_status: "criado",
+      changed_by: context.userId,
+      note: "Pedido criado",
+    });
+
     return order;
   });
 
 export const updateOrderStatus = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data: { id: string; status: string }) =>
-    z.object({ id: z.string().uuid(), status: orderStatusSchema }).parse(data)
+  .inputValidator((data: { id: string; status: string; note?: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        status: orderStatusSchema,
+        note: z.string().max(500).optional().or(z.literal("")),
+      })
+      .parse(data),
   )
   .handler(async ({ data, context }) => {
+    const { data: current, error: readError } = await context.supabase
+      .from("orders")
+      .select("status")
+      .eq("id", data.id)
+      .single();
+    if (readError) throw new Error(readError.message);
+
     const { data: order, error } = await context.supabase
       .from("orders")
       .update({ status: data.status })
@@ -93,5 +145,14 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       .single();
 
     if (error) throw new Error(error.message);
+
+    await context.supabase.from("order_status_history").insert({
+      order_id: data.id,
+      from_status: current.status,
+      to_status: data.status,
+      changed_by: context.userId,
+      note: data.note || null,
+    });
+
     return order;
   });

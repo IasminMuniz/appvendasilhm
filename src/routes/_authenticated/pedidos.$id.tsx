@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, History } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,20 +14,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { getOrder, updateOrderStatus } from "@/lib/orders.functions";
-
-const statusLabels: Record<string, string> = {
-  pendente: "Pendente",
-  em_andamento: "Em andamento",
-  concluido: "Concluído",
-  cancelado: "Cancelado",
-};
-
-const statusOptions = [
-  { value: "pendente", label: "Pendente" },
-  { value: "em_andamento", label: "Em andamento" },
-  { value: "concluido", label: "Concluído" },
-  { value: "cancelado", label: "Cancelado" },
-];
+import {
+  ORDER_STATUSES,
+  ORDER_STATUS_LABELS,
+  formatCurrency,
+} from "@/lib/commercial-constants";
 
 const orderQueryOptions = (id: string) =>
   queryOptions({
@@ -39,22 +31,30 @@ export const Route = createFileRoute("/_authenticated/pedidos/$id")({
     context.queryClient.ensureQueryData(orderQueryOptions(params.id)),
   component: OrderDetailPage,
   head: () => ({
-    meta: [{ title: "Detalhes do Pedido - Vendas Comercial" }],
+    meta: [
+      { title: "Detalhes do Pedido - Vendas Comercial" },
+      {
+        name: "description",
+        content: "Acompanhe itens, status e histórico completo do pedido comercial.",
+      },
+    ],
   }),
 });
 
 function OrderDetailPage() {
   const { id } = useParams({ from: "/_authenticated/pedidos/$id" });
   const queryClient = useQueryClient();
-  const { data: order } = useSuspenseQuery(orderQueryOptions(id));
+  const { data } = useSuspenseQuery(orderQueryOptions(id));
+  const order = data.order;
 
   const mutation = useMutation({
     mutationFn: updateOrderStatus,
     onSuccess: () => {
+      toast.success("Status atualizado");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["orders", id] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
+    onError: (error: Error) => toast.error(error.message),
   });
 
   return (
@@ -70,10 +70,10 @@ function OrderDetailPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pedido</h1>
           <p className="text-muted-foreground">
-            {new Date(order.created_at ?? "").toLocaleDateString("pt-BR")}
+            {new Date(order.created_at).toLocaleDateString("pt-BR")}
           </p>
         </div>
-        <Badge variant="outline">{statusLabels[order.status ?? "pendente"]}</Badge>
+        <Badge variant="outline">{ORDER_STATUS_LABELS[order.status] ?? order.status}</Badge>
       </div>
 
       <Card>
@@ -81,9 +81,15 @@ function OrderDetailPage() {
           <CardTitle>Cliente</CardTitle>
         </CardHeader>
         <CardContent className="space-y-1">
-          <p className="font-medium">{order.customers?.name ?? "Cliente"}</p>
-          {order.customers?.email && <p className="text-sm text-muted-foreground">{order.customers.email}</p>}
-          {order.customers?.phone && <p className="text-sm text-muted-foreground">{order.customers.phone}</p>}
+          <p className="font-medium">
+            {order.customers?.company_name || order.customers?.name || "Cliente"}
+          </p>
+          {order.customers?.email && (
+            <p className="text-sm text-muted-foreground">{order.customers.email}</p>
+          )}
+          {order.customers?.phone && (
+            <p className="text-sm text-muted-foreground">{order.customers.phone}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -98,16 +104,16 @@ function OrderDetailPage() {
                 <div>
                   <p className="font-medium">{item.products?.name ?? "Produto"}</p>
                   <p className="text-sm text-muted-foreground">
-                    {item.quantity} x R$ {(item.unit_price ?? 0).toFixed(2)}
+                    {item.quantity} x {formatCurrency(Number(item.unit_price ?? 0))}
                   </p>
                 </div>
-                <span className="font-semibold">R$ {(item.total ?? 0).toFixed(2)}</span>
+                <span className="font-semibold">{formatCurrency(Number(item.total ?? 0))}</span>
               </div>
             ))}
           </div>
           <div className="mt-4 flex items-center justify-between border-t pt-4">
             <span className="text-lg font-semibold">Total</span>
-            <span className="text-2xl font-bold">R$ {(order.total ?? 0).toFixed(2)}</span>
+            <span className="text-2xl font-bold">{formatCurrency(Number(order.total ?? 0))}</span>
           </div>
         </CardContent>
       </Card>
@@ -118,22 +124,52 @@ function OrderDetailPage() {
         </CardHeader>
         <CardContent>
           <Select
-            value={order.status ?? "pendente"}
-            onValueChange={(value) =>
-              mutation.mutate({ data: { id: order.id, status: value } })
-            }
+            value={order.status}
+            onValueChange={(value) => mutation.mutate({ data: { id: order.id, status: value } })}
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o status" />
             </SelectTrigger>
             <SelectContent>
-              {statusOptions.map((option) => (
+              {ORDER_STATUSES.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Histórico de status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {data.history.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma movimentação registrada.</p>
+          ) : (
+            <div className="space-y-3">
+              {data.history.map((entry) => (
+                <div key={entry.id} className="border-l-2 border-primary/40 pl-3">
+                  <p className="text-sm font-medium">
+                    {entry.from_status
+                      ? `${ORDER_STATUS_LABELS[entry.from_status] ?? entry.from_status} → `
+                      : ""}
+                    {ORDER_STATUS_LABELS[entry.to_status] ?? entry.to_status}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {entry.changed_by_name} ·{" "}
+                    {new Date(entry.created_at).toLocaleString("pt-BR")}
+                  </p>
+                  {entry.note && <p className="text-xs text-muted-foreground">{entry.note}</p>}
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
 

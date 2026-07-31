@@ -14,47 +14,372 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_interactions: {
+        Row: {
+          content: string
+          created_at: string
+          customer_id: string
+          id: string
+          kind: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          kind?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          kind?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_interactions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_owner_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          customer_id: string
+          id: string
+          new_owner_id: string | null
+          note: string | null
+          previous_owner_id: string | null
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          customer_id: string
+          id?: string
+          new_owner_id?: string | null
+          note?: string | null
+          previous_owner_id?: string | null
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          customer_id?: string
+          id?: string
+          new_owner_id?: string | null
+          note?: string | null
+          previous_owner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_owner_history_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
           city: string | null
+          company_name: string | null
           created_at: string
+          document: string | null
           email: string | null
           id: string
           name: string
           notes: string | null
+          owner_id: string | null
           phone: string | null
           seller_id: string
           state: string | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           address?: string | null
           city?: string | null
+          company_name?: string | null
           created_at?: string
+          document?: string | null
           email?: string | null
           id?: string
           name: string
           notes?: string | null
+          owner_id?: string | null
           phone?: string | null
           seller_id: string
           state?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           address?: string | null
           city?: string | null
+          company_name?: string | null
           created_at?: string
+          document?: string | null
           email?: string | null
           id?: string
           name?: string
           notes?: string | null
+          owner_id?: string | null
           phone?: string | null
           seller_id?: string
           state?: string | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: []
+      }
+      discount_policies: {
+        Row: {
+          id: string
+          max_discount_percent: number
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          max_discount_percent?: number
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          max_discount_percent?: number
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      export_jobs: {
+        Row: {
+          created_at: string
+          dataset: string
+          file_name: string
+          format: string
+          id: string
+          row_count: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dataset: string
+          file_name: string
+          format: string
+          id?: string
+          row_count?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dataset?: string
+          file_name?: string
+          format?: string
+          id?: string
+          row_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      goals: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          period_end: string
+          period_start: string
+          target_amount: number
+          team_id: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          period_end: string
+          period_start: string
+          target_amount?: number
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          target_amount?: number
+          team_id?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integrations: {
+        Row: {
+          category: string
+          config: Json
+          created_at: string
+          enabled: boolean
+          id: string
+          provider: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          category: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          provider: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          category?: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          provider?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      lead_stage_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          from_stage: Database["public"]["Enums"]["lead_stage"] | null
+          id: string
+          lead_id: string
+          note: string | null
+          to_stage: Database["public"]["Enums"]["lead_stage"]
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["lead_stage"] | null
+          id?: string
+          lead_id: string
+          note?: string | null
+          to_stage: Database["public"]["Enums"]["lead_stage"]
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          from_stage?: Database["public"]["Enums"]["lead_stage"] | null
+          id?: string
+          lead_id?: string
+          note?: string | null
+          to_stage?: Database["public"]["Enums"]["lead_stage"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_stage_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      leads: {
+        Row: {
+          city: string | null
+          company: string | null
+          converted_customer_id: string | null
+          created_at: string
+          email: string | null
+          estimated_value: number
+          id: string
+          name: string
+          next_action: string | null
+          next_action_date: string | null
+          notes: string | null
+          owner_id: string
+          phone: string | null
+          probability: number
+          source: string | null
+          stage: Database["public"]["Enums"]["lead_stage"]
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          company?: string | null
+          converted_customer_id?: string | null
+          created_at?: string
+          email?: string | null
+          estimated_value?: number
+          id?: string
+          name: string
+          next_action?: string | null
+          next_action_date?: string | null
+          notes?: string | null
+          owner_id: string
+          phone?: string | null
+          probability?: number
+          source?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          company?: string | null
+          converted_customer_id?: string | null
+          created_at?: string
+          email?: string | null
+          estimated_value?: number
+          id?: string
+          name?: string
+          next_action?: string | null
+          next_action_date?: string | null
+          notes?: string | null
+          owner_id?: string
+          phone?: string | null
+          probability?: number
+          source?: string | null
+          stage?: Database["public"]["Enums"]["lead_stage"]
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leads_converted_customer_id_fkey"
+            columns: ["converted_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       order_items: {
         Row: {
@@ -101,6 +426,44 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          from_status: Database["public"]["Enums"]["order_status"] | null
+          id: string
+          note: string | null
+          order_id: string
+          to_status: Database["public"]["Enums"]["order_status"]
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["order_status"] | null
+          id?: string
+          note?: string | null
+          order_id: string
+          to_status: Database["public"]["Enums"]["order_status"]
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["order_status"] | null
+          id?: string
+          note?: string | null
+          order_id?: string
+          to_status?: Database["public"]["Enums"]["order_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_status_history_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -142,33 +505,127 @@ export type Database = {
           },
         ]
       }
+      product_documents: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          product_id: string
+          url: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          product_id: string
+          url: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          product_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_documents_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          position: number
+          product_id: string
+          url: string
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          position?: number
+          product_id: string
+          url: string
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          position?: number
+          product_id?: string
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_images_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           active: boolean
+          applications: string | null
+          benefits: string | null
+          commercial_description: string | null
           created_at: string
           description: string | null
+          dimensions: string | null
           id: string
           name: string
           price: number
+          purpose: string | null
+          sku: string | null
+          specifications: Json
+          technical_description: string | null
           updated_at: string
+          weight: string | null
         }
         Insert: {
           active?: boolean
+          applications?: string | null
+          benefits?: string | null
+          commercial_description?: string | null
           created_at?: string
           description?: string | null
+          dimensions?: string | null
           id?: string
           name: string
           price: number
+          purpose?: string | null
+          sku?: string | null
+          specifications?: Json
+          technical_description?: string | null
           updated_at?: string
+          weight?: string | null
         }
         Update: {
           active?: boolean
+          applications?: string | null
+          benefits?: string | null
+          commercial_description?: string | null
           created_at?: string
           description?: string | null
+          dimensions?: string | null
           id?: string
           name?: string
           price?: number
+          purpose?: string | null
+          sku?: string | null
+          specifications?: Json
+          technical_description?: string | null
           updated_at?: string
+          weight?: string | null
         }
         Relationships: []
       }
@@ -196,6 +653,267 @@ export type Database = {
         }
         Relationships: []
       }
+      quote_approvals: {
+        Row: {
+          approver_id: string | null
+          created_at: string
+          decided_at: string | null
+          discount_percent: number
+          id: string
+          note: string | null
+          quote_id: string
+          requested_by: string
+          required_role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        Insert: {
+          approver_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          discount_percent: number
+          id?: string
+          note?: string | null
+          quote_id: string
+          requested_by: string
+          required_role: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Update: {
+          approver_id?: string | null
+          created_at?: string
+          decided_at?: string | null
+          discount_percent?: number
+          id?: string
+          note?: string | null
+          quote_id?: string
+          requested_by?: string
+          required_role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_approvals_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_items: {
+        Row: {
+          created_at: string
+          discount_percent: number
+          id: string
+          product_id: string
+          quantity: number
+          quote_id: string
+          total: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          product_id: string
+          quantity: number
+          quote_id: string
+          total: number
+          unit_price: number
+        }
+        Update: {
+          created_at?: string
+          discount_percent?: number
+          id?: string
+          product_id?: string
+          quantity?: number
+          quote_id?: string
+          total?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quote_items_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quote_sends: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          pdf_path: string | null
+          quote_id: string
+          sent_by: string
+          status: string
+          subject: string | null
+          to_email: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          pdf_path?: string | null
+          quote_id: string
+          sent_by: string
+          status?: string
+          subject?: string | null
+          to_email: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          pdf_path?: string | null
+          quote_id?: string
+          sent_by?: string
+          status?: string
+          subject?: string | null
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_sends_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      quotes: {
+        Row: {
+          commercial_terms: string | null
+          created_at: string
+          customer_id: string
+          discount_percent: number
+          id: string
+          notes: string | null
+          number: number
+          order_id: string | null
+          seller_id: string
+          status: Database["public"]["Enums"]["quote_status"]
+          subtotal: number
+          total: number
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          commercial_terms?: string | null
+          created_at?: string
+          customer_id: string
+          discount_percent?: number
+          id?: string
+          notes?: string | null
+          number?: number
+          order_id?: string | null
+          seller_id: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          commercial_terms?: string | null
+          created_at?: string
+          customer_id?: string
+          discount_percent?: number
+          id?: string
+          notes?: string | null
+          number?: number
+          order_id?: string | null
+          seller_id?: string
+          status?: Database["public"]["Enums"]["quote_status"]
+          subtotal?: number
+          total?: number
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quotes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      team_members: {
+        Row: {
+          created_at: string
+          id: string
+          team_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          team_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          team_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "team_members_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teams: {
+        Row: {
+          created_at: string
+          id: string
+          manager_id: string | null
+          name: string
+          supervisor_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          name: string
+          supervisor_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          manager_id?: string | null
+          name?: string
+          supervisor_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -219,6 +937,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access: {
+        Args: { _target: string; _viewer: string }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -226,10 +948,47 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_leader: { Args: { _user_id: string }; Returns: boolean }
+      role_has: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      supervises: {
+        Args: { _target: string; _viewer: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "admin" | "vendedor"
-      order_status: "pendente" | "em_andamento" | "concluido" | "cancelado"
+      app_role: "admin" | "vendedor" | "supervisor" | "gerente"
+      lead_stage:
+        | "novo"
+        | "contato_realizado"
+        | "qualificado"
+        | "oportunidade"
+        | "proposta_enviada"
+        | "negociacao"
+        | "ganho"
+        | "perdido"
+      order_status:
+        | "pendente"
+        | "em_andamento"
+        | "concluido"
+        | "cancelado"
+        | "criado"
+        | "aguardando_aprovacao"
+        | "aprovado"
+        | "processamento"
+        | "faturado"
+        | "finalizado"
+      quote_status:
+        | "rascunho"
+        | "aguardando_aprovacao"
+        | "aprovado"
+        | "reprovado"
+        | "convertido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -357,8 +1116,36 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "vendedor"],
-      order_status: ["pendente", "em_andamento", "concluido", "cancelado"],
+      app_role: ["admin", "vendedor", "supervisor", "gerente"],
+      lead_stage: [
+        "novo",
+        "contato_realizado",
+        "qualificado",
+        "oportunidade",
+        "proposta_enviada",
+        "negociacao",
+        "ganho",
+        "perdido",
+      ],
+      order_status: [
+        "pendente",
+        "em_andamento",
+        "concluido",
+        "cancelado",
+        "criado",
+        "aguardando_aprovacao",
+        "aprovado",
+        "processamento",
+        "faturado",
+        "finalizado",
+      ],
+      quote_status: [
+        "rascunho",
+        "aguardando_aprovacao",
+        "aprovado",
+        "reprovado",
+        "convertido",
+      ],
     },
   },
 } as const
