@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { cepSchema, phoneSchema } from "@/lib/masks";
 
 const customerSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
