@@ -9,7 +9,7 @@ const customerSchema = z.object({
   company_name: z.string().max(200).optional().or(z.literal("")),
   document: z.string().max(40).optional().or(z.literal("")),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  phone: z.string().max(50).optional().or(z.literal("")),
+  phone: phoneSchema.optional().or(z.literal("")),
   address: z.string().max(500).optional().or(z.literal("")),
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
