@@ -32,6 +32,7 @@ import { Route as AuthenticatedOrcamentosIdRouteImport } from './routes/_authent
 import { Route as AuthenticatedOrcamentosNovoRouteImport } from './routes/_authenticated/orcamentos.novo'
 import { Route as AuthenticatedPedidosIdRouteImport } from './routes/_authenticated/pedidos.$id'
 import { Route as AuthenticatedPedidosNovoRouteImport } from './routes/_authenticated/pedidos.novo'
+import { Route as AuthenticatedProdutosIdRouteImport } from './routes/_authenticated/produtos.$id'
 import { Route as AuthenticatedProdutosNovoRouteImport } from './routes/_authenticated/produtos.novo'
 import { Route as AuthenticatedClientesIdEditarRouteImport } from './routes/_authenticated/clientes.$id.editar'
 
@@ -157,6 +158,11 @@ const AuthenticatedPedidosNovoRoute =
     path: '/novo',
     getParentRoute: () => AuthenticatedPedidosRoute,
   } as any)
+const AuthenticatedProdutosIdRoute = AuthenticatedProdutosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedProdutosRoute,
+} as any)
 const AuthenticatedProdutosNovoRoute =
   AuthenticatedProdutosNovoRouteImport.update({
     id: '/novo',
@@ -193,6 +199,7 @@ export interface FileRoutesByFullPath {
   '/orcamentos/novo': typeof AuthenticatedOrcamentosNovoRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
+  '/produtos/$id': typeof AuthenticatedProdutosIdRoute
   '/produtos/novo': typeof AuthenticatedProdutosNovoRoute
   '/clientes/$id/editar': typeof AuthenticatedClientesIdEditarRoute
 }
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/orcamentos/novo': typeof AuthenticatedOrcamentosNovoRoute
   '/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
+  '/produtos/$id': typeof AuthenticatedProdutosIdRoute
   '/produtos/novo': typeof AuthenticatedProdutosNovoRoute
   '/clientes/$id/editar': typeof AuthenticatedClientesIdEditarRoute
 }
@@ -247,6 +255,7 @@ export interface FileRoutesById {
   '/_authenticated/orcamentos/novo': typeof AuthenticatedOrcamentosNovoRoute
   '/_authenticated/pedidos/$id': typeof AuthenticatedPedidosIdRoute
   '/_authenticated/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
+  '/_authenticated/produtos/$id': typeof AuthenticatedProdutosIdRoute
   '/_authenticated/produtos/novo': typeof AuthenticatedProdutosNovoRoute
   '/_authenticated/clientes/$id/editar': typeof AuthenticatedClientesIdEditarRoute
 }
@@ -275,6 +284,7 @@ export interface FileRouteTypes {
     | '/orcamentos/novo'
     | '/pedidos/$id'
     | '/pedidos/novo'
+    | '/produtos/$id'
     | '/produtos/novo'
     | '/clientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/orcamentos/novo'
     | '/pedidos/$id'
     | '/pedidos/novo'
+    | '/produtos/$id'
     | '/produtos/novo'
     | '/clientes/$id/editar'
   id:
@@ -328,6 +339,7 @@ export interface FileRouteTypes {
     | '/_authenticated/orcamentos/novo'
     | '/_authenticated/pedidos/$id'
     | '/_authenticated/pedidos/novo'
+    | '/_authenticated/produtos/$id'
     | '/_authenticated/produtos/novo'
     | '/_authenticated/clientes/$id/editar'
   fileRoutesById: FileRoutesById
@@ -506,6 +518,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPedidosNovoRouteImport
       parentRoute: typeof AuthenticatedPedidosRoute
     }
+    '/_authenticated/produtos/$id': {
+      id: '/_authenticated/produtos/$id'
+      path: '/$id'
+      fullPath: '/produtos/$id'
+      preLoaderRoute: typeof AuthenticatedProdutosIdRouteImport
+      parentRoute: typeof AuthenticatedProdutosRoute
+    }
     '/_authenticated/produtos/novo': {
       id: '/_authenticated/produtos/novo'
       path: '/novo'
@@ -582,10 +601,12 @@ const AuthenticatedPedidosRouteWithChildren =
   AuthenticatedPedidosRoute._addFileChildren(AuthenticatedPedidosRouteChildren)
 
 interface AuthenticatedProdutosRouteChildren {
+  AuthenticatedProdutosIdRoute: typeof AuthenticatedProdutosIdRoute
   AuthenticatedProdutosNovoRoute: typeof AuthenticatedProdutosNovoRoute
 }
 
 const AuthenticatedProdutosRouteChildren: AuthenticatedProdutosRouteChildren = {
+  AuthenticatedProdutosIdRoute: AuthenticatedProdutosIdRoute,
   AuthenticatedProdutosNovoRoute: AuthenticatedProdutosNovoRoute,
 }
 
