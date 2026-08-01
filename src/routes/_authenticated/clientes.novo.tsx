@@ -11,6 +11,7 @@ import {
   emptyCustomerForm,
   toCustomerPayload,
 } from "@/components/customers/customer-form-fields";
+import { validateContactFields } from "@/lib/masks";
 
 export const Route = createFileRoute("/_authenticated/clientes/novo")({
   component: NewCustomerPage,

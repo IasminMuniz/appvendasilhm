@@ -11,6 +11,7 @@ import {
   type CustomerFormValues,
   toCustomerPayload,
 } from "@/components/customers/customer-form-fields";
+import { validateContactFields } from "@/lib/masks";
 
 const customerQueryOptions = (id: string) =>
   queryOptions({
