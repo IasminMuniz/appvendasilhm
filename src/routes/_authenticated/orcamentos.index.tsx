@@ -10,7 +10,7 @@ import { QUOTE_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants"
 const quotesQueryOptions = () =>
   queryOptions({ queryKey: ["quotes"], queryFn: () => listQuotes() });
 
-export const Route = createFileRoute("/_authenticated/orcamentos")({
+export const Route = createFileRoute("/_authenticated/orcamentos/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(quotesQueryOptions()),
   component: QuotesPage,
   head: () => ({

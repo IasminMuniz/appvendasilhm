@@ -24,7 +24,7 @@ const customersQueryOptions = () =>
     queryFn: () => listCustomers(),
   });
 
-export const Route = createFileRoute("/_authenticated/clientes")({
+export const Route = createFileRoute("/_authenticated/clientes/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(customersQueryOptions()),
   component: CustomersPage,
   errorComponent: ({ error }) => (
