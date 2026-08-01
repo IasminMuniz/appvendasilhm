@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BRAZIL_STATES, CUSTOMER_SEGMENTS, CUSTOMER_STATUSES } from "@/lib/commercial-constants";
+import { CEP_ERROR, PHONE_ERROR, isValidCep, isValidPhone, maskCep, maskPhone } from "@/lib/masks";
 
 export type CustomerFormValues = {
   legal_name: string;
