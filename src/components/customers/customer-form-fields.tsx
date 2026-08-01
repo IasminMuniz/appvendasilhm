@@ -203,6 +203,7 @@ export function CustomerFormFields({ value, onChange, hideContact }: Props) {
           {!!value.postal_code && !isValidCep(value.postal_code) && (
             <p className="text-xs text-destructive">{CEP_ERROR}</p>
           )}
+        </div>
       </div>
 
       <div className="space-y-2">
