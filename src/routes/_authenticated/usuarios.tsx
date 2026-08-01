@@ -1,7 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
+import { z } from "zod";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -60,11 +69,21 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
 
 const ROLES = ["admin", "gerente", "supervisor", "vendedor"] as const;
 
+const newUserSchema = z.object({
+  full_name: z.string().trim().min(1, "Informe o nome completo").max(160),
+  email: z.string().trim().email("Informe um e-mail válido").max(255),
+  password: z.string().min(8, "A senha deve ter no mínimo 8 caracteres"),
+  role: z.enum(ROLES),
+  supervisor_id: z.string().optional(),
+});
+
 function UsersPage() {
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(usersQueryOptions());
   const isAdmin = data.me.isAdmin;
 
+  const [open, setOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -99,10 +118,12 @@ function UsersPage() {
     onSuccess: () => {
       toast.success("Usuário criado");
       setForm({ email: "", password: "", full_name: "", role: "vendedor", supervisor_id: "" });
+      setOpen(false);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const inactiveMutation = useMutation({
     mutationFn: () => runInactiveCustomersCheck({ data: { days: 90 } }),
@@ -127,82 +148,100 @@ function UsersPage() {
       )}
 
       {isAdmin && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Novo usuário</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-5">
-            <div className="space-y-2">
-              <Label htmlFor="full_name">Nome</Label>
-              <Input
-                id="full_name"
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Perfil</Label>
-              <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {ROLE_LABELS[r]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Responsável comercial</Label>
-              <Select
-                value={form.supervisor_id || "none"}
-                onValueChange={(v) => setForm({ ...form, supervisor_id: v === "none" ? "" : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Sem responsável" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem responsável</SelectItem>
-                  {data.users.map((u) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.full_name || u.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="md:col-span-5">
-              <Button
-                onClick={() => createMutation.mutate()}
-                disabled={createMutation.isPending}
-              >
-                Criar usuário
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setFormError(null); }}>
+          <DialogTrigger asChild>
+            <Button type="button">Adicionar usuário</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Novo usuário</DialogTitle>
+            </DialogHeader>
+            <form
+              className="grid gap-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const parsed = newUserSchema.safeParse(form);
+                if (!parsed.success) {
+                  setFormError(parsed.error.issues[0]?.message ?? "Verifique os campos.");
+                  return;
+                }
+                setFormError(null);
+                createMutation.mutate();
+              }}
+            >
+              <div className="space-y-2">
+                <Label htmlFor="full_name">Nome completo</Label>
+                <Input
+                  id="full_name"
+                  value={form.full_name}
+                  onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Perfil de acesso</Label>
+                <Select value={form.role} onValueChange={(v) => setForm({ ...form, role: v })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ROLES.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {ROLE_LABELS[r]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Responsável comercial</Label>
+                <Select
+                  value={form.supervisor_id || "none"}
+                  onValueChange={(v) => setForm({ ...form, supervisor_id: v === "none" ? "" : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sem responsável" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem responsável</SelectItem>
+                    {data.users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.full_name || u.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {formError && <p className="text-sm text-destructive">{formError}</p>}
+
+              <DialogFooter>
+                <Button type="submit" disabled={createMutation.isPending}>
+                  {createMutation.isPending ? "Salvando..." : "Salvar usuário"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
+
 
       <Card>
         <CardHeader>
