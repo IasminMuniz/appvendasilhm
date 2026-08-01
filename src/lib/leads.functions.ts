@@ -95,6 +95,9 @@ export const createLead = createServerFn({ method: "POST" })
       note: "Lead criado",
     });
 
+    const { notifyN8n } = await import("@/lib/n8n.server");
+    await notifyN8n("novo_lead", { lead: inserted, user_id: context.userId });
+
     return inserted;
   });
 
@@ -112,6 +115,10 @@ export const updateLead = createServerFn({ method: "POST" })
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
+
+    const { notifyN8n } = await import("@/lib/n8n.server");
+    await notifyN8n("lead_atualizado", { lead: data, user_id: context.userId });
+
     return { ok: true };
   });
 
@@ -164,6 +171,16 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       to_stage: data.stage,
       changed_by: context.userId,
       note: data.note || (data.loss_reason ? `Perda: ${data.loss_reason}` : null),
+    });
+
+    const { notifyN8n } = await import("@/lib/n8n.server");
+    await notifyN8n("lead_mudou_etapa", {
+      lead_id: data.id,
+      from_stage: current.stage,
+      to_stage: data.stage,
+      note: data.note || null,
+      loss_reason: data.loss_reason || null,
+      user_id: context.userId,
     });
 
     return { ok: true };

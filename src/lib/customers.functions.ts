@@ -56,6 +56,10 @@ export const createCustomer = createServerFn({ method: "POST" })
       .single();
 
     if (error) throw new Error(error.message);
+
+    const { notifyN8n } = await import("@/lib/n8n.server");
+    await notifyN8n("novo_cliente", { customer: inserted, user_id: context.userId });
+
     return inserted;
   });
 
