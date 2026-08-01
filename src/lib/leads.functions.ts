@@ -115,6 +115,10 @@ export const updateLead = createServerFn({ method: "POST" })
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
+
+    const { notifyN8n } = await import("@/lib/n8n.server");
+    await notifyN8n("lead_atualizado", { lead: data, user_id: context.userId });
+
     return { ok: true };
   });
 
