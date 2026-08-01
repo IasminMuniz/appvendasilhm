@@ -161,25 +161,42 @@ export const changeCustomerOwner = createServerFn({ method: "POST" })
 
 export const addCustomerInteraction = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((data: { customer_id: string; kind: string; content: string }) =>
+  .inputValidator((data: { customer_id?: string; lead_id?: string; kind: string; content: string }) =>
     z
       .object({
-        customer_id: z.string().uuid(),
+        customer_id: z.string().uuid().optional().or(z.literal("")),
+        lead_id: z.string().uuid().optional().or(z.literal("")),
         kind: z.string().max(40).default("nota"),
         content: z.string().min(1, "Descreva a interação").max(2000),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
+    if (!data.customer_id && !data.lead_id) {
+      throw new Error("Informe o cliente ou o lead da interação.");
+    }
     const { error } = await context.supabase.from("customer_interactions").insert({
-      customer_id: data.customer_id,
+      customer_id: data.customer_id || null,
+      lead_id: data.lead_id || null,
       kind: data.kind,
       content: data.content,
       user_id: context.userId,
     });
     if (error) throw new Error(error.message);
+
+    const now = new Date().toISOString();
+    if (data.customer_id) {
+      await context.supabase
+        .from("customers")
+        .update({ last_activity_at: now, updated_by: context.userId })
+        .eq("id", data.customer_id);
+    }
+    if (data.lead_id) {
+      await context.supabase.from("leads").update({ last_activity_at: now }).eq("id", data.lead_id);
+    }
     return { ok: true };
   });
+
 
 /** Ficha completa do cliente: cadastro, responsável, histórico, pedidos e indicadores. */
 export const getCustomerDetail = createServerFn({ method: "GET" })
