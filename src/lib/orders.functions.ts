@@ -162,8 +162,6 @@ export const deleteOrder = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
-    await context.supabase.from("order_items").delete().eq("order_id", data.id);
-    await context.supabase.from("order_status_history").delete().eq("order_id", data.id);
     const { error } = await context.supabase.from("orders").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
