@@ -15,23 +15,23 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as AuthenticatedClientesRouteImport } from './routes/_authenticated/clientes'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedExportacaoRouteImport } from './routes/_authenticated/exportacao'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
-import { Route as AuthenticatedOrcamentosRouteImport } from './routes/_authenticated/orcamentos'
-import { Route as AuthenticatedPedidosRouteImport } from './routes/_authenticated/pedidos'
-import { Route as AuthenticatedProdutosRouteImport } from './routes/_authenticated/produtos'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as AuthenticatedClientesIndexRouteImport } from './routes/_authenticated/clientes.index'
 import { Route as AuthenticatedClientesIdRouteImport } from './routes/_authenticated/clientes.$id'
 import { Route as AuthenticatedClientesNovoRouteImport } from './routes/_authenticated/clientes.novo'
+import { Route as AuthenticatedOrcamentosIndexRouteImport } from './routes/_authenticated/orcamentos.index'
 import { Route as AuthenticatedOrcamentosIdRouteImport } from './routes/_authenticated/orcamentos.$id'
 import { Route as AuthenticatedOrcamentosNovoRouteImport } from './routes/_authenticated/orcamentos.novo'
+import { Route as AuthenticatedPedidosIndexRouteImport } from './routes/_authenticated/pedidos.index'
 import { Route as AuthenticatedPedidosIdRouteImport } from './routes/_authenticated/pedidos.$id'
 import { Route as AuthenticatedPedidosNovoRouteImport } from './routes/_authenticated/pedidos.novo'
+import { Route as AuthenticatedProdutosIndexRouteImport } from './routes/_authenticated/produtos.index'
 import { Route as AuthenticatedProdutosIdRouteImport } from './routes/_authenticated/produtos.$id'
 import { Route as AuthenticatedProdutosNovoRouteImport } from './routes/_authenticated/produtos.novo'
 import { Route as AuthenticatedClientesIdEditarRouteImport } from './routes/_authenticated/clientes.$id.editar'
@@ -67,11 +67,6 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const AuthenticatedClientesRoute = AuthenticatedClientesRouteImport.update({
-  id: '/clientes',
-  path: '/clientes',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -98,21 +93,6 @@ const AuthenticatedMetasRoute = AuthenticatedMetasRouteImport.update({
   path: '/metas',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedOrcamentosRoute = AuthenticatedOrcamentosRouteImport.update({
-  id: '/orcamentos',
-  path: '/orcamentos',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPedidosRoute = AuthenticatedPedidosRouteImport.update({
-  id: '/pedidos',
-  path: '/pedidos',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedProdutosRoute = AuthenticatedProdutosRouteImport.update({
-  id: '/produtos',
-  path: '/produtos',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -124,50 +104,74 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     path: '/.mcp/invoke-tool/$tool',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedClientesIndexRoute =
+  AuthenticatedClientesIndexRouteImport.update({
+    id: '/clientes/',
+    path: '/clientes/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientesIdRoute = AuthenticatedClientesIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedClientesRoute,
+  id: '/clientes/$id',
+  path: '/clientes/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedClientesNovoRoute =
   AuthenticatedClientesNovoRouteImport.update({
-    id: '/novo',
-    path: '/novo',
-    getParentRoute: () => AuthenticatedClientesRoute,
+    id: '/clientes/novo',
+    path: '/clientes/novo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedOrcamentosIndexRoute =
+  AuthenticatedOrcamentosIndexRouteImport.update({
+    id: '/orcamentos/',
+    path: '/orcamentos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOrcamentosIdRoute =
   AuthenticatedOrcamentosIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedOrcamentosRoute,
+    id: '/orcamentos/$id',
+    path: '/orcamentos/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedOrcamentosNovoRoute =
   AuthenticatedOrcamentosNovoRouteImport.update({
-    id: '/novo',
-    path: '/novo',
-    getParentRoute: () => AuthenticatedOrcamentosRoute,
+    id: '/orcamentos/novo',
+    path: '/orcamentos/novo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedPedidosIndexRoute =
+  AuthenticatedPedidosIndexRouteImport.update({
+    id: '/pedidos/',
+    path: '/pedidos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedPedidosIdRoute = AuthenticatedPedidosIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedPedidosRoute,
+  id: '/pedidos/$id',
+  path: '/pedidos/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPedidosNovoRoute =
   AuthenticatedPedidosNovoRouteImport.update({
-    id: '/novo',
-    path: '/novo',
-    getParentRoute: () => AuthenticatedPedidosRoute,
+    id: '/pedidos/novo',
+    path: '/pedidos/novo',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProdutosIndexRoute =
+  AuthenticatedProdutosIndexRouteImport.update({
+    id: '/produtos/',
+    path: '/produtos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedProdutosIdRoute = AuthenticatedProdutosIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedProdutosRoute,
+  id: '/produtos/$id',
+  path: '/produtos/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProdutosNovoRoute =
   AuthenticatedProdutosNovoRouteImport.update({
-    id: '/novo',
-    path: '/novo',
-    getParentRoute: () => AuthenticatedProdutosRoute,
+    id: '/produtos/novo',
+    path: '/produtos/novo',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedClientesIdEditarRoute =
   AuthenticatedClientesIdEditarRouteImport.update({
@@ -182,15 +186,11 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
-  '/orcamentos': typeof AuthenticatedOrcamentosRouteWithChildren
-  '/pedidos': typeof AuthenticatedPedidosRouteWithChildren
-  '/produtos': typeof AuthenticatedProdutosRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRouteWithChildren
@@ -201,6 +201,10 @@ export interface FileRoutesByFullPath {
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
   '/produtos/$id': typeof AuthenticatedProdutosIdRoute
   '/produtos/novo': typeof AuthenticatedProdutosNovoRoute
+  '/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/orcamentos/': typeof AuthenticatedOrcamentosIndexRoute
+  '/pedidos/': typeof AuthenticatedPedidosIndexRoute
+  '/produtos/': typeof AuthenticatedProdutosIndexRoute
   '/clientes/$id/editar': typeof AuthenticatedClientesIdEditarRoute
 }
 export interface FileRoutesByTo {
@@ -209,15 +213,11 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
-  '/orcamentos': typeof AuthenticatedOrcamentosRouteWithChildren
-  '/pedidos': typeof AuthenticatedPedidosRouteWithChildren
-  '/produtos': typeof AuthenticatedProdutosRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRouteWithChildren
@@ -228,6 +228,10 @@ export interface FileRoutesByTo {
   '/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
   '/produtos/$id': typeof AuthenticatedProdutosIdRoute
   '/produtos/novo': typeof AuthenticatedProdutosNovoRoute
+  '/clientes': typeof AuthenticatedClientesIndexRoute
+  '/orcamentos': typeof AuthenticatedOrcamentosIndexRoute
+  '/pedidos': typeof AuthenticatedPedidosIndexRoute
+  '/produtos': typeof AuthenticatedProdutosIndexRoute
   '/clientes/$id/editar': typeof AuthenticatedClientesIdEditarRoute
 }
 export interface FileRoutesById {
@@ -238,15 +242,11 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/_authenticated/clientes': typeof AuthenticatedClientesRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/exportacao': typeof AuthenticatedExportacaoRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
-  '/_authenticated/orcamentos': typeof AuthenticatedOrcamentosRouteWithChildren
-  '/_authenticated/pedidos': typeof AuthenticatedPedidosRouteWithChildren
-  '/_authenticated/produtos': typeof AuthenticatedProdutosRouteWithChildren
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRouteWithChildren
@@ -257,6 +257,10 @@ export interface FileRoutesById {
   '/_authenticated/pedidos/novo': typeof AuthenticatedPedidosNovoRoute
   '/_authenticated/produtos/$id': typeof AuthenticatedProdutosIdRoute
   '/_authenticated/produtos/novo': typeof AuthenticatedProdutosNovoRoute
+  '/_authenticated/clientes/': typeof AuthenticatedClientesIndexRoute
+  '/_authenticated/orcamentos/': typeof AuthenticatedOrcamentosIndexRoute
+  '/_authenticated/pedidos/': typeof AuthenticatedPedidosIndexRoute
+  '/_authenticated/produtos/': typeof AuthenticatedProdutosIndexRoute
   '/_authenticated/clientes/$id/editar': typeof AuthenticatedClientesIdEditarRoute
 }
 export interface FileRouteTypes {
@@ -267,15 +271,11 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/clientes'
     | '/dashboard'
     | '/exportacao'
     | '/integracoes'
     | '/leads'
     | '/metas'
-    | '/orcamentos'
-    | '/pedidos'
-    | '/produtos'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clientes/$id'
@@ -286,6 +286,10 @@ export interface FileRouteTypes {
     | '/pedidos/novo'
     | '/produtos/$id'
     | '/produtos/novo'
+    | '/clientes/'
+    | '/orcamentos/'
+    | '/pedidos/'
+    | '/produtos/'
     | '/clientes/$id/editar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -294,15 +298,11 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/clientes'
     | '/dashboard'
     | '/exportacao'
     | '/integracoes'
     | '/leads'
     | '/metas'
-    | '/orcamentos'
-    | '/pedidos'
-    | '/produtos'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clientes/$id'
@@ -313,6 +313,10 @@ export interface FileRouteTypes {
     | '/pedidos/novo'
     | '/produtos/$id'
     | '/produtos/novo'
+    | '/clientes'
+    | '/orcamentos'
+    | '/pedidos'
+    | '/produtos'
     | '/clientes/$id/editar'
   id:
     | '__root__'
@@ -322,15 +326,11 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/_authenticated/clientes'
     | '/_authenticated/dashboard'
     | '/_authenticated/exportacao'
     | '/_authenticated/integracoes'
     | '/_authenticated/leads'
     | '/_authenticated/metas'
-    | '/_authenticated/orcamentos'
-    | '/_authenticated/pedidos'
-    | '/_authenticated/produtos'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/clientes/$id'
@@ -341,6 +341,10 @@ export interface FileRouteTypes {
     | '/_authenticated/pedidos/novo'
     | '/_authenticated/produtos/$id'
     | '/_authenticated/produtos/novo'
+    | '/_authenticated/clientes/'
+    | '/_authenticated/orcamentos/'
+    | '/_authenticated/pedidos/'
+    | '/_authenticated/produtos/'
     | '/_authenticated/clientes/$id/editar'
   fileRoutesById: FileRoutesById
 }
@@ -399,13 +403,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/clientes': {
-      id: '/_authenticated/clientes'
-      path: '/clientes'
-      fullPath: '/clientes'
-      preLoaderRoute: typeof AuthenticatedClientesRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -441,27 +438,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedMetasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/orcamentos': {
-      id: '/_authenticated/orcamentos'
-      path: '/orcamentos'
-      fullPath: '/orcamentos'
-      preLoaderRoute: typeof AuthenticatedOrcamentosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pedidos': {
-      id: '/_authenticated/pedidos'
-      path: '/pedidos'
-      fullPath: '/pedidos'
-      preLoaderRoute: typeof AuthenticatedPedidosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/produtos': {
-      id: '/_authenticated/produtos'
-      path: '/produtos'
-      fullPath: '/produtos'
-      preLoaderRoute: typeof AuthenticatedProdutosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -476,61 +452,89 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/clientes/': {
+      id: '/_authenticated/clientes/'
+      path: '/clientes'
+      fullPath: '/clientes/'
+      preLoaderRoute: typeof AuthenticatedClientesIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clientes/$id': {
       id: '/_authenticated/clientes/$id'
-      path: '/$id'
+      path: '/clientes/$id'
       fullPath: '/clientes/$id'
       preLoaderRoute: typeof AuthenticatedClientesIdRouteImport
-      parentRoute: typeof AuthenticatedClientesRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clientes/novo': {
       id: '/_authenticated/clientes/novo'
-      path: '/novo'
+      path: '/clientes/novo'
       fullPath: '/clientes/novo'
       preLoaderRoute: typeof AuthenticatedClientesNovoRouteImport
-      parentRoute: typeof AuthenticatedClientesRoute
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/orcamentos/': {
+      id: '/_authenticated/orcamentos/'
+      path: '/orcamentos'
+      fullPath: '/orcamentos/'
+      preLoaderRoute: typeof AuthenticatedOrcamentosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/orcamentos/$id': {
       id: '/_authenticated/orcamentos/$id'
-      path: '/$id'
+      path: '/orcamentos/$id'
       fullPath: '/orcamentos/$id'
       preLoaderRoute: typeof AuthenticatedOrcamentosIdRouteImport
-      parentRoute: typeof AuthenticatedOrcamentosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/orcamentos/novo': {
       id: '/_authenticated/orcamentos/novo'
-      path: '/novo'
+      path: '/orcamentos/novo'
       fullPath: '/orcamentos/novo'
       preLoaderRoute: typeof AuthenticatedOrcamentosNovoRouteImport
-      parentRoute: typeof AuthenticatedOrcamentosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pedidos/': {
+      id: '/_authenticated/pedidos/'
+      path: '/pedidos'
+      fullPath: '/pedidos/'
+      preLoaderRoute: typeof AuthenticatedPedidosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/pedidos/$id': {
       id: '/_authenticated/pedidos/$id'
-      path: '/$id'
+      path: '/pedidos/$id'
       fullPath: '/pedidos/$id'
       preLoaderRoute: typeof AuthenticatedPedidosIdRouteImport
-      parentRoute: typeof AuthenticatedPedidosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/pedidos/novo': {
       id: '/_authenticated/pedidos/novo'
-      path: '/novo'
+      path: '/pedidos/novo'
       fullPath: '/pedidos/novo'
       preLoaderRoute: typeof AuthenticatedPedidosNovoRouteImport
-      parentRoute: typeof AuthenticatedPedidosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/produtos/': {
+      id: '/_authenticated/produtos/'
+      path: '/produtos'
+      fullPath: '/produtos/'
+      preLoaderRoute: typeof AuthenticatedProdutosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/produtos/$id': {
       id: '/_authenticated/produtos/$id'
-      path: '/$id'
+      path: '/produtos/$id'
       fullPath: '/produtos/$id'
       preLoaderRoute: typeof AuthenticatedProdutosIdRouteImport
-      parentRoute: typeof AuthenticatedProdutosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/produtos/novo': {
       id: '/_authenticated/produtos/novo'
-      path: '/novo'
+      path: '/produtos/novo'
       fullPath: '/produtos/novo'
       preLoaderRoute: typeof AuthenticatedProdutosNovoRouteImport
-      parentRoute: typeof AuthenticatedProdutosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clientes/$id/editar': {
       id: '/_authenticated/clientes/$id/editar'
@@ -556,87 +560,44 @@ const AuthenticatedClientesIdRouteWithChildren =
     AuthenticatedClientesIdRouteChildren,
   )
 
-interface AuthenticatedClientesRouteChildren {
-  AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRouteWithChildren
-  AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
-}
-
-const AuthenticatedClientesRouteChildren: AuthenticatedClientesRouteChildren = {
-  AuthenticatedClientesIdRoute: AuthenticatedClientesIdRouteWithChildren,
-  AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
-}
-
-const AuthenticatedClientesRouteWithChildren =
-  AuthenticatedClientesRoute._addFileChildren(
-    AuthenticatedClientesRouteChildren,
-  )
-
-interface AuthenticatedOrcamentosRouteChildren {
-  AuthenticatedOrcamentosIdRoute: typeof AuthenticatedOrcamentosIdRoute
-  AuthenticatedOrcamentosNovoRoute: typeof AuthenticatedOrcamentosNovoRoute
-}
-
-const AuthenticatedOrcamentosRouteChildren: AuthenticatedOrcamentosRouteChildren =
-  {
-    AuthenticatedOrcamentosIdRoute: AuthenticatedOrcamentosIdRoute,
-    AuthenticatedOrcamentosNovoRoute: AuthenticatedOrcamentosNovoRoute,
-  }
-
-const AuthenticatedOrcamentosRouteWithChildren =
-  AuthenticatedOrcamentosRoute._addFileChildren(
-    AuthenticatedOrcamentosRouteChildren,
-  )
-
-interface AuthenticatedPedidosRouteChildren {
-  AuthenticatedPedidosIdRoute: typeof AuthenticatedPedidosIdRoute
-  AuthenticatedPedidosNovoRoute: typeof AuthenticatedPedidosNovoRoute
-}
-
-const AuthenticatedPedidosRouteChildren: AuthenticatedPedidosRouteChildren = {
-  AuthenticatedPedidosIdRoute: AuthenticatedPedidosIdRoute,
-  AuthenticatedPedidosNovoRoute: AuthenticatedPedidosNovoRoute,
-}
-
-const AuthenticatedPedidosRouteWithChildren =
-  AuthenticatedPedidosRoute._addFileChildren(AuthenticatedPedidosRouteChildren)
-
-interface AuthenticatedProdutosRouteChildren {
-  AuthenticatedProdutosIdRoute: typeof AuthenticatedProdutosIdRoute
-  AuthenticatedProdutosNovoRoute: typeof AuthenticatedProdutosNovoRoute
-}
-
-const AuthenticatedProdutosRouteChildren: AuthenticatedProdutosRouteChildren = {
-  AuthenticatedProdutosIdRoute: AuthenticatedProdutosIdRoute,
-  AuthenticatedProdutosNovoRoute: AuthenticatedProdutosNovoRoute,
-}
-
-const AuthenticatedProdutosRouteWithChildren =
-  AuthenticatedProdutosRoute._addFileChildren(
-    AuthenticatedProdutosRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedClientesRoute: typeof AuthenticatedClientesRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExportacaoRoute: typeof AuthenticatedExportacaoRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
-  AuthenticatedOrcamentosRoute: typeof AuthenticatedOrcamentosRouteWithChildren
-  AuthenticatedPedidosRoute: typeof AuthenticatedPedidosRouteWithChildren
-  AuthenticatedProdutosRoute: typeof AuthenticatedProdutosRouteWithChildren
+  AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRouteWithChildren
+  AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
+  AuthenticatedOrcamentosIdRoute: typeof AuthenticatedOrcamentosIdRoute
+  AuthenticatedOrcamentosNovoRoute: typeof AuthenticatedOrcamentosNovoRoute
+  AuthenticatedPedidosIdRoute: typeof AuthenticatedPedidosIdRoute
+  AuthenticatedPedidosNovoRoute: typeof AuthenticatedPedidosNovoRoute
+  AuthenticatedProdutosIdRoute: typeof AuthenticatedProdutosIdRoute
+  AuthenticatedProdutosNovoRoute: typeof AuthenticatedProdutosNovoRoute
+  AuthenticatedClientesIndexRoute: typeof AuthenticatedClientesIndexRoute
+  AuthenticatedOrcamentosIndexRoute: typeof AuthenticatedOrcamentosIndexRoute
+  AuthenticatedPedidosIndexRoute: typeof AuthenticatedPedidosIndexRoute
+  AuthenticatedProdutosIndexRoute: typeof AuthenticatedProdutosIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedClientesRoute: AuthenticatedClientesRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExportacaoRoute: AuthenticatedExportacaoRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
-  AuthenticatedOrcamentosRoute: AuthenticatedOrcamentosRouteWithChildren,
-  AuthenticatedPedidosRoute: AuthenticatedPedidosRouteWithChildren,
-  AuthenticatedProdutosRoute: AuthenticatedProdutosRouteWithChildren,
+  AuthenticatedClientesIdRoute: AuthenticatedClientesIdRouteWithChildren,
+  AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
+  AuthenticatedOrcamentosIdRoute: AuthenticatedOrcamentosIdRoute,
+  AuthenticatedOrcamentosNovoRoute: AuthenticatedOrcamentosNovoRoute,
+  AuthenticatedPedidosIdRoute: AuthenticatedPedidosIdRoute,
+  AuthenticatedPedidosNovoRoute: AuthenticatedPedidosNovoRoute,
+  AuthenticatedProdutosIdRoute: AuthenticatedProdutosIdRoute,
+  AuthenticatedProdutosNovoRoute: AuthenticatedProdutosNovoRoute,
+  AuthenticatedClientesIndexRoute: AuthenticatedClientesIndexRoute,
+  AuthenticatedOrcamentosIndexRoute: AuthenticatedOrcamentosIndexRoute,
+  AuthenticatedPedidosIndexRoute: AuthenticatedPedidosIndexRoute,
+  AuthenticatedProdutosIndexRoute: AuthenticatedProdutosIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

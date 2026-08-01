@@ -25,7 +25,7 @@ const productsQueryOptions = () =>
     queryFn: () => listProducts(),
   });
 
-export const Route = createFileRoute("/_authenticated/produtos")({
+export const Route = createFileRoute("/_authenticated/produtos/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(productsQueryOptions()),
   component: ProductsPage,
   errorComponent: ({ error }) => (

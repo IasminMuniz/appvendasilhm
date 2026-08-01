@@ -27,7 +27,7 @@ const ordersQueryOptions = () =>
     queryFn: () => listOrders(),
   });
 
-export const Route = createFileRoute("/_authenticated/pedidos")({
+export const Route = createFileRoute("/_authenticated/pedidos/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(ordersQueryOptions()),
   component: OrdersPage,
   head: () => ({
