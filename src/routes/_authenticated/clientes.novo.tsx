@@ -81,6 +81,12 @@ function NewCustomerPage() {
             onSubmit={(e) => {
               e.preventDefault();
               setError(null);
+              const invalid = validateContactFields(form);
+              if (invalid) {
+                setError(invalid);
+                toast.error(invalid);
+                return;
+              }
               mutation.mutate();
             }}
             className="space-y-4"
