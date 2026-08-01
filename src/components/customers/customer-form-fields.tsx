@@ -119,9 +119,15 @@ export function CustomerFormFields({ value, onChange, hideContact }: Props) {
           <Label htmlFor="phone">Telefone</Label>
           <Input
             id="phone"
+            inputMode="tel"
+            placeholder="(00) 00000-0000"
             value={value.phone}
-            onChange={(e) => set({ phone: e.target.value })}
+            onChange={(e) => set({ phone: maskPhone(e.target.value) })}
+            aria-invalid={!!value.phone && !isValidPhone(value.phone)}
           />
+          {!!value.phone && !isValidPhone(value.phone) && (
+            <p className="text-xs text-destructive">{PHONE_ERROR}</p>
+          )}
         </div>
       </div>
 
