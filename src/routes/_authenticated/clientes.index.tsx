@@ -17,6 +17,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteCustomer, listCustomers } from "@/lib/customers.functions";
+import { LocationAnalytics } from "@/components/analytics/location-analytics";
 
 const customersQueryOptions = () =>
   queryOptions({
@@ -68,6 +69,8 @@ function CustomersPage() {
         </Button>
       </div>
 
+      <LocationAnalytics show={["customersByCity", "conversionByRegion"]} />
+
       <Card>
         <CardHeader>
           <CardTitle>Lista de clientes</CardTitle>
@@ -88,6 +91,12 @@ function CustomersPage() {
                     <p className="text-sm text-muted-foreground">
                       {customer.email || customer.phone || "Sem contato"}
                     </p>
+                    {(customer.city || customer.state) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[customer.city, customer.state].filter(Boolean).join(" / ")}
+                        {customer.postal_code ? ` · CEP ${customer.postal_code}` : ""}
+                      </p>
+                    )}
                   </button>
                   <div className="flex items-center gap-1">
                     <Button variant="ghost" size="icon" asChild aria-label="Editar cliente">

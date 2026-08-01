@@ -12,6 +12,7 @@ const stageSchema = z.enum([
   "proposta_enviada",
   "negociacao",
   "ganho",
+  "convertido",
   "perdido",
 ]);
 
@@ -36,6 +37,8 @@ const leadSchema = z.object({
   phone: z.string().max(50).optional().or(z.literal("")),
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
+  postal_code: z.string().max(20).optional().or(z.literal("")),
+  segment: z.string().max(60).optional().or(z.literal("")),
   source: z.string().max(100).optional().or(z.literal("")),
   stage: stageSchema.default("novo"),
   estimated_value: z.coerce.number().min(0).default(0),
@@ -88,6 +91,8 @@ export const createLead = createServerFn({ method: "POST" })
         phone: data.phone || null,
         city: data.city || null,
         state: data.state || null,
+        postal_code: data.postal_code || null,
+        segment: data.segment || null,
         source: data.source || null,
         stage: data.stage,
         estimated_value: data.estimated_value,
@@ -275,8 +280,10 @@ export const getPipelineMetrics = createServerFn({ method: "GET" })
     const leads = leadsRes.data ?? [];
     const history = historyRes.data ?? [];
 
-    const open = leads.filter((l) => l.stage !== "ganho" && l.stage !== "perdido");
-    const won = leads.filter((l) => l.stage === "ganho");
+    const open = leads.filter(
+      (l) => l.stage !== "ganho" && l.stage !== "perdido" && l.stage !== "convertido",
+    );
+    const won = leads.filter((l) => l.stage === "ganho" || l.stage === "convertido");
     const lost = leads.filter((l) => l.stage === "perdido");
 
     const byStage = new Map<string, { count: number; value: number }>();
@@ -329,6 +336,8 @@ export const convertLeadToCustomer = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
+    // A leitura passa pelas políticas RBAC: vendedor só enxerga os próprios leads,
+    // supervisor/gestor os da equipe e administrador todos.
     const { data: lead, error: readError } = await context.supabase
       .from("leads")
       .select("*")
@@ -342,33 +351,137 @@ export const convertLeadToCustomer = createServerFn({ method: "POST" })
       .insert({
         name: lead.company || lead.name,
         company_name: lead.company,
+        legal_name: lead.company,
         email: lead.email,
         phone: lead.phone,
         city: lead.city,
         state: lead.state,
+        postal_code: lead.postal_code,
+        segment: lead.segment,
         notes: lead.notes,
-        seller_id: context.userId,
-        owner_id: lead.owner_id,
+        status: "ativo",
+        last_activity_at: new Date().toISOString(),
+        seller_id: lead.owner_id ?? context.userId,
+        owner_id: lead.owner_id ?? context.userId,
         updated_by: context.userId,
       })
       .select()
       .single();
     if (error) throw new Error(error.message);
 
+    // Contato principal do lead vira contato do cliente.
+    if (lead.name) {
+      await context.supabase.from("customer_contacts").insert({
+        customer_id: customer.id,
+        name: lead.name,
+        email: lead.email,
+        phone: lead.phone,
+        is_primary: true,
+        notes: "Contato originado do lead convertido",
+        created_by: context.userId,
+      });
+    }
+
+    // Histórico de interações do lead passa a pertencer ao cliente.
     await context.supabase
+      .from("customer_interactions")
+      .update({ customer_id: customer.id })
+      .eq("lead_id", data.id);
+
+    const convertedAt = new Date().toISOString();
+    const { error: updateError } = await context.supabase
       .from("leads")
-      .update({ converted_customer_id: customer.id, stage: "ganho" })
+      .update({
+        converted_customer_id: customer.id,
+        stage: "convertido",
+        probability: 100,
+        converted_at: convertedAt,
+        converted_by: context.userId,
+        last_activity_at: convertedAt,
+      })
       .eq("id", data.id);
+    if (updateError) throw new Error(updateError.message);
 
     await context.supabase.from("lead_stage_history").insert({
       lead_id: data.id,
       from_stage: lead.stage,
-      to_stage: "ganho",
+      to_stage: "convertido",
       changed_by: context.userId,
-      note: "Convertido em cliente",
+      note: `Convertido em cliente ${customer.name}`,
+    });
+
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "VENDA_FECHADA",
+      entityType: "lead",
+      entityId: data.id,
+      payload: {
+        lead_id: data.id,
+        cliente_id: customer.id,
+        cliente_nome: customer.name,
+        responsavel_id: lead.owner_id ?? context.userId,
+        convertido_por: context.userId,
+        convertido_em: convertedAt,
+        estado: customer.state,
+        cidade: customer.city,
+        cep: customer.postal_code,
+        valor_estimado: Number(lead.estimated_value ?? 0),
+        origem: "conversao_lead",
+      },
+      userId: context.userId,
     });
 
     return { customerId: customer.id };
+  });
+
+/** Indicadores de BI por localização: leads por estado, clientes por cidade e conversão por região. */
+export const getLocationAnalytics = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const [leadsRes, customersRes] = await Promise.all([
+      context.supabase
+        .from("leads")
+        .select("state, city, stage, estimated_value, owner_id, converted_customer_id"),
+      context.supabase.from("customers").select("state, city, owner_id, seller_id"),
+    ]);
+    const leads = leadsRes.data ?? [];
+    const customers = customersRes.data ?? [];
+
+    const group = <T,>(rows: T[], key: (row: T) => string) => {
+      const map = new Map<string, number>();
+      for (const row of rows) {
+        const k = key(row) || "Não informado";
+        map.set(k, (map.get(k) ?? 0) + 1);
+      }
+      return [...map.entries()]
+        .map(([label, count]) => ({ label, count }))
+        .sort((a, b) => b.count - a.count);
+    };
+
+    const byRegion = new Map<string, { leads: number; converted: number; value: number }>();
+    for (const l of leads) {
+      const key = (l.state as string | null) || "Não informado";
+      const entry = byRegion.get(key) ?? { leads: 0, converted: 0, value: 0 };
+      entry.leads += 1;
+      if (l.converted_customer_id || l.stage === "convertido" || l.stage === "ganho") {
+        entry.converted += 1;
+        entry.value += Number(l.estimated_value ?? 0);
+      }
+      byRegion.set(key, entry);
+    }
+
+    return {
+      leadsByState: group(leads, (l) => (l.state as string | null) ?? ""),
+      customersByCity: group(customers, (c) => (c.city as string | null) ?? ""),
+      customersByState: group(customers, (c) => (c.state as string | null) ?? ""),
+      conversionByRegion: [...byRegion.entries()]
+        .map(([state, v]) => ({
+          state,
+          ...v,
+          rate: v.leads ? (v.converted / v.leads) * 100 : 0,
+        }))
+        .sort((a, b) => b.leads - a.leads),
+    };
   });
 
 export const deleteLead = createServerFn({ method: "POST" })

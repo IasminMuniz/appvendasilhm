@@ -32,11 +32,17 @@ import {
   moveLeadStage,
 } from "@/lib/leads.functions";
 import {
+  BRAZIL_STATES,
+  CUSTOMER_SEGMENTS,
   LEAD_STAGES,
   LOSS_REASONS,
   STAGE_PROBABILITY,
   formatCurrency,
 } from "@/lib/commercial-constants";
+import { LocationAnalytics } from "@/components/analytics/location-analytics";
+
+/** Etapas selecionáveis manualmente (a conversão em cliente é feita pelo botão). */
+const SELECTABLE_STAGES = LEAD_STAGES.filter((s) => s.value !== "convertido");
 
 const leadsQueryOptions = () =>
   queryOptions({ queryKey: ["leads"], queryFn: () => listLeads() });
@@ -73,6 +79,8 @@ const emptyLead = {
   phone: "",
   city: "",
   state: "",
+  postal_code: "",
+  segment: "",
   source: "",
   stage: "novo",
   estimated_value: 0,
@@ -179,7 +187,7 @@ function LeadsPage() {
                 ["email", "E-mail"],
                 ["phone", "Telefone"],
                 ["city", "Cidade"],
-                ["state", "Estado"],
+                ["postal_code", "CEP"],
                 ["source", "Origem"],
                 ["next_action", "Próxima ação"],
               ].map(([key, label]) => (
@@ -238,6 +246,42 @@ function LeadsPage() {
                 />
               </div>
               <div className="space-y-1">
+                <Label>Estado</Label>
+                <Select
+                  value={form.state || undefined}
+                  onValueChange={(value) => setForm({ ...form, state: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="UF" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BRAZIL_STATES.map((uf) => (
+                      <SelectItem key={uf} value={uf}>
+                        {uf}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Segmento</Label>
+                <Select
+                  value={form.segment || undefined}
+                  onValueChange={(value) => setForm({ ...form, segment: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CUSTOMER_SEGMENTS.map((seg) => (
+                      <SelectItem key={seg} value={seg}>
+                        {seg}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
                 <Label>Estágio</Label>
                 <Select
                   value={form.stage}
@@ -247,7 +291,7 @@ function LeadsPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {LEAD_STAGES.map((s) => (
+                    {SELECTABLE_STAGES.map((s) => (
                       <SelectItem key={s.value} value={s.value}>
                         {s.label}
                       </SelectItem>
@@ -311,6 +355,8 @@ function LeadsPage() {
         </Card>
       )}
 
+      <LocationAnalytics />
+
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
           const stageLeads = leads.filter((l) => l.stage === stage.value);
@@ -337,6 +383,12 @@ function LeadsPage() {
                     {lead.company && (
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
                     )}
+                    {(lead.city || lead.state) && (
+                      <p className="text-xs text-muted-foreground">
+                        {[lead.city, lead.state].filter(Boolean).join(" / ")}
+                        {lead.postal_code ? ` · ${lead.postal_code}` : ""}
+                      </p>
+                    )}
                     <p className="mt-1 text-xs font-medium">
                       {formatCurrency(Number(lead.estimated_value ?? 0))} · {lead.probability}%
                     </p>
@@ -360,35 +412,46 @@ function LeadsPage() {
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap gap-1">
-                      <Select
-                        value={lead.stage}
-                        onValueChange={(value) =>
-                          handleStageChange({ id: lead.id, name: lead.name }, value)
-                        }
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <ArrowRight className="mr-1 h-3 w-3" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {LEAD_STAGES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {lead.converted_customer_id ? (
+                        <Badge className="text-[10px]">
+                          Convertido em cliente
+                          {lead.converted_at
+                            ? ` em ${new Date(lead.converted_at).toLocaleDateString("pt-BR")}`
+                            : ""}
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={lead.stage}
+                          onValueChange={(value) =>
+                            handleStageChange({ id: lead.id, name: lead.name }, value)
+                          }
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <ArrowRight className="mr-1 h-3 w-3" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SELECTABLE_STAGES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       {!lead.converted_customer_id && (
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 w-full text-xs"
+                          disabled={convertMutation.isPending}
                           onClick={() => convertMutation.mutate({ data: { id: lead.id } })}
                         >
                           <UserPlus className="mr-1 h-3 w-3" />
                           Converter em cliente
                         </Button>
                       )}
+
                       <Button
                         size="sm"
                         variant="outline"

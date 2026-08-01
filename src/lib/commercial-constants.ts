@@ -6,6 +6,7 @@ export const LEAD_STAGES = [
   { value: "proposta_enviada", label: "Proposta Enviada" },
   { value: "negociacao", label: "Negociação" },
   { value: "ganho", label: "Fechado Ganho" },
+  { value: "convertido", label: "Convertido em Cliente" },
   { value: "perdido", label: "Fechado Perdido" },
 ] as const;
 
@@ -29,6 +30,7 @@ export const STAGE_PROBABILITY: Record<string, number> = {
   proposta_enviada: 75,
   negociacao: 90,
   ganho: 100,
+  convertido: 100,
   perdido: 0,
 };
 
@@ -210,3 +212,13 @@ export const ROLE_LABELS: Record<string, string> = {
   supervisor: "Supervisor",
   vendedor: "Vendedor",
 };
+
+
+/** Etapas que o usuário não pode selecionar manualmente (definidas pelo sistema). */
+export const SYSTEM_LEAD_STAGES = ["convertido"] as const;
+
+/** Unidades federativas do Brasil para os campos de localização. */
+export const BRAZIL_STATES = [
+  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR",
+  "PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
+] as const;

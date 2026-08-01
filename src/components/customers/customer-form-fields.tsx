@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CUSTOMER_SEGMENTS, CUSTOMER_STATUSES } from "@/lib/commercial-constants";
+import { BRAZIL_STATES, CUSTOMER_SEGMENTS, CUSTOMER_STATUSES } from "@/lib/commercial-constants";
 
 export type CustomerFormValues = {
   legal_name: string;
@@ -22,6 +22,7 @@ export type CustomerFormValues = {
   address: string;
   city: string;
   state: string;
+  postal_code: string;
   status: "prospect" | "ativo" | "inativo" | "perdido";
   notes: string;
 };
@@ -38,6 +39,7 @@ export const emptyCustomerForm: CustomerFormValues = {
   address: "",
   city: "",
   state: "",
+  postal_code: "",
   status: "prospect",
   notes: "",
 };
@@ -161,14 +163,34 @@ export function CustomerFormFields({ value, onChange, hideContact }: Props) {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <div className="space-y-2">
           <Label htmlFor="city">Cidade</Label>
           <Input id="city" value={value.city} onChange={(e) => set({ city: e.target.value })} />
         </div>
         <div className="space-y-2">
           <Label htmlFor="state">Estado</Label>
-          <Input id="state" value={value.state} onChange={(e) => set({ state: e.target.value })} />
+          <Select value={value.state || undefined} onValueChange={(v) => set({ state: v })}>
+            <SelectTrigger id="state">
+              <SelectValue placeholder="UF" />
+            </SelectTrigger>
+            <SelectContent>
+              {BRAZIL_STATES.map((uf) => (
+                <SelectItem key={uf} value={uf}>
+                  {uf}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="postal_code">CEP</Label>
+          <Input
+            id="postal_code"
+            value={value.postal_code}
+            onChange={(e) => set({ postal_code: e.target.value })}
+            placeholder="00000-000"
+          />
         </div>
       </div>
 
@@ -197,6 +219,7 @@ export function toCustomerPayload(form: CustomerFormValues) {
     address: form.address,
     city: form.city,
     state: form.state,
+    postal_code: form.postal_code,
     segment: form.segment,
     status: form.status,
     notes: form.notes,
