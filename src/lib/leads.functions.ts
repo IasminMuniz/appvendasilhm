@@ -91,11 +91,12 @@ export const createLead = createServerFn({ method: "POST" })
         source: data.source || null,
         stage: data.stage,
         estimated_value: data.estimated_value,
-        probability: data.probability,
+        probability: probabilityFor(data.stage),
         next_action: data.next_action || null,
         next_action_date: data.next_action_date || null,
         notes: data.notes || null,
-        expected_close_date: data.expected_close_date || null,
+        expected_close_date: data.expected_close_date || forecastFor(data.stage),
+        last_activity_at: new Date().toISOString(),
         owner_id: context.userId,
       })
       .select()
@@ -110,8 +111,14 @@ export const createLead = createServerFn({ method: "POST" })
       note: "Lead criado",
     });
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("novo_lead", { lead: inserted, user_id: context.userId });
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "novo_lead",
+      entityType: "lead",
+      entityId: inserted.id,
+      payload: { lead: inserted },
+      userId: context.userId,
+    });
 
     return inserted;
   });
@@ -126,16 +133,26 @@ export const updateLead = createServerFn({ method: "POST" })
       .update({
         ...rest,
         next_action_date: rest.next_action_date || null,
+        // previsão pode ser ajustada manualmente pelo vendedor
         expected_close_date: rest.expected_close_date || null,
+        ...(rest.stage ? { probability: probabilityFor(rest.stage) } : {}),
+        last_activity_at: new Date().toISOString(),
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("lead_atualizado", { lead: data, user_id: context.userId });
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "lead_atualizado",
+      entityType: "lead",
+      entityId: id,
+      payload: { lead: data },
+      userId: context.userId,
+    });
 
     return { ok: true };
   });
+
 
 export const moveLeadStage = createServerFn({ method: "POST" })
   .middleware([requireAuth])
