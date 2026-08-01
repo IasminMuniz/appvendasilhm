@@ -74,18 +74,16 @@ export const updateOpportunity = createServerFn({ method: "POST" })
   .inputValidator((data) => opportunitySchema.partial().extend({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { id, status, ...rest } = data;
-    const patch: Record<string, unknown> = {
+    const patch = {
       ...rest,
       customer_id: rest.customer_id || null,
       lead_id: rest.lead_id || null,
       product_id: rest.product_id || null,
       expected_close_date: rest.expected_close_date || null,
+      ...(status ? { status, probability: PROBABILITY[status] ?? 30 } : {}),
     };
-    if (status) {
-      patch['status'] = status;
-      patch['probability'] = PROBABILITY[status] ?? 30;
-    }
     const { error } = await context.supabase.from("opportunities").update(patch).eq("id", id);
+
     if (error) throw new Error(error.message);
 
     if (status) {
