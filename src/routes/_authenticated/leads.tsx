@@ -40,6 +40,15 @@ import {
   formatCurrency,
 } from "@/lib/commercial-constants";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
+import {
+  CEP_ERROR,
+  PHONE_ERROR,
+  isValidCep,
+  isValidPhone,
+  maskCep,
+  maskPhone,
+  validateContactFields,
+} from "@/lib/masks";
 
 /** Etapas selecionáveis manualmente (a conversão em cliente é feita pelo botão). */
 const SELECTABLE_STAGES = LEAD_STAGES.filter((s) => s.value !== "convertido");
