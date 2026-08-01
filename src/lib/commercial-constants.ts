@@ -82,12 +82,10 @@ export type LeadStage = (typeof LEAD_STAGES)[number]["value"];
 
 
 export const ORDER_STATUSES = [
-  { value: "criado", label: "Criado" },
-  { value: "aguardando_aprovacao", label: "Aguardando aprovação" },
-  { value: "aprovado", label: "Aprovado" },
-  { value: "processamento", label: "Processamento" },
+  { value: "novo", label: "Novo" },
+  { value: "processamento", label: "Processando" },
   { value: "faturado", label: "Faturado" },
-  { value: "finalizado", label: "Finalizado" },
+  { value: "entregue", label: "Entregue" },
   { value: "cancelado", label: "Cancelado" },
 ] as const;
 
@@ -95,30 +93,40 @@ export const LEGACY_ORDER_LABELS: Record<string, string> = {
   pendente: "Pendente",
   em_andamento: "Em andamento",
   concluido: "Concluído",
+  criado: "Criado",
+  aguardando_aprovacao: "Aguardando aprovação",
+  aprovado: "Aprovado",
+  finalizado: "Finalizado",
 };
 
 export const ORDER_STATUS_LABELS: Record<string, string> = {
-  ...Object.fromEntries(ORDER_STATUSES.map((s) => [s.value, s.label])),
   ...LEGACY_ORDER_LABELS,
+  ...Object.fromEntries(ORDER_STATUSES.map((s) => [s.value, s.label])),
 };
 
 /** Fluxo linear de avanço do pedido. */
-export const ORDER_FLOW = [
-  "criado",
-  "aguardando_aprovacao",
-  "aprovado",
-  "processamento",
-  "faturado",
-  "finalizado",
+export const ORDER_FLOW = ["novo", "processamento", "faturado", "entregue"] as const;
+
+/** Status que representam venda concluída (contam como receita realizada). */
+export const ORDER_DONE_STATUSES = ["entregue", "faturado", "finalizado", "concluido"];
+
+export const QUOTE_STATUSES = [
+  { value: "rascunho", label: "Criado" },
+  { value: "enviado", label: "Enviado" },
+  { value: "aprovado", label: "Aprovado" },
+  { value: "recusado", label: "Recusado" },
 ] as const;
 
 export const QUOTE_STATUS_LABELS: Record<string, string> = {
-  rascunho: "Rascunho",
+  rascunho: "Criado",
+  enviado: "Enviado",
   aguardando_aprovacao: "Enviado para aprovação",
   aprovado: "Aprovado",
-  reprovado: "Reprovado",
+  reprovado: "Recusado",
+  recusado: "Recusado",
   convertido: "Convertido em pedido",
 };
+
 
 export const HEALTH_LABELS: Record<string, string> = {
   saudavel: "Saudável",
