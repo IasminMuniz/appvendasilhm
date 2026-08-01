@@ -113,10 +113,18 @@ export const createLead = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
-      eventType: "novo_lead",
+      eventType: "LEAD_CRIADO",
       entityType: "lead",
       entityId: inserted.id,
-      payload: { lead: inserted },
+      payload: {
+        lead_id: inserted.id,
+        empresa: inserted.company,
+        contato: inserted.name,
+        origem: inserted.source,
+        responsavel_id: inserted.owner_id,
+        valor_estimado: Number(inserted.estimated_value ?? 0),
+        criado_em: inserted.created_at,
+      },
       userId: context.userId,
     });
 
@@ -143,7 +151,7 @@ export const updateLead = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
-      eventType: "lead_atualizado",
+      eventType: "LEAD_ATUALIZADO",
       entityType: "lead",
       entityId: id,
       payload: { lead: data },
@@ -215,13 +223,15 @@ export const moveLeadStage = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
-      eventType: "lead_mudou_etapa",
+      eventType: "LEAD_STATUS_ALTERADO",
       entityType: "lead",
       entityId: data.id,
       payload: {
-        from_stage: current.stage,
-        to_stage: data.stage,
-        probability: probabilityFor(data.stage),
+        status_anterior: current.stage,
+        novo_status: data.stage,
+        alterado_por: context.userId,
+        alterado_em: new Date().toISOString(),
+        probabilidade: probabilityFor(data.stage),
         expected_close_date: forecast,
         note: data.note || null,
         loss_reason: data.loss_reason || null,
@@ -229,6 +239,27 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       userId: context.userId,
     });
 
+    if (data.stage === "ganho") {
+      const { data: lead } = await context.supabase
+        .from("leads")
+        .select("id, name, company, estimated_value, owner_id, converted_customer_id")
+        .eq("id", data.id)
+        .single();
+      await recordEvent(context.supabase, {
+        eventType: "VENDA_FECHADA",
+        entityType: "lead",
+        entityId: data.id,
+        payload: {
+          cliente_id: lead?.converted_customer_id ?? null,
+          cliente_nome: lead?.company || lead?.name || null,
+          valor_vendido: Number(lead?.estimated_value ?? 0),
+          responsavel_id: lead?.owner_id ?? context.userId,
+          data_venda: new Date().toISOString(),
+          origem: "lead",
+        },
+        userId: context.userId,
+      });
+    }
 
     return { ok: true };
   });

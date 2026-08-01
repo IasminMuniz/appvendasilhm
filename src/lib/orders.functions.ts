@@ -159,10 +159,19 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
     const { recordEvent } = await import("@/lib/events.server");
     const done = ["entregue", "faturado", "finalizado", "concluido"];
     await recordEvent(context.supabase, {
-      eventType: done.includes(data.status) ? "venda_concluida" : "pedido_mudou_status",
+      eventType: done.includes(data.status) ? "VENDA_FECHADA" : "PEDIDO_STATUS_ALTERADO",
       entityType: "order",
       entityId: data.id,
-      payload: { from_status: current.status, to_status: data.status, total: order.total },
+      payload: {
+        cliente_id: order.customer_id,
+        valor_vendido: Number(order.total ?? 0),
+        responsavel_id: order.seller_id,
+        status_anterior: current.status,
+        novo_status: data.status,
+        alterado_por: context.userId,
+        data_venda: new Date().toISOString(),
+        origem: "pedido",
+      },
       userId: context.userId,
     });
 
