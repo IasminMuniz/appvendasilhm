@@ -162,7 +162,24 @@ export const NEXT_ACTION_STATUSES = [
   { value: "cancelada", label: "Cancelada" },
 ] as const;
 
-export const INTERACTION_KINDS = ["nota", "ligacao", "reuniao", "email", "visita"] as const;
+export const INTERACTION_KINDS = [
+  "nota",
+  "ligacao",
+  "reuniao",
+  "email",
+  "whatsapp",
+  "visita",
+] as const;
+
+export const INTERACTION_LABELS: Record<string, string> = {
+  nota: "Observação",
+  ligacao: "Ligação",
+  reuniao: "Reunião",
+  email: "E-mail",
+  whatsapp: "WhatsApp",
+  visita: "Visita",
+};
+
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
