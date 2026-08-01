@@ -1,11 +1,23 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { listProducts } from "@/lib/products.functions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteProduct, listProducts } from "@/lib/products.functions";
 
 const productsQueryOptions = () =>
   queryOptions({
@@ -16,6 +28,12 @@ const productsQueryOptions = () =>
 export const Route = createFileRoute("/_authenticated/produtos")({
   loader: ({ context }) => context.queryClient.ensureQueryData(productsQueryOptions()),
   component: ProductsPage,
+  errorComponent: ({ error }) => (
+    <p role="alert" className="text-sm text-destructive">
+      {error.message}
+    </p>
+  ),
+  notFoundComponent: () => <p>Nenhum produto encontrado.</p>,
   head: () => ({
     meta: [{ title: "Produtos - Vendas Comercial" }],
   }),
@@ -23,6 +41,18 @@ export const Route = createFileRoute("/_authenticated/produtos")({
 
 function ProductsPage() {
   const { data: products } = useSuspenseQuery(productsQueryOptions());
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const remove = useMutation({
+    mutationFn: deleteProduct,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("Produto excluído.");
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir produto."),
+  });
 
   return (
     <div className="space-y-6">
@@ -49,18 +79,55 @@ function ProductsPage() {
           ) : (
             <div className="divide-y">
               {products.map((product) => (
-                <div key={product.id} className="flex items-center justify-between py-3">
-                  <div>
+                <div key={product.id} className="flex items-center justify-between gap-3 py-3">
+                  <button
+                    type="button"
+                    className="flex-1 text-left hover:opacity-80"
+                    onClick={() => navigate({ to: "/produtos/$id", params: { id: product.id } })}
+                  >
                     <p className="font-medium">{product.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {product.description || "Sem descrição"}
                     </p>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">R$ {(product.price ?? 0).toFixed(2)}</span>
                     <Badge variant={product.active ? "default" : "secondary"}>
                       {product.active ? "Ativo" : "Inativo"}
                     </Badge>
+                    <Button variant="ghost" size="icon" asChild aria-label="Editar produto">
+                      <Link to="/produtos/$id" params={{ id: product.id }}>
+                        <Pencil className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Excluir produto"
+                          disabled={remove.isPending}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir {product.name}?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            O produto e seus anexos serão removidos permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => remove.mutate({ data: { id: product.id } })}
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               ))}
