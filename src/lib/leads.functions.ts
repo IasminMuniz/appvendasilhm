@@ -1,18 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
+import { STAGE_FORECAST_DAYS, STAGE_PROBABILITY } from "@/lib/commercial-constants";
 import { z } from "zod";
-
 
 const stageSchema = z.enum([
   "novo",
   "contato_realizado",
   "qualificado",
+  "reuniao",
   "oportunidade",
   "proposta_enviada",
   "negociacao",
   "ganho",
   "perdido",
 ]);
+
+/** Probabilidade derivada automaticamente da etapa. */
+function probabilityFor(stage: string): number {
+  return STAGE_PROBABILITY[stage] ?? 0;
+}
+
+/** Previsão automática de fechamento (data atual + dias da etapa). */
+function forecastFor(stage: string): string | null {
+  const days = STAGE_FORECAST_DAYS[stage];
+  if (days === undefined) return null;
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 const leadSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
@@ -24,7 +39,6 @@ const leadSchema = z.object({
   source: z.string().max(100).optional().or(z.literal("")),
   stage: stageSchema.default("novo"),
   estimated_value: z.coerce.number().min(0).default(0),
-  probability: z.coerce.number().int().min(0).max(100).default(0),
   next_action: z.string().max(300).optional().or(z.literal("")),
   next_action_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
@@ -32,6 +46,7 @@ const leadSchema = z.object({
   loss_detail: z.string().max(1000).optional().or(z.literal("")),
   expected_close_date: z.string().optional().or(z.literal("")),
 });
+
 
 export const listLeads = createServerFn({ method: "GET" })
   .middleware([requireAuth])
