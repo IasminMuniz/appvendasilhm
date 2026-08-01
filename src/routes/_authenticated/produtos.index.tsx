@@ -85,13 +85,31 @@ function ProductsPage() {
                     className="flex-1 text-left hover:opacity-80"
                     onClick={() => navigate({ to: "/produtos/$id", params: { id: product.id } })}
                   >
-                    <p className="font-medium">{product.name}</p>
+                    <p className="font-medium">
+                      {product.name}
+                      {product.code ? (
+                        <span className="ml-2 text-xs text-muted-foreground">({product.code})</span>
+                      ) : null}
+                    </p>
                     <p className="text-sm text-muted-foreground">
-                      {product.description || "Sem descrição"}
+                      {[
+                        product.category,
+                        `Margem ${Number(product.margin_percent ?? 0)}%`,
+                        `Estoque ${Number(product.stock ?? 0)}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </button>
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">R$ {(product.price ?? 0).toFixed(2)}</span>
+                    <Badge
+                      variant={
+                        Number(product.stock ?? 0) > 0 ? "outline" : "destructive"
+                      }
+                    >
+                      {Number(product.stock ?? 0) > 0 ? "Em estoque" : "Sem estoque"}
+                    </Badge>
                     <Badge variant={product.active ? "default" : "secondary"}>
                       {product.active ? "Ativo" : "Inativo"}
                     </Badge>
