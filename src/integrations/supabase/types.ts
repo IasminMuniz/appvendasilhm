@@ -55,34 +55,46 @@ export type Database = {
       }
       commercial_events: {
         Row: {
+          attempts: number
           created_at: string
           created_by: string
           delivered: boolean
+          delivered_at: string | null
           entity_id: string | null
           entity_type: string
           event_type: string
           id: string
+          last_error: string | null
           payload: Json
+          status: string
         }
         Insert: {
+          attempts?: number
           created_at?: string
           created_by: string
           delivered?: boolean
+          delivered_at?: string | null
           entity_id?: string | null
           entity_type: string
           event_type: string
           id?: string
+          last_error?: string | null
           payload?: Json
+          status?: string
         }
         Update: {
+          attempts?: number
           created_at?: string
           created_by?: string
           delivered?: boolean
+          delivered_at?: string | null
           entity_id?: string | null
           entity_type?: string
           event_type?: string
           id?: string
+          last_error?: string | null
           payload?: Json
+          status?: string
         }
         Relationships: []
       }
@@ -967,6 +979,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          supervisor_id: string | null
           updated_at: string
         }
         Insert: {
@@ -974,6 +987,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          supervisor_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -981,6 +995,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          supervisor_id?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1273,6 +1288,7 @@ export type Database = {
         Args: { _target: string; _viewer: string }
         Returns: boolean
       }
+      detect_inactive_customers: { Args: { _days?: number }; Returns: number }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1280,6 +1296,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_leader: { Args: { _user_id: string }; Returns: boolean }
       role_has: {
         Args: {
