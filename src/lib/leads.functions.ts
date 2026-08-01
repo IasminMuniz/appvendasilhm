@@ -1,18 +1,33 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
+import { STAGE_FORECAST_DAYS, STAGE_PROBABILITY } from "@/lib/commercial-constants";
 import { z } from "zod";
-
 
 const stageSchema = z.enum([
   "novo",
   "contato_realizado",
   "qualificado",
+  "reuniao",
   "oportunidade",
   "proposta_enviada",
   "negociacao",
   "ganho",
   "perdido",
 ]);
+
+/** Probabilidade derivada automaticamente da etapa. */
+function probabilityFor(stage: string): number {
+  return STAGE_PROBABILITY[stage] ?? 0;
+}
+
+/** Previsão automática de fechamento (data atual + dias da etapa). */
+function forecastFor(stage: string): string | null {
+  const days = STAGE_FORECAST_DAYS[stage];
+  if (days === undefined) return null;
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
 
 const leadSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
@@ -24,7 +39,6 @@ const leadSchema = z.object({
   source: z.string().max(100).optional().or(z.literal("")),
   stage: stageSchema.default("novo"),
   estimated_value: z.coerce.number().min(0).default(0),
-  probability: z.coerce.number().int().min(0).max(100).default(0),
   next_action: z.string().max(300).optional().or(z.literal("")),
   next_action_date: z.string().optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
@@ -32,6 +46,7 @@ const leadSchema = z.object({
   loss_detail: z.string().max(1000).optional().or(z.literal("")),
   expected_close_date: z.string().optional().or(z.literal("")),
 });
+
 
 export const listLeads = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -76,11 +91,12 @@ export const createLead = createServerFn({ method: "POST" })
         source: data.source || null,
         stage: data.stage,
         estimated_value: data.estimated_value,
-        probability: data.probability,
+        probability: probabilityFor(data.stage),
         next_action: data.next_action || null,
         next_action_date: data.next_action_date || null,
         notes: data.notes || null,
-        expected_close_date: data.expected_close_date || null,
+        expected_close_date: data.expected_close_date || forecastFor(data.stage),
+        last_activity_at: new Date().toISOString(),
         owner_id: context.userId,
       })
       .select()
@@ -95,8 +111,14 @@ export const createLead = createServerFn({ method: "POST" })
       note: "Lead criado",
     });
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("novo_lead", { lead: inserted, user_id: context.userId });
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "novo_lead",
+      entityType: "lead",
+      entityId: inserted.id,
+      payload: { lead: inserted },
+      userId: context.userId,
+    });
 
     return inserted;
   });
@@ -111,16 +133,26 @@ export const updateLead = createServerFn({ method: "POST" })
       .update({
         ...rest,
         next_action_date: rest.next_action_date || null,
+        // previsão pode ser ajustada manualmente pelo vendedor
         expected_close_date: rest.expected_close_date || null,
+        ...(rest.stage ? { probability: probabilityFor(rest.stage) } : {}),
+        last_activity_at: new Date().toISOString(),
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("lead_atualizado", { lead: data, user_id: context.userId });
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "lead_atualizado",
+      entityType: "lead",
+      entityId: id,
+      payload: { lead: data },
+      userId: context.userId,
+    });
 
     return { ok: true };
   });
+
 
 export const moveLeadStage = createServerFn({ method: "POST" })
   .middleware([requireAuth])
@@ -155,10 +187,14 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       throw new Error("Informe o motivo da perda para mover a oportunidade.");
     }
 
+    const forecast = forecastFor(data.stage);
     const { error } = await context.supabase
       .from("leads")
       .update({
         stage: data.stage,
+        probability: probabilityFor(data.stage),
+        ...(forecast ? { expected_close_date: forecast } : {}),
+        last_activity_at: new Date().toISOString(),
         loss_reason: data.stage === "perdido" ? data.loss_reason : null,
         loss_detail: data.stage === "perdido" ? data.loss_detail || null : null,
       })
@@ -170,18 +206,29 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       from_stage: current.stage,
       to_stage: data.stage,
       changed_by: context.userId,
-      note: data.note || (data.loss_reason ? `Perda: ${data.loss_reason}` : null),
+      note:
+        data.note ||
+        (data.loss_reason
+          ? `Perda: ${data.loss_reason}`
+          : `Probabilidade atualizada para ${probabilityFor(data.stage)}%`),
     });
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("lead_mudou_etapa", {
-      lead_id: data.id,
-      from_stage: current.stage,
-      to_stage: data.stage,
-      note: data.note || null,
-      loss_reason: data.loss_reason || null,
-      user_id: context.userId,
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "lead_mudou_etapa",
+      entityType: "lead",
+      entityId: data.id,
+      payload: {
+        from_stage: current.stage,
+        to_stage: data.stage,
+        probability: probabilityFor(data.stage),
+        expected_close_date: forecast,
+        note: data.note || null,
+        loss_reason: data.loss_reason || null,
+      },
+      userId: context.userId,
     });
+
 
     return { ok: true };
   });

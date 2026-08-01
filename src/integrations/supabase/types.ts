@@ -53,6 +53,39 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_events: {
+        Row: {
+          created_at: string
+          created_by: string
+          delivered: boolean
+          entity_id: string | null
+          entity_type: string
+          event_type: string
+          id: string
+          payload: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          delivered?: boolean
+          entity_id?: string | null
+          entity_type: string
+          event_type: string
+          id?: string
+          payload?: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          delivered?: boolean
+          entity_id?: string | null
+          entity_type?: string
+          event_type?: string
+          id?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       customer_contacts: {
         Row: {
           created_at: string
@@ -107,25 +140,28 @@ export type Database = {
         Row: {
           content: string
           created_at: string
-          customer_id: string
+          customer_id: string | null
           id: string
           kind: string
+          lead_id: string | null
           user_id: string
         }
         Insert: {
           content: string
           created_at?: string
-          customer_id: string
+          customer_id?: string | null
           id?: string
           kind?: string
+          lead_id?: string | null
           user_id: string
         }
         Update: {
           content?: string
           created_at?: string
-          customer_id?: string
+          customer_id?: string | null
           id?: string
           kind?: string
+          lead_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -134,6 +170,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_interactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -236,6 +279,8 @@ export type Database = {
           document: string | null
           email: string | null
           id: string
+          last_activity_at: string | null
+          legal_name: string | null
           name: string
           notes: string | null
           owner_id: string | null
@@ -244,6 +289,7 @@ export type Database = {
           segment: string | null
           seller_id: string
           state: string | null
+          status: string
           updated_at: string
           updated_by: string | null
         }
@@ -256,6 +302,8 @@ export type Database = {
           document?: string | null
           email?: string | null
           id?: string
+          last_activity_at?: string | null
+          legal_name?: string | null
           name: string
           notes?: string | null
           owner_id?: string | null
@@ -264,6 +312,7 @@ export type Database = {
           segment?: string | null
           seller_id: string
           state?: string | null
+          status?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -276,6 +325,8 @@ export type Database = {
           document?: string | null
           email?: string | null
           id?: string
+          last_activity_at?: string | null
+          legal_name?: string | null
           name?: string
           notes?: string | null
           owner_id?: string | null
@@ -284,6 +335,7 @@ export type Database = {
           segment?: string | null
           seller_id?: string
           state?: string | null
+          status?: string
           updated_at?: string
           updated_by?: string | null
         }
@@ -468,6 +520,7 @@ export type Database = {
           estimated_value: number
           expected_close_date: string | null
           id: string
+          last_activity_at: string | null
           loss_detail: string | null
           loss_reason: string | null
           name: string
@@ -491,6 +544,7 @@ export type Database = {
           estimated_value?: number
           expected_close_date?: string | null
           id?: string
+          last_activity_at?: string | null
           loss_detail?: string | null
           loss_reason?: string | null
           name: string
@@ -514,6 +568,7 @@ export type Database = {
           estimated_value?: number
           expected_close_date?: string | null
           id?: string
+          last_activity_at?: string | null
           loss_detail?: string | null
           loss_reason?: string | null
           name?: string
@@ -534,6 +589,79 @@ export type Database = {
             columns: ["converted_customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      opportunities: {
+        Row: {
+          amount: number
+          created_at: string
+          customer_id: string | null
+          expected_close_date: string | null
+          id: string
+          lead_id: string | null
+          notes: string | null
+          owner_id: string
+          probability: number
+          product_description: string | null
+          product_id: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          customer_id?: string | null
+          expected_close_date?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          owner_id: string
+          probability?: number
+          product_description?: string | null
+          product_id?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          customer_id?: string | null
+          expected_close_date?: string | null
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          owner_id?: string
+          probability?: number
+          product_description?: string | null
+          product_id?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunities_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
             referencedColumns: ["id"]
           },
         ]
@@ -729,21 +857,60 @@ export type Database = {
           },
         ]
       }
+      product_price_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          id: string
+          new_price: number
+          old_price: number
+          product_id: string
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          id?: string
+          new_price: number
+          old_price: number
+          product_id: string
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          id?: string
+          new_price?: number
+          old_price?: number
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_price_history_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           active: boolean
           applications: string | null
           benefits: string | null
+          category: string | null
+          code: string | null
           commercial_description: string | null
           created_at: string
           description: string | null
           dimensions: string | null
           id: string
+          margin_percent: number
           name: string
           price: number
           purpose: string | null
           sku: string | null
           specifications: Json
+          stock: number
           technical_description: string | null
           updated_at: string
           weight: string | null
@@ -752,16 +919,20 @@ export type Database = {
           active?: boolean
           applications?: string | null
           benefits?: string | null
+          category?: string | null
+          code?: string | null
           commercial_description?: string | null
           created_at?: string
           description?: string | null
           dimensions?: string | null
           id?: string
+          margin_percent?: number
           name: string
           price: number
           purpose?: string | null
           sku?: string | null
           specifications?: Json
+          stock?: number
           technical_description?: string | null
           updated_at?: string
           weight?: string | null
@@ -770,16 +941,20 @@ export type Database = {
           active?: boolean
           applications?: string | null
           benefits?: string | null
+          category?: string | null
+          code?: string | null
           commercial_description?: string | null
           created_at?: string
           description?: string | null
           dimensions?: string | null
           id?: string
+          margin_percent?: number
           name?: string
           price?: number
           purpose?: string | null
           sku?: string | null
           specifications?: Json
+          stock?: number
           technical_description?: string | null
           updated_at?: string
           weight?: string | null
@@ -1124,6 +1299,7 @@ export type Database = {
         | "novo"
         | "contato_realizado"
         | "qualificado"
+        | "reuniao"
         | "oportunidade"
         | "proposta_enviada"
         | "negociacao"
@@ -1140,12 +1316,16 @@ export type Database = {
         | "processamento"
         | "faturado"
         | "finalizado"
+        | "novo"
+        | "entregue"
       quote_status:
         | "rascunho"
         | "aguardando_aprovacao"
         | "aprovado"
         | "reprovado"
         | "convertido"
+        | "enviado"
+        | "recusado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1278,6 +1458,7 @@ export const Constants = {
         "novo",
         "contato_realizado",
         "qualificado",
+        "reuniao",
         "oportunidade",
         "proposta_enviada",
         "negociacao",
@@ -1295,6 +1476,8 @@ export const Constants = {
         "processamento",
         "faturado",
         "finalizado",
+        "novo",
+        "entregue",
       ],
       quote_status: [
         "rascunho",
@@ -1302,6 +1485,8 @@ export const Constants = {
         "aprovado",
         "reprovado",
         "convertido",
+        "enviado",
+        "recusado",
       ],
     },
   },

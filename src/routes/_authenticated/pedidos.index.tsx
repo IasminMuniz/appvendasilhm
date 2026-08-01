@@ -6,18 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { listOrders } from "@/lib/orders.functions";
-
-const statusLabels: Record<string, string> = {
-  pendente: "Pendente",
-  em_andamento: "Em andamento",
-  concluido: "Concluído",
-  cancelado: "Cancelado",
-};
+import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
 
 const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pendente: "secondary",
-  em_andamento: "default",
-  concluido: "outline",
+  novo: "secondary",
+  criado: "secondary",
+  aguardando_aprovacao: "secondary",
+  aprovado: "default",
+  processamento: "default",
+  faturado: "default",
+  entregue: "outline",
+  finalizado: "outline",
   cancelado: "destructive",
 };
 
@@ -76,10 +75,10 @@ function OrdersPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
-                    <Badge variant={statusVariants[order.status ?? "pendente"]}>
-                      {statusLabels[order.status ?? "pendente"]}
+                    <Badge variant={statusVariants[order.status ?? "novo"] ?? "outline"}>
+                      {ORDER_STATUS_LABELS[order.status ?? "novo"] ?? order.status}
                     </Badge>
-                    <span className="font-semibold">R$ {(order.total ?? 0).toFixed(2)}</span>
+                    <span className="font-semibold">{formatCurrency(Number(order.total ?? 0))}</span>
                   </div>
                 </Link>
               ))}

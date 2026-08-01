@@ -17,6 +17,10 @@ const productSchema = z.object({
   weight: z.string().max(100).optional().or(z.literal("")),
   specifications: z.array(specSchema).default([]),
   price: z.coerce.number().min(0, "Preço deve ser maior ou igual a zero"),
+  category: z.string().max(80).optional().or(z.literal("")),
+  code: z.string().max(60).optional().or(z.literal("")),
+  margin_percent: z.coerce.number().min(0).max(100).default(0),
+  stock: z.coerce.number().int().min(0).default(0),
   active: z.boolean().default(true),
 });
 
@@ -58,6 +62,10 @@ export const createProduct = createServerFn({ method: "POST" })
         weight: data.weight || null,
         specifications: data.specifications,
         price: data.price,
+        category: data.category || null,
+        code: data.code || null,
+        margin_percent: data.margin_percent,
+        stock: data.stock,
         active: data.active,
       })
       .select()
@@ -72,6 +80,11 @@ export const updateProduct = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { id, ...rest } = data;
+    const { data: current } = await context.supabase
+      .from("products")
+      .select("price")
+      .eq("id", id)
+      .single();
     const { error } = await context.supabase
       .from("products")
       .update({
@@ -87,11 +100,51 @@ export const updateProduct = createServerFn({ method: "POST" })
         weight: rest.weight || null,
         specifications: rest.specifications,
         price: rest.price,
+        category: rest.category || null,
+        code: rest.code || null,
+        margin_percent: rest.margin_percent,
+        stock: rest.stock,
         active: rest.active,
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
+
+    // Registra alteração de preço
+    if (current && Number(current.price) !== Number(rest.price)) {
+      await context.supabase.from("product_price_history").insert({
+        product_id: id,
+        old_price: Number(current.price),
+        new_price: Number(rest.price),
+        changed_by: context.userId,
+      });
+    }
     return { ok: true };
+  });
+
+/** Apenas produtos ativos (usado em pedidos e orçamentos). */
+export const listActiveProducts = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("products")
+      .select("*")
+      .eq("active", true)
+      .order("name");
+    if (error) throw new Error(error.message);
+    return data ?? [];
+  });
+
+export const listPriceHistory = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("product_price_history")
+      .select("*")
+      .eq("product_id", data.id)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return rows ?? [];
   });
 
 export const getProduct = createServerFn({ method: "GET" })

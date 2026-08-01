@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, ArrowRight, UserPlus } from "lucide-react";
+import { Plus, ArrowRight, UserPlus, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { convertLeadToOpportunity } from "@/lib/opportunities.functions";
 import {
   convertLeadToCustomer,
   createLead,
@@ -30,7 +31,12 @@ import {
   listLeads,
   moveLeadStage,
 } from "@/lib/leads.functions";
-import { LEAD_STAGES, LOSS_REASONS, formatCurrency } from "@/lib/commercial-constants";
+import {
+  LEAD_STAGES,
+  LOSS_REASONS,
+  STAGE_PROBABILITY,
+  formatCurrency,
+} from "@/lib/commercial-constants";
 
 const leadsQueryOptions = () =>
   queryOptions({ queryKey: ["leads"], queryFn: () => listLeads() });
@@ -107,6 +113,17 @@ function LeadsPage() {
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const opportunityMutation = useMutation({
+    mutationFn: convertLeadToOpportunity,
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ["opportunities"] });
+      toast.success(
+        res.alreadyExists ? "Este lead já possui oportunidade." : "Oportunidade criada a partir do lead.",
+      );
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao converter."),
   });
 
   const convertMutation = useMutation({
@@ -194,11 +211,13 @@ function LeadsPage() {
                 <Input
                   id="probability"
                   type="number"
-                  min={0}
-                  max={100}
-                  value={form.probability}
-                  onChange={(e) => setForm({ ...form, probability: Number(e.target.value) })}
+                  value={STAGE_PROBABILITY[form.stage] ?? 0}
+                  readOnly
+                  aria-describedby="probability-help"
                 />
+                <p id="probability-help" className="text-xs text-muted-foreground">
+                  Calculada automaticamente pela etapa do funil.
+                </p>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="next_action_date">Data da próxima ação</Label>
@@ -370,6 +389,15 @@ function LeadsPage() {
                           Converter em cliente
                         </Button>
                       )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-full text-xs"
+                        onClick={() => opportunityMutation.mutate({ data: { lead_id: lead.id } })}
+                      >
+                        <Briefcase className="mr-1 h-3 w-3" />
+                        Gerar oportunidade
+                      </Button>
                     </div>
                   </div>
                 ))}
