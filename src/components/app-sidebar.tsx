@@ -8,6 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   KanbanSquare,
+  Briefcase,
   FileText,
   Target,
   Plug,
@@ -33,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Leads", url: "/leads", icon: KanbanSquare },
+  { title: "Oportunidades", url: "/oportunidades", icon: Briefcase },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Produtos", url: "/produtos", icon: Package },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
