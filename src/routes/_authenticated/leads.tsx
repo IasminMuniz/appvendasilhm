@@ -178,6 +178,11 @@ function LeadsPage() {
               className="grid gap-3 sm:grid-cols-2"
               onSubmit={(e) => {
                 e.preventDefault();
+                const invalid = validateContactFields(form);
+                if (invalid) {
+                  toast.error(invalid);
+                  return;
+                }
                 createMutation.mutate({ data: form });
               }}
             >
@@ -190,17 +195,48 @@ function LeadsPage() {
                 ["postal_code", "CEP"],
                 ["source", "Origem"],
                 ["next_action", "Próxima ação"],
-              ].map(([key, label]) => (
-                <div key={key} className="space-y-1">
-                  <Label htmlFor={key}>{label}</Label>
-                  <Input
-                    id={key}
-                    value={String(form[key as keyof typeof form] ?? "")}
-                    onChange={(e) => setForm({ ...form, [key!]: e.target.value })}
-                    required={key === "name"}
-                  />
-                </div>
-              ))}
+              ].map(([key, label]) => {
+                const value = String(form[key as keyof typeof form] ?? "");
+                const invalid =
+                  (key === "phone" && !!value && !isValidPhone(value)) ||
+                  (key === "postal_code" && !!value && !isValidCep(value));
+                return (
+                  <div key={key} className="space-y-1">
+                    <Label htmlFor={key}>{label}</Label>
+                    <Input
+                      id={key}
+                      value={value}
+                      placeholder={
+                        key === "phone"
+                          ? "(00) 00000-0000"
+                          : key === "postal_code"
+                            ? "00000-000"
+                            : undefined
+                      }
+                      inputMode={
+                        key === "phone" ? "tel" : key === "postal_code" ? "numeric" : undefined
+                      }
+                      aria-invalid={invalid}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        const next =
+                          key === "phone"
+                            ? maskPhone(raw)
+                            : key === "postal_code"
+                              ? maskCep(raw)
+                              : raw;
+                        setForm({ ...form, [key!]: next });
+                      }}
+                      required={key === "name"}
+                    />
+                    {invalid && (
+                      <p className="text-xs text-destructive">
+                        {key === "phone" ? PHONE_ERROR : CEP_ERROR}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
               <div className="space-y-1">
                 <Label htmlFor="estimated_value">Valor estimado</Label>
                 <Input
