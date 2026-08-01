@@ -13,6 +13,8 @@ const orderStatusSchema = z.enum([
   "processamento",
   "faturado",
   "finalizado",
+  "novo",
+  "entregue",
 ]);
 
 const orderItemSchema = z.object({
@@ -84,7 +86,7 @@ export const createOrder = createServerFn({ method: "POST" })
         customer_id: data.customer_id,
         seller_id: context.userId,
         notes: data.notes || null,
-        status: "criado",
+        status: "novo",
         total,
       })
       .select()
@@ -110,7 +112,7 @@ export const createOrder = createServerFn({ method: "POST" })
     await context.supabase.from("order_status_history").insert({
       order_id: order.id,
       from_status: null,
-      to_status: "criado",
+      to_status: "novo",
       changed_by: context.userId,
       note: "Pedido criado",
     });
@@ -152,6 +154,16 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       to_status: data.status,
       changed_by: context.userId,
       note: data.note || null,
+    });
+
+    const { recordEvent } = await import("@/lib/events.server");
+    const done = ["entregue", "faturado", "finalizado", "concluido"];
+    await recordEvent(context.supabase, {
+      eventType: done.includes(data.status) ? "venda_concluida" : "pedido_mudou_status",
+      entityType: "order",
+      entityId: data.id,
+      payload: { from_status: current.status, to_status: data.status, total: order.total },
+      userId: context.userId,
     });
 
     return order;
