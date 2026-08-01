@@ -447,3 +447,17 @@ export const updateCustomerNextActionStatus = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Exclui um cliente definitivamente (permitido a gestores/admin conforme RLS). */
+export const deleteCustomer = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("customers").delete().eq("id", data.id);
+    if (error) {
+      if (error.code === "23503")
+        throw new Error("Não é possível excluir: existem pedidos ou orçamentos vinculados a este cliente.");
+      throw new Error(error.message);
+    }
+    return { ok: true };
+  });

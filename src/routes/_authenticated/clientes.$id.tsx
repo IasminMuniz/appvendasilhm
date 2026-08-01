@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, CalendarClock, MessageSquarePlus, Trash2, UserCog, Users } from "lucide-react";
+import { ArrowLeft, CalendarClock, MessageSquarePlus, Pencil, Trash2, UserCog, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -182,12 +182,21 @@ function CustomerDetailPage() {
 
   return (
     <div className="space-y-6">
-      <Button variant="ghost" asChild>
-        <Link to="/clientes">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" asChild>
+          <Link to="/clientes">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+        <Button variant="outline" asChild>
+          <Link to="/clientes/$id/editar" params={{ id: c.id }}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Editar cadastro
+          </Link>
+        </Button>
+      </div>
+
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>

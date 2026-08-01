@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useParams } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
-import { ArrowLeft, History } from "lucide-react";
+import { ArrowLeft, History, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +13,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getOrder, updateOrderStatus } from "@/lib/orders.functions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { deleteOrder, getOrder, updateOrderStatus } from "@/lib/orders.functions";
+
 import {
   ORDER_STATUSES,
   ORDER_STATUS_LABELS,
@@ -44,6 +56,7 @@ export const Route = createFileRoute("/_authenticated/pedidos/$id")({
 function OrderDetailPage() {
   const { id } = useParams({ from: "/_authenticated/pedidos/$id" });
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { data } = useSuspenseQuery(orderQueryOptions(id));
   const order = data.order;
 
@@ -57,14 +70,51 @@ function OrderDetailPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
+  const remove = useMutation({
+    mutationFn: deleteOrder,
+    onSuccess: () => {
+      toast.success("Pedido excluído");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      navigate({ to: "/pedidos" });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <Button variant="ghost" asChild>
-        <Link to="/pedidos">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar
-        </Link>
-      </Button>
+      <div className="flex items-center justify-between">
+        <Button variant="ghost" asChild>
+          <Link to="/pedidos">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Voltar
+          </Link>
+        </Button>
+
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button variant="destructive" disabled={remove.isPending}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Excluir pedido
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir pedido?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Os itens e o histórico de status serão removidos permanentemente.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => remove.mutate({ data: { id } })}>
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
 
       <div className="flex items-start justify-between">
         <div>
