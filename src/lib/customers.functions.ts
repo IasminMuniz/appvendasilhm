@@ -99,6 +99,7 @@ export const updateCustomer = createServerFn({ method: "POST" })
       .from("customers")
       .update({
         name: rest.name,
+        legal_name: rest.legal_name || null,
         company_name: rest.company_name || null,
         document: rest.document || null,
         email: rest.email || null,
@@ -110,7 +111,9 @@ export const updateCustomer = createServerFn({ method: "POST" })
         segment: rest.segment || null,
         company_size: rest.company_size || null,
         region: rest.region || null,
+        status: rest.status,
         updated_by: context.userId,
+
       })
       .eq("id", id);
 
