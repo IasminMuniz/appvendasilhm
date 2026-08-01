@@ -4,6 +4,7 @@ import { z } from "zod";
 
 const customerSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
+  legal_name: z.string().max(200).optional().or(z.literal("")),
   company_name: z.string().max(200).optional().or(z.literal("")),
   document: z.string().max(40).optional().or(z.literal("")),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
@@ -15,7 +16,9 @@ const customerSchema = z.object({
   segment: z.string().max(60).optional().or(z.literal("")),
   company_size: z.string().max(40).optional().or(z.literal("")),
   region: z.string().max(60).optional().or(z.literal("")),
+  status: z.enum(["prospect", "ativo", "inativo", "perdido"]).default("prospect"),
 });
+
 
 export const listCustomers = createServerFn({ method: "GET" })
   .middleware([requireAuth])
