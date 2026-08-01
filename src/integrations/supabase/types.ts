@@ -297,6 +297,7 @@ export type Database = {
           notes: string | null
           owner_id: string | null
           phone: string | null
+          postal_code: string | null
           region: string | null
           segment: string | null
           seller_id: string
@@ -320,6 +321,7 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          postal_code?: string | null
           region?: string | null
           segment?: string | null
           seller_id: string
@@ -343,6 +345,7 @@ export type Database = {
           notes?: string | null
           owner_id?: string | null
           phone?: string | null
+          postal_code?: string | null
           region?: string | null
           segment?: string | null
           seller_id?: string
@@ -526,6 +529,8 @@ export type Database = {
         Row: {
           city: string | null
           company: string | null
+          converted_at: string | null
+          converted_by: string | null
           converted_customer_id: string | null
           created_at: string
           email: string | null
@@ -541,7 +546,9 @@ export type Database = {
           notes: string | null
           owner_id: string
           phone: string | null
+          postal_code: string | null
           probability: number
+          segment: string | null
           source: string | null
           stage: Database["public"]["Enums"]["lead_stage"]
           state: string | null
@@ -550,6 +557,8 @@ export type Database = {
         Insert: {
           city?: string | null
           company?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           converted_customer_id?: string | null
           created_at?: string
           email?: string | null
@@ -565,7 +574,9 @@ export type Database = {
           notes?: string | null
           owner_id: string
           phone?: string | null
+          postal_code?: string | null
           probability?: number
+          segment?: string | null
           source?: string | null
           stage?: Database["public"]["Enums"]["lead_stage"]
           state?: string | null
@@ -574,6 +585,8 @@ export type Database = {
         Update: {
           city?: string | null
           company?: string | null
+          converted_at?: string | null
+          converted_by?: string | null
           converted_customer_id?: string | null
           created_at?: string
           email?: string | null
@@ -589,7 +602,9 @@ export type Database = {
           notes?: string | null
           owner_id?: string
           phone?: string | null
+          postal_code?: string | null
           probability?: number
+          segment?: string | null
           source?: string | null
           stage?: Database["public"]["Enums"]["lead_stage"]
           state?: string | null
@@ -1322,6 +1337,7 @@ export type Database = {
         | "negociacao"
         | "ganho"
         | "perdido"
+        | "convertido"
       order_status:
         | "pendente"
         | "em_andamento"
@@ -1481,6 +1497,7 @@ export const Constants = {
         "negociacao",
         "ganho",
         "perdido",
+        "convertido",
       ],
       order_status: [
         "pendente",
