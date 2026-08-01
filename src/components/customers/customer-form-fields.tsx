@@ -194,11 +194,15 @@ export function CustomerFormFields({ value, onChange, hideContact }: Props) {
           <Label htmlFor="postal_code">CEP</Label>
           <Input
             id="postal_code"
+            inputMode="numeric"
             value={value.postal_code}
-            onChange={(e) => set({ postal_code: e.target.value })}
+            onChange={(e) => set({ postal_code: maskCep(e.target.value) })}
             placeholder="00000-000"
+            aria-invalid={!!value.postal_code && !isValidCep(value.postal_code)}
           />
-        </div>
+          {!!value.postal_code && !isValidCep(value.postal_code) && (
+            <p className="text-xs text-destructive">{CEP_ERROR}</p>
+          )}
       </div>
 
       <div className="space-y-2">
