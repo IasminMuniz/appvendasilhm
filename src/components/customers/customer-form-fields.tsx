@@ -45,10 +45,12 @@ export const emptyCustomerForm: CustomerFormValues = {
 type Props = {
   value: CustomerFormValues;
   onChange: (value: CustomerFormValues) => void;
+  /** Oculta o campo de contato (gerenciado na ficha 360º do cliente). */
+  hideContact?: boolean;
 };
 
 /** Campos de cadastro do cliente compartilhados entre criar e editar. */
-export function CustomerFormFields({ value, onChange }: Props) {
+export function CustomerFormFields({ value, onChange, hideContact }: Props) {
   const set = (patch: Partial<CustomerFormValues>) => onChange({ ...value, ...patch });
 
   return (
@@ -100,14 +102,16 @@ export function CustomerFormFields({ value, onChange }: Props) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="contact_name">Nome do contato</Label>
-          <Input
-            id="contact_name"
-            value={value.contact_name}
-            onChange={(e) => set({ contact_name: e.target.value })}
-          />
-        </div>
+        {!hideContact && (
+          <div className="space-y-2">
+            <Label htmlFor="contact_name">Nome do contato</Label>
+            <Input
+              id="contact_name"
+              value={value.contact_name}
+              onChange={(e) => set({ contact_name: e.target.value })}
+            />
+          </div>
+        )}
         <div className="space-y-2">
           <Label htmlFor="phone">Telefone</Label>
           <Input
@@ -186,7 +190,7 @@ export function toCustomerPayload(form: CustomerFormValues) {
   return {
     name: form.name,
     legal_name: form.legal_name,
-    company_name: form.company_name || form.contact_name,
+    company_name: form.company_name,
     document: form.document,
     email: form.email,
     phone: form.phone,
@@ -195,8 +199,6 @@ export function toCustomerPayload(form: CustomerFormValues) {
     state: form.state,
     segment: form.segment,
     status: form.status,
-    notes: form.contact_name
-      ? `Contato: ${form.contact_name}${form.notes ? `\n${form.notes}` : ""}`
-      : form.notes,
+    notes: form.notes,
   };
 }
