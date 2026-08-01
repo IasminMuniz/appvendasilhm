@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, ArrowRight, UserPlus } from "lucide-react";
+import { Plus, ArrowRight, UserPlus, Briefcase } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +31,12 @@ import {
   listLeads,
   moveLeadStage,
 } from "@/lib/leads.functions";
-import { LEAD_STAGES, LOSS_REASONS, formatCurrency } from "@/lib/commercial-constants";
+import {
+  LEAD_STAGES,
+  LOSS_REASONS,
+  STAGE_PROBABILITY,
+  formatCurrency,
+} from "@/lib/commercial-constants";
 
 const leadsQueryOptions = () =>
   queryOptions({ queryKey: ["leads"], queryFn: () => listLeads() });
