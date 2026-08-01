@@ -95,6 +95,9 @@ export const createLead = createServerFn({ method: "POST" })
       note: "Lead criado",
     });
 
+    const { notifyN8n } = await import("@/lib/n8n.server");
+    await notifyN8n("novo_lead", { lead: inserted, user_id: context.userId });
+
     return inserted;
   });
 
