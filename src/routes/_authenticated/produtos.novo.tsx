@@ -7,6 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PRODUCT_CATEGORIES } from "@/lib/commercial-constants";
 import { createProduct } from "@/lib/products.functions";
 
 export const Route = createFileRoute("/_authenticated/produtos/novo")({
@@ -22,7 +30,11 @@ function NewProductPage() {
   const [form, setForm] = useState({
     name: "",
     description: "",
+    category: "",
+    code: "",
     price: "",
+    margin_percent: "0",
+    stock: "0",
     active: true,
   });
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +58,10 @@ function NewProductPage() {
         name: form.name,
         description: form.description,
         price: Number(form.price),
+        category: form.category,
+        code: form.code,
+        margin_percent: Number(form.margin_percent || 0),
+        stock: Number(form.stock || 0),
         active: form.active,
       },
     });
@@ -82,6 +98,58 @@ function NewProductPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="category">Categoria</Label>
+                <Select
+                  value={form.category || undefined}
+                  onValueChange={(v) => setForm({ ...form, category: v })}
+                >
+                  <SelectTrigger id="category">
+                    <SelectValue placeholder="Selecione" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PRODUCT_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="code">Código interno</Label>
+                <Input
+                  id="code"
+                  value={form.code}
+                  onChange={(e) => setForm({ ...form, code: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="margin">Margem (%)</Label>
+                <Input
+                  id="margin"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.01"
+                  value={form.margin_percent}
+                  onChange={(e) => setForm({ ...form, margin_percent: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="stock">Estoque</Label>
+                <Input
+                  id="stock"
+                  type="number"
+                  min="0"
+                  value={form.stock}
+                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <Label htmlFor="price">Preço *</Label>
