@@ -4,10 +4,13 @@ import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCustomer, updateCustomer } from "@/lib/customers.functions";
+import {
+  CustomerFormFields,
+  type CustomerFormValues,
+  toCustomerPayload,
+} from "@/components/customers/customer-form-fields";
 
 const customerQueryOptions = (id: string) =>
   queryOptions({
@@ -46,15 +49,19 @@ function EditCustomerPage() {
   const queryClient = useQueryClient();
   const { data: customer } = useSuspenseQuery(customerQueryOptions(id));
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<CustomerFormValues>({
+    legal_name: customer.legal_name ?? "",
     name: customer.name ?? "",
     company_name: customer.company_name ?? "",
     document: customer.document ?? "",
+    segment: customer.segment ?? "",
+    contact_name: "",
     email: customer.email ?? "",
     phone: customer.phone ?? "",
     address: customer.address ?? "",
     city: customer.city ?? "",
     state: customer.state ?? "",
+    status: (customer.status as CustomerFormValues["status"]) ?? "prospect",
     notes: customer.notes ?? "",
   });
   const [error, setError] = useState<string | null>(null);
@@ -75,12 +82,6 @@ function EditCustomerPage() {
     },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    mutation.mutate({ data: { id, ...form } });
-  };
-
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <Button variant="ghost" asChild>
@@ -95,90 +96,16 @@ function EditCustomerPage() {
           <CardTitle>Editar cliente</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="company_name">Empresa</Label>
-                <Input
-                  id="company_name"
-                  value={form.company_name}
-                  onChange={(e) => setForm({ ...form, company_name: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="document">Documento</Label>
-                <Input
-                  id="document"
-                  value={form.document}
-                  onChange={(e) => setForm({ ...form, document: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Telefone</Label>
-                <Input
-                  id="phone"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="address">Endereço</Label>
-              <Input
-                id="address"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-              />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="city">Cidade</Label>
-                <Input
-                  id="city"
-                  value={form.city}
-                  onChange={(e) => setForm({ ...form, city: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">Estado</Label>
-                <Input
-                  id="state"
-                  value={form.state}
-                  onChange={(e) => setForm({ ...form, state: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="notes">Observações</Label>
-              <Input
-                id="notes"
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-            </div>
-
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setError(null);
+              mutation.mutate({ data: { id, ...toCustomerPayload(form) } });
+            }}
+            className="space-y-4"
+          >
+            <CustomerFormFields value={form} onChange={setForm} hideContact />
             {error && <p className="text-sm text-destructive">{error}</p>}
-
             <Button type="submit" className="w-full" disabled={mutation.isPending}>
               {mutation.isPending ? "Salvando..." : "Salvar alterações"}
             </Button>
