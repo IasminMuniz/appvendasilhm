@@ -13,7 +13,7 @@ const customerSchema = z.object({
   address: z.string().max(500).optional().or(z.literal("")),
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
-  postal_code: z.string().max(20).optional().or(z.literal("")),
+  postal_code: cepSchema.optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
   segment: z.string().max(60).optional().or(z.literal("")),
   company_size: z.string().max(40).optional().or(z.literal("")),
