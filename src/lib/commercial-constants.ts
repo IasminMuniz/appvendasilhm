@@ -189,3 +189,24 @@ export function formatDate(value?: string | null): string {
   if (!value) return "—";
   return new Date(value).toLocaleDateString("pt-BR");
 }
+
+/** Rótulos dos eventos internos do Nexus 360 (uso na interface). */
+export const NEXUS_EVENT_LABELS: Record<string, string> = {
+  CLIENTE_CRIADO: "Cliente criado",
+  CLIENTE_ATUALIZADO: "Cliente atualizado",
+  CLIENTE_INATIVO: "Cliente inativo",
+  LEAD_CRIADO: "Lead criado",
+  LEAD_ATUALIZADO: "Lead atualizado",
+  LEAD_STATUS_ALTERADO: "Status do lead alterado",
+  OPORTUNIDADE_CRIADA: "Oportunidade criada",
+  OPORTUNIDADE_STATUS_ALTERADO: "Status da oportunidade alterado",
+  PEDIDO_STATUS_ALTERADO: "Status do pedido alterado",
+  VENDA_FECHADA: "Venda fechada",
+};
+
+export const ROLE_LABELS: Record<string, string> = {
+  admin: "Administrador",
+  gerente: "Gestor comercial",
+  supervisor: "Supervisor",
+  vendedor: "Vendedor",
+};

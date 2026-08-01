@@ -16,19 +16,6 @@ export const NEXUS_EVENTS = {
 
 export type NexusEvent = (typeof NEXUS_EVENTS)[keyof typeof NEXUS_EVENTS];
 
-export const NEXUS_EVENT_LABELS: Record<string, string> = {
-  CLIENTE_CRIADO: "Cliente criado",
-  CLIENTE_ATUALIZADO: "Cliente atualizado",
-  CLIENTE_INATIVO: "Cliente inativo",
-  LEAD_CRIADO: "Lead criado",
-  LEAD_ATUALIZADO: "Lead atualizado",
-  LEAD_STATUS_ALTERADO: "Status do lead alterado",
-  OPORTUNIDADE_CRIADA: "Oportunidade criada",
-  OPORTUNIDADE_STATUS_ALTERADO: "Status da oportunidade alterado",
-  PEDIDO_STATUS_ALTERADO: "Status do pedido alterado",
-  VENDA_FECHADA: "Venda fechada",
-};
-
 type EventClient = {
   from: (table: string) => {
     insert: (values: Record<string, unknown>) => {
