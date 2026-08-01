@@ -61,6 +61,7 @@ function EditCustomerPage() {
     address: customer.address ?? "",
     city: customer.city ?? "",
     state: customer.state ?? "",
+    postal_code: customer.postal_code ?? "",
     status: (customer.status as CustomerFormValues["status"]) ?? "prospect",
     notes: customer.notes ?? "",
   });
