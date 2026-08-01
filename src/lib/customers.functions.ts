@@ -393,7 +393,7 @@ const contactSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(120),
   role: z.string().max(120).optional().or(z.literal("")),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  phone: z.string().max(50).optional().or(z.literal("")),
+  phone: phoneSchema.optional().or(z.literal("")),
   is_primary: z.boolean().default(false),
   notes: z.string().max(1000).optional().or(z.literal("")),
 });
