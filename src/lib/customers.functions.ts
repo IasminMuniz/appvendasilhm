@@ -40,6 +40,7 @@ export const createCustomer = createServerFn({ method: "POST" })
       .from("customers")
       .insert({
         name: data.name,
+        legal_name: data.legal_name || null,
         company_name: data.company_name || null,
         document: data.document || null,
         email: data.email || null,
@@ -51,6 +52,8 @@ export const createCustomer = createServerFn({ method: "POST" })
         segment: data.segment || null,
         company_size: data.company_size || null,
         region: data.region || null,
+        status: data.status,
+        last_activity_at: new Date().toISOString(),
         seller_id: context.userId,
         owner_id: context.userId,
         updated_by: context.userId,
@@ -60,8 +63,15 @@ export const createCustomer = createServerFn({ method: "POST" })
 
     if (error) throw new Error(error.message);
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("novo_cliente", { customer: inserted, user_id: context.userId });
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "novo_cliente",
+      entityType: "customer",
+      entityId: inserted.id,
+      payload: { customer: inserted },
+      userId: context.userId,
+    });
+
 
     return inserted;
   });
