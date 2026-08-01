@@ -65,10 +65,16 @@ export const createCustomer = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
-      eventType: "novo_cliente",
+      eventType: "CLIENTE_CRIADO",
       entityType: "customer",
       entityId: inserted.id,
-      payload: { customer: inserted },
+      payload: {
+        cliente_id: inserted.id,
+        cliente_nome: inserted.name,
+        responsavel_id: inserted.owner_id ?? inserted.seller_id,
+        criado_em: inserted.created_at,
+        cliente: inserted,
+      },
       userId: context.userId,
     });
 

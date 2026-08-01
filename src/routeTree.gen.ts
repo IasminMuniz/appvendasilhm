@@ -16,11 +16,13 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedEventosRouteImport } from './routes/_authenticated/eventos'
 import { Route as AuthenticatedExportacaoRouteImport } from './routes/_authenticated/exportacao'
 import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
+import { Route as AuthenticatedUsuariosRouteImport } from './routes/_authenticated/usuarios'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as AuthenticatedClientesIndexRouteImport } from './routes/_authenticated/clientes.index'
@@ -73,6 +75,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedEventosRoute = AuthenticatedEventosRouteImport.update({
+  id: '/eventos',
+  path: '/eventos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedExportacaoRoute = AuthenticatedExportacaoRouteImport.update({
   id: '/exportacao',
   path: '/exportacao',
@@ -100,6 +107,11 @@ const AuthenticatedOportunidadesRoute =
     path: '/oportunidades',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedUsuariosRoute = AuthenticatedUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -194,11 +206,13 @@ export interface FileRoutesByFullPath {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRouteWithChildren
@@ -222,11 +236,13 @@ export interface FileRoutesByTo {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
   '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/usuarios': typeof AuthenticatedUsuariosRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/clientes/$id': typeof AuthenticatedClientesIdRouteWithChildren
@@ -252,11 +268,13 @@ export interface FileRoutesById {
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/eventos': typeof AuthenticatedEventosRoute
   '/_authenticated/exportacao': typeof AuthenticatedExportacaoRoute
   '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
+  '/_authenticated/usuarios': typeof AuthenticatedUsuariosRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/clientes/$id': typeof AuthenticatedClientesIdRouteWithChildren
@@ -282,11 +300,13 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/dashboard'
+    | '/eventos'
     | '/exportacao'
     | '/integracoes'
     | '/leads'
     | '/metas'
     | '/oportunidades'
+    | '/usuarios'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clientes/$id'
@@ -310,11 +330,13 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/dashboard'
+    | '/eventos'
     | '/exportacao'
     | '/integracoes'
     | '/leads'
     | '/metas'
     | '/oportunidades'
+    | '/usuarios'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/clientes/$id'
@@ -339,11 +361,13 @@ export interface FileRouteTypes {
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/dashboard'
+    | '/_authenticated/eventos'
     | '/_authenticated/exportacao'
     | '/_authenticated/integracoes'
     | '/_authenticated/leads'
     | '/_authenticated/metas'
     | '/_authenticated/oportunidades'
+    | '/_authenticated/usuarios'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/clientes/$id'
@@ -423,6 +447,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/eventos': {
+      id: '/_authenticated/eventos'
+      path: '/eventos'
+      fullPath: '/eventos'
+      preLoaderRoute: typeof AuthenticatedEventosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/exportacao': {
       id: '/_authenticated/exportacao'
       path: '/exportacao'
@@ -456,6 +487,13 @@ declare module '@tanstack/react-router' {
       path: '/oportunidades'
       fullPath: '/oportunidades'
       preLoaderRoute: typeof AuthenticatedOportunidadesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/usuarios': {
+      id: '/_authenticated/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof AuthenticatedUsuariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/.lovable/oauth/consent': {
@@ -582,11 +620,13 @@ const AuthenticatedClientesIdRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedEventosRoute: typeof AuthenticatedEventosRoute
   AuthenticatedExportacaoRoute: typeof AuthenticatedExportacaoRoute
   AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRoute
+  AuthenticatedUsuariosRoute: typeof AuthenticatedUsuariosRoute
   AuthenticatedClientesIdRoute: typeof AuthenticatedClientesIdRouteWithChildren
   AuthenticatedClientesNovoRoute: typeof AuthenticatedClientesNovoRoute
   AuthenticatedOrcamentosIdRoute: typeof AuthenticatedOrcamentosIdRoute
@@ -603,11 +643,13 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedEventosRoute: AuthenticatedEventosRoute,
   AuthenticatedExportacaoRoute: AuthenticatedExportacaoRoute,
   AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRoute,
+  AuthenticatedUsuariosRoute: AuthenticatedUsuariosRoute,
   AuthenticatedClientesIdRoute: AuthenticatedClientesIdRouteWithChildren,
   AuthenticatedClientesNovoRoute: AuthenticatedClientesNovoRoute,
   AuthenticatedOrcamentosIdRoute: AuthenticatedOrcamentosIdRoute,

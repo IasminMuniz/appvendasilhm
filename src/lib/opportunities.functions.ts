@@ -59,10 +59,17 @@ export const createOpportunity = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
-      eventType: "nova_oportunidade",
+      eventType: "OPORTUNIDADE_CRIADA",
       entityType: "opportunity",
       entityId: inserted.id,
-      payload: { opportunity: inserted },
+      payload: {
+        oportunidade_id: inserted.id,
+        cliente_id: inserted.customer_id,
+        valor: Number(inserted.amount ?? 0),
+        responsavel_id: inserted.owner_id,
+        status: inserted.status,
+        criado_em: inserted.created_at,
+      },
       userId: context.userId,
     });
 
@@ -89,12 +96,38 @@ export const updateOpportunity = createServerFn({ method: "POST" })
     if (status) {
       const { recordEvent } = await import("@/lib/events.server");
       await recordEvent(context.supabase, {
-        eventType: "oportunidade_mudou_status",
+        eventType: "OPORTUNIDADE_STATUS_ALTERADO",
         entityType: "opportunity",
         entityId: id,
-        payload: { status },
+        payload: {
+          novo_status: status,
+          alterado_por: context.userId,
+          alterado_em: new Date().toISOString(),
+          probabilidade: PROBABILITY[status] ?? 30,
+        },
         userId: context.userId,
       });
+
+      if (status === "ganha") {
+        const { data: opp } = await context.supabase
+          .from("opportunities")
+          .select("id, customer_id, amount, owner_id")
+          .eq("id", id)
+          .single();
+        await recordEvent(context.supabase, {
+          eventType: "VENDA_FECHADA",
+          entityType: "opportunity",
+          entityId: id,
+          payload: {
+            cliente_id: opp?.customer_id ?? null,
+            valor_vendido: Number(opp?.amount ?? 0),
+            responsavel_id: opp?.owner_id ?? context.userId,
+            data_venda: new Date().toISOString(),
+            origem: "oportunidade",
+          },
+          userId: context.userId,
+        });
+      }
     }
     return { ok: true };
   });
@@ -156,10 +189,18 @@ export const convertLeadToOpportunity = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
-      eventType: "nova_oportunidade",
+      eventType: "OPORTUNIDADE_CRIADA",
       entityType: "opportunity",
       entityId: inserted.id,
-      payload: { opportunity: inserted, from_lead: lead.id },
+      payload: {
+        oportunidade_id: inserted.id,
+        cliente_id: inserted.customer_id,
+        valor: Number(inserted.amount ?? 0),
+        responsavel_id: inserted.owner_id,
+        status: inserted.status,
+        criado_em: inserted.created_at,
+        origem_lead_id: lead.id,
+      },
       userId: context.userId,
     });
 

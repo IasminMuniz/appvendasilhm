@@ -13,6 +13,8 @@ import {
   Target,
   Plug,
   Download,
+  ShieldCheck,
+  Activity,
 } from "lucide-react";
 
 import {
@@ -42,6 +44,8 @@ const items = [
   { title: "Metas", url: "/metas", icon: Target },
   { title: "Integrações", url: "/integracoes", icon: Plug },
   { title: "Exportação", url: "/exportacao", icon: Download },
+  { title: "Usuários", url: "/usuarios", icon: ShieldCheck },
+  { title: "Eventos", url: "/eventos", icon: Activity },
 ];
 
 export function AppSidebar() {
