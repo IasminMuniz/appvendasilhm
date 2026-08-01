@@ -35,7 +35,7 @@ const leadSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
   company: z.string().max(200).optional().or(z.literal("")),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  phone: z.string().max(50).optional().or(z.literal("")),
+  phone: phoneSchema.optional().or(z.literal("")),
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
   postal_code: z.string().max(20).optional().or(z.literal("")),
