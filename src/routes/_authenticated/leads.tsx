@@ -412,35 +412,46 @@ function LeadsPage() {
                       </p>
                     )}
                     <div className="mt-2 flex flex-wrap gap-1">
-                      <Select
-                        value={lead.stage}
-                        onValueChange={(value) =>
-                          handleStageChange({ id: lead.id, name: lead.name }, value)
-                        }
-                      >
-                        <SelectTrigger className="h-7 text-xs">
-                          <ArrowRight className="mr-1 h-3 w-3" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {SELECTABLE_STAGES.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {lead.converted_customer_id ? (
+                        <Badge className="text-[10px]">
+                          Convertido em cliente
+                          {lead.converted_at
+                            ? ` em ${new Date(lead.converted_at).toLocaleDateString("pt-BR")}`
+                            : ""}
+                        </Badge>
+                      ) : (
+                        <Select
+                          value={lead.stage}
+                          onValueChange={(value) =>
+                            handleStageChange({ id: lead.id, name: lead.name }, value)
+                          }
+                        >
+                          <SelectTrigger className="h-7 text-xs">
+                            <ArrowRight className="mr-1 h-3 w-3" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {SELECTABLE_STAGES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
                       {!lead.converted_customer_id && (
                         <Button
                           size="sm"
                           variant="outline"
                           className="h-7 w-full text-xs"
+                          disabled={convertMutation.isPending}
                           onClick={() => convertMutation.mutate({ data: { id: lead.id } })}
                         >
                           <UserPlus className="mr-1 h-3 w-3" />
                           Converter em cliente
                         </Button>
                       )}
+
                       <Button
                         size="sm"
                         variant="outline"
