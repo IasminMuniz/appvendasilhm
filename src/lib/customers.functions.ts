@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { cepSchema, phoneSchema } from "@/lib/masks";
 
 const customerSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(200),
@@ -8,11 +9,11 @@ const customerSchema = z.object({
   company_name: z.string().max(200).optional().or(z.literal("")),
   document: z.string().max(40).optional().or(z.literal("")),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  phone: z.string().max(50).optional().or(z.literal("")),
+  phone: phoneSchema.optional().or(z.literal("")),
   address: z.string().max(500).optional().or(z.literal("")),
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
-  postal_code: z.string().max(20).optional().or(z.literal("")),
+  postal_code: cepSchema.optional().or(z.literal("")),
   notes: z.string().max(2000).optional().or(z.literal("")),
   segment: z.string().max(60).optional().or(z.literal("")),
   company_size: z.string().max(40).optional().or(z.literal("")),
@@ -392,7 +393,7 @@ const contactSchema = z.object({
   name: z.string().min(1, "Nome é obrigatório").max(120),
   role: z.string().max(120).optional().or(z.literal("")),
   email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  phone: z.string().max(50).optional().or(z.literal("")),
+  phone: phoneSchema.optional().or(z.literal("")),
   is_primary: z.boolean().default(false),
   notes: z.string().max(1000).optional().or(z.literal("")),
 });

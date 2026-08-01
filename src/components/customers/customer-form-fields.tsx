@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BRAZIL_STATES, CUSTOMER_SEGMENTS, CUSTOMER_STATUSES } from "@/lib/commercial-constants";
+import { CEP_ERROR, PHONE_ERROR, isValidCep, isValidPhone, maskCep, maskPhone } from "@/lib/masks";
 
 export type CustomerFormValues = {
   legal_name: string;
@@ -118,9 +119,15 @@ export function CustomerFormFields({ value, onChange, hideContact }: Props) {
           <Label htmlFor="phone">Telefone</Label>
           <Input
             id="phone"
+            inputMode="tel"
+            placeholder="(00) 00000-0000"
             value={value.phone}
-            onChange={(e) => set({ phone: e.target.value })}
+            onChange={(e) => set({ phone: maskPhone(e.target.value) })}
+            aria-invalid={!!value.phone && !isValidPhone(value.phone)}
           />
+          {!!value.phone && !isValidPhone(value.phone) && (
+            <p className="text-xs text-destructive">{PHONE_ERROR}</p>
+          )}
         </div>
       </div>
 
@@ -187,10 +194,15 @@ export function CustomerFormFields({ value, onChange, hideContact }: Props) {
           <Label htmlFor="postal_code">CEP</Label>
           <Input
             id="postal_code"
+            inputMode="numeric"
             value={value.postal_code}
-            onChange={(e) => set({ postal_code: e.target.value })}
+            onChange={(e) => set({ postal_code: maskCep(e.target.value) })}
             placeholder="00000-000"
+            aria-invalid={!!value.postal_code && !isValidCep(value.postal_code)}
           />
+          {!!value.postal_code && !isValidCep(value.postal_code) && (
+            <p className="text-xs text-destructive">{CEP_ERROR}</p>
+          )}
         </div>
       </div>
 

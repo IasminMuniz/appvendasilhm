@@ -11,6 +11,7 @@ import {
   emptyCustomerForm,
   toCustomerPayload,
 } from "@/components/customers/customer-form-fields";
+import { validateContactFields } from "@/lib/masks";
 
 export const Route = createFileRoute("/_authenticated/clientes/novo")({
   component: NewCustomerPage,
@@ -81,6 +82,12 @@ function NewCustomerPage() {
             onSubmit={(e) => {
               e.preventDefault();
               setError(null);
+              const invalid = validateContactFields(form);
+              if (invalid) {
+                setError(invalid);
+                toast.error(invalid);
+                return;
+              }
               mutation.mutate();
             }}
             className="space-y-4"

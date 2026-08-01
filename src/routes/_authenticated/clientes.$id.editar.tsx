@@ -11,6 +11,7 @@ import {
   type CustomerFormValues,
   toCustomerPayload,
 } from "@/components/customers/customer-form-fields";
+import { validateContactFields } from "@/lib/masks";
 
 const customerQueryOptions = (id: string) =>
   queryOptions({
@@ -101,6 +102,12 @@ function EditCustomerPage() {
             onSubmit={(e) => {
               e.preventDefault();
               setError(null);
+              const invalid = validateContactFields(form);
+              if (invalid) {
+                setError(invalid);
+                toast.error(invalid);
+                return;
+              }
               mutation.mutate({ data: { id, ...toCustomerPayload(form) } });
             }}
             className="space-y-4"
