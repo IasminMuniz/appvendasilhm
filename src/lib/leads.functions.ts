@@ -187,10 +187,14 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       throw new Error("Informe o motivo da perda para mover a oportunidade.");
     }
 
+    const forecast = forecastFor(data.stage);
     const { error } = await context.supabase
       .from("leads")
       .update({
         stage: data.stage,
+        probability: probabilityFor(data.stage),
+        ...(forecast ? { expected_close_date: forecast } : {}),
+        last_activity_at: new Date().toISOString(),
         loss_reason: data.stage === "perdido" ? data.loss_reason : null,
         loss_detail: data.stage === "perdido" ? data.loss_detail || null : null,
       })
@@ -202,18 +206,29 @@ export const moveLeadStage = createServerFn({ method: "POST" })
       from_stage: current.stage,
       to_stage: data.stage,
       changed_by: context.userId,
-      note: data.note || (data.loss_reason ? `Perda: ${data.loss_reason}` : null),
+      note:
+        data.note ||
+        (data.loss_reason
+          ? `Perda: ${data.loss_reason}`
+          : `Probabilidade atualizada para ${probabilityFor(data.stage)}%`),
     });
 
-    const { notifyN8n } = await import("@/lib/n8n.server");
-    await notifyN8n("lead_mudou_etapa", {
-      lead_id: data.id,
-      from_stage: current.stage,
-      to_stage: data.stage,
-      note: data.note || null,
-      loss_reason: data.loss_reason || null,
-      user_id: context.userId,
+    const { recordEvent } = await import("@/lib/events.server");
+    await recordEvent(context.supabase, {
+      eventType: "lead_mudou_etapa",
+      entityType: "lead",
+      entityId: data.id,
+      payload: {
+        from_stage: current.stage,
+        to_stage: data.stage,
+        probability: probabilityFor(data.stage),
+        expected_close_date: forecast,
+        note: data.note || null,
+        loss_reason: data.loss_reason || null,
+      },
+      userId: context.userId,
     });
+
 
     return { ok: true };
   });
