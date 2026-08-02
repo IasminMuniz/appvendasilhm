@@ -1,4 +1,4 @@
-const N8N_WEBHOOK_URL = "https://iasminlhmuniz.app.n8n.cloud/webhook/eventos_comerciais";
+const N8N_WEBHOOK_URL = "https://iasminlhmuniz.app.n8n.cloud/webhook-test/eventos_comerciais";
 
 /**
  * Envia um evento para o webhook do n8n. Nunca lança erro (não bloqueia o fluxo).
