@@ -18,6 +18,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteProduct, listProducts } from "@/lib/products.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
 
 const productsQueryOptions = () =>
   queryOptions({
