@@ -90,13 +90,29 @@ function ProductsPage() {
           <CardTitle>Lista de produtos</CardTitle>
         </CardHeader>
         <CardContent>
+          <BulkDeleteBar
+            total={products.length}
+            count={selection.selected.length}
+            allSelected={selection.allSelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+            isPending={removeMany.isPending}
+            entityLabel="produto(s)"
+            description="Os produtos selecionados e seus anexos serão removidos permanentemente."
+          />
           {products.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>
           ) : (
             <div className="divide-y">
               {products.map((product) => (
                 <div key={product.id} className="flex items-center justify-between gap-3 py-3">
+                  <Checkbox
+                    checked={selection.isSelected(product.id)}
+                    onCheckedChange={() => selection.toggle(product.id)}
+                    aria-label={`Selecionar ${product.name}`}
+                  />
                   <button
+
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
                     onClick={() => navigate({ to: "/produtos/$id", params: { id: product.id } })}
