@@ -109,7 +109,19 @@ function LeadsPage() {
   const [lossTarget, setLossTarget] = useState<{ id: string; name: string } | null>(null);
   const [loss, setLoss] = useState({ loss_reason: "", loss_detail: "" });
 
+  const selection = useBulkSelection(leads.map((l) => l.id));
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["leads"] });
+
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteLeads,
+    onSuccess: (result) => {
+      selection.clear();
+      invalidate();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const createMutation = useMutation({
     mutationFn: createLead,
