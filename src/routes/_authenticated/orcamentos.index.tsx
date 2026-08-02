@@ -38,6 +38,19 @@ const variants: Record<string, "default" | "secondary" | "destructive" | "outlin
 
 function QuotesPage() {
   const { data: quotes } = useSuspenseQuery(quotesQueryOptions());
+  const queryClient = useQueryClient();
+  const selection = useBulkSelection(quotes.map((q) => q.id));
+
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteQuotes,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      selection.clear();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir orçamentos."),
+  });
 
   return (
     <div className="space-y-6">
@@ -59,40 +72,57 @@ function QuotesPage() {
           <CardTitle>Lista de orçamentos</CardTitle>
         </CardHeader>
         <CardContent>
+          <BulkDeleteBar
+            total={quotes.length}
+            count={selection.selected.length}
+            allSelected={selection.allSelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+            isPending={removeMany.isPending}
+            entityLabel="orçamento(s)"
+            description="Os orçamentos selecionados, seus itens e aprovações serão removidos permanentemente."
+          />
           {quotes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum orçamento criado.</p>
           ) : (
             <div className="divide-y">
               {quotes.map((quote) => (
-                <Link
-                  key={quote.id}
-                  to="/orcamentos/$id"
-                  params={{ id: quote.id }}
-                  className="flex items-center justify-between py-3 hover:opacity-80"
-                >
-                  <div>
-                    <p className="font-medium">
-                      #{quote.number} · {quote.customers?.company_name || quote.customers?.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(quote.created_at).toLocaleDateString("pt-BR")} · Desconto{" "}
-                      {Number(quote.discount_percent ?? 0)}%
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold">
-                      {formatCurrency(Number(quote.total ?? 0))}
-                    </span>
-                    <Badge variant={variants[quote.status] ?? "outline"}>
-                      {QUOTE_STATUS_LABELS[quote.status] ?? quote.status}
-                    </Badge>
-                  </div>
-                </Link>
+                <div key={quote.id} className="flex items-center gap-3 py-3">
+                  <Checkbox
+                    checked={selection.isSelected(quote.id)}
+                    onCheckedChange={() => selection.toggle(quote.id)}
+                    aria-label={`Selecionar orçamento ${quote.number}`}
+                  />
+                  <Link
+                    to="/orcamentos/$id"
+                    params={{ id: quote.id }}
+                    className="flex flex-1 items-center justify-between hover:opacity-80"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        #{quote.number} · {quote.customers?.company_name || quote.customers?.name}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(quote.created_at).toLocaleDateString("pt-BR")} · Desconto{" "}
+                        {Number(quote.discount_percent ?? 0)}%
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-semibold">
+                        {formatCurrency(Number(quote.total ?? 0))}
+                      </span>
+                      <Badge variant={variants[quote.status] ?? "outline"}>
+                        {QUOTE_STATUS_LABELS[quote.status] ?? quote.status}
+                      </Badge>
+                    </div>
+                  </Link>
+                </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
     </div>
   );
 }
