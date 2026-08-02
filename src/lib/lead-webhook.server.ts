@@ -1,4 +1,4 @@
-import { postLeadWebhook } from "@/lib/n8n.server";
+import { postLeadWebhook, postLeadPersistWebhook } from "@/lib/n8n.server";
 
 /** Converte a etapa interna do funil para o status esperado pelo n8n. */
 export function mapLeadStatus(stage: string | null | undefined): string {
@@ -22,7 +22,7 @@ export async function sendLeadWebhook(
   payload: Record<string, unknown>,
   stage: string | null | undefined,
 ): Promise<void> {
-  await postLeadWebhook({
+  const body = {
     id: payload.lead_id ?? null,
     empresa: payload.empresa ?? null,
     contato: payload.contato ?? null,
@@ -33,5 +33,8 @@ export async function sendLeadWebhook(
     vendedor: payload.responsavel ?? null,
     origem: payload.origem ?? null,
     observacoes: payload.observacoes ?? null,
-  });
+  };
+
+  // 1) Webhook de e-mail (existente) e 2) webhook de persistência no PostgreSQL.
+  await Promise.all([postLeadWebhook(body), postLeadPersistWebhook(body)]);
 }

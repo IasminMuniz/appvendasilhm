@@ -1,4 +1,31 @@
 const N8N_WEBHOOK_URL = "https://iasminlhmuniz.app.n8n.cloud/webhook/nexus360-status";
+/** Webhook de persistência do lead no PostgreSQL (Supabase) via n8n. */
+const N8N_LEAD_PERSIST_URL = "https://iasminlhmuniz.app.n8n.cloud/webhook/nexus360-lead";
+
+/**
+ * POST do lead para o webhook de persistência no PostgreSQL.
+ * Nunca lança erro: automações não podem quebrar o fluxo comercial.
+ */
+export async function postLeadPersistWebhook(
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; error: string | null }> {
+  try {
+    const res = await fetch(N8N_LEAD_PERSIST_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(`[n8n] webhook de persistência falhou [${res.status}]: ${text}`);
+      return { ok: false, error: `HTTP ${res.status}: ${text.slice(0, 300)}` };
+    }
+    return { ok: true, error: null };
+  } catch (error) {
+    console.error("[n8n] erro ao chamar webhook de persistência:", error);
+    return { ok: false, error: String(error).slice(0, 300) };
+  }
+}
 
 /**
  * POST direto do lead (formato plano) para o webhook do n8n.
