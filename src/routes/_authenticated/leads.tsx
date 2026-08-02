@@ -451,7 +451,14 @@ function LeadsPage() {
                 )}
                 {stageLeads.map((lead) => (
                   <div key={lead.id} className="rounded-lg border bg-card p-3 shadow-sm">
-                    <p className="text-sm font-medium">{lead.name}</p>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        checked={selection.isSelected(lead.id)}
+                        onCheckedChange={() => selection.toggle(lead.id)}
+                        aria-label={`Selecionar ${lead.name}`}
+                      />
+                      <p className="text-sm font-medium">{lead.name}</p>
+                    </div>
                     {lead.company && (
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
                     )}
