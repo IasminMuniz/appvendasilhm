@@ -1,13 +1,10 @@
-const N8N_WEBHOOK_URL = "https://iasminlhmuniz.app.n8n.cloud/webhook-test/novo_lead";
+const N8N_WEBHOOK_URL = "https://iasminlhmuniz.app.n8n.cloud/webhook/eventos_comerciais";
 
 /**
  * Envia um evento para o webhook do n8n. Nunca lança erro (não bloqueia o fluxo).
  * Retorna o resultado da entrega para registro no histórico de eventos.
  */
-export async function notifyN8n(
-  event: string,
-  payload: unknown,
-): Promise<{ ok: boolean; error: string | null }> {
+export async function notifyN8n(event: string, payload: unknown): Promise<{ ok: boolean; error: string | null }> {
   try {
     const res = await fetch(N8N_WEBHOOK_URL, {
       method: "POST",
