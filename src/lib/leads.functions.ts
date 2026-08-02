@@ -119,14 +119,16 @@ export const createLead = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const { sendLeadWebhook } = await import("@/lib/lead-webhook.server");
+    const payload = await buildLeadPayload(context.supabase, inserted);
     await recordEvent(context.supabase, {
       eventType: "LEAD_CRIADO",
       entityType: "lead",
       entityId: inserted.id,
-      payload: await buildLeadPayload(context.supabase, inserted),
+      payload,
       userId: context.userId,
     });
-
+    await sendLeadWebhook(payload, inserted.stage);
 
     return inserted;
   });
