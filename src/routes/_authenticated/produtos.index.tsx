@@ -46,6 +46,7 @@ function ProductsPage() {
   const { data: products } = useSuspenseQuery(productsQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const selection = useBulkSelection(products.map((p) => p.id));
 
   const remove = useMutation({
     mutationFn: deleteProduct,
@@ -57,8 +58,20 @@ function ProductsPage() {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir produto."),
   });
 
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteProducts,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      selection.clear();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir produtos."),
+  });
+
   return (
     <div className="space-y-6">
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
