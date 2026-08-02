@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteCustomer, listCustomers } from "@/lib/customers.functions";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { bulkDeleteCustomers } from "@/lib/bulk-delete.functions";
 
 const customersQueryOptions = () =>
   queryOptions({
