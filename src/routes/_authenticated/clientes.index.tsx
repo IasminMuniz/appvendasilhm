@@ -18,6 +18,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteCustomer, listCustomers } from "@/lib/customers.functions";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { bulkDeleteCustomers } from "@/lib/bulk-delete.functions";
 
 const customersQueryOptions = () =>
   queryOptions({
@@ -43,6 +46,7 @@ function CustomersPage() {
   const { data: customers } = useSuspenseQuery(customersQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const selection = useBulkSelection(customers.map((c) => c.id));
 
   const remove = useMutation({
     mutationFn: deleteCustomer,
@@ -54,8 +58,20 @@ function CustomersPage() {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir cliente."),
   });
 
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteCustomers,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      selection.clear();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir clientes."),
+  });
+
   return (
     <div className="space-y-6">
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
@@ -76,13 +92,29 @@ function CustomersPage() {
           <CardTitle>Lista de clientes</CardTitle>
         </CardHeader>
         <CardContent>
+          <BulkDeleteBar
+            total={customers.length}
+            count={selection.selected.length}
+            allSelected={selection.allSelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+            isPending={removeMany.isPending}
+            entityLabel="cliente(s)"
+            description="Cadastros, contatos, interações e histórico dos clientes selecionados serão removidos permanentemente."
+          />
           {customers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
           ) : (
             <div className="divide-y">
               {customers.map((customer) => (
                 <div key={customer.id} className="flex items-center justify-between gap-3 py-3">
+                  <Checkbox
+                    checked={selection.isSelected(customer.id)}
+                    onCheckedChange={() => selection.toggle(customer.id)}
+                    aria-label={`Selecionar ${customer.name}`}
+                  />
                   <button
+
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
                     onClick={() => navigate({ to: "/clientes/$id", params: { id: customer.id } })}

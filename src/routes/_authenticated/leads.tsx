@@ -40,6 +40,9 @@ import {
   formatCurrency,
 } from "@/lib/commercial-constants";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { bulkDeleteLeads } from "@/lib/bulk-delete.functions";
 import {
   CEP_ERROR,
   PHONE_ERROR,
@@ -109,7 +112,19 @@ function LeadsPage() {
   const [lossTarget, setLossTarget] = useState<{ id: string; name: string } | null>(null);
   const [loss, setLoss] = useState({ loss_reason: "", loss_detail: "" });
 
+  const selection = useBulkSelection(leads.map((l) => l.id));
+
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["leads"] });
+
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteLeads,
+    onSuccess: (result) => {
+      selection.clear();
+      invalidate();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const createMutation = useMutation({
     mutationFn: createLead,
@@ -402,6 +417,18 @@ function LeadsPage() {
 
       <LocationAnalytics />
 
+      <BulkDeleteBar
+        total={leads.length}
+        count={selection.selected.length}
+        allSelected={selection.allSelected}
+        onToggleAll={selection.toggleAll}
+        onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+        isPending={removeMany.isPending}
+        entityLabel="lead(s)"
+        description="Os leads selecionados e seu histórico de etapas serão removidos permanentemente."
+      />
+
+
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
           const stageLeads = leads.filter((l) => l.stage === stage.value);
@@ -424,7 +451,14 @@ function LeadsPage() {
                 )}
                 {stageLeads.map((lead) => (
                   <div key={lead.id} className="rounded-lg border bg-card p-3 shadow-sm">
-                    <p className="text-sm font-medium">{lead.name}</p>
+                    <div className="flex items-start gap-2">
+                      <Checkbox
+                        checked={selection.isSelected(lead.id)}
+                        onCheckedChange={() => selection.toggle(lead.id)}
+                        aria-label={`Selecionar ${lead.name}`}
+                      />
+                      <p className="text-sm font-medium">{lead.name}</p>
+                    </div>
                     {lead.company && (
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
                     )}

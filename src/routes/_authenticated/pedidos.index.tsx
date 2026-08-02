@@ -1,10 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { bulkDeleteOrders } from "@/lib/bulk-delete.functions";
 import { listOrders } from "@/lib/orders.functions";
 import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
 
@@ -36,6 +40,19 @@ export const Route = createFileRoute("/_authenticated/pedidos/")({
 
 function OrdersPage() {
   const { data: orders } = useSuspenseQuery(ordersQueryOptions());
+  const queryClient = useQueryClient();
+  const selection = useBulkSelection(orders.map((o) => o.id));
+
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteOrders,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      selection.clear();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir pedidos."),
+  });
 
   return (
     <div className="space-y-6">
@@ -57,35 +74,54 @@ function OrdersPage() {
           <CardTitle>Lista de pedidos</CardTitle>
         </CardHeader>
         <CardContent>
+          <BulkDeleteBar
+            total={orders.length}
+            count={selection.selected.length}
+            allSelected={selection.allSelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+            isPending={removeMany.isPending}
+            entityLabel="pedido(s)"
+            description="Os pedidos selecionados, seus itens e histórico serão removidos permanentemente."
+          />
           {orders.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum pedido registrado.</p>
           ) : (
             <div className="divide-y">
               {orders.map((order) => (
-                <Link
-                  key={order.id}
-                  to="/pedidos/$id"
-                  params={{ id: order.id }}
-                  className="flex items-center justify-between py-3 hover:bg-accent/50"
-                >
-                  <div>
-                    <p className="font-medium">{order.customers?.name ?? "Cliente"}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(order.created_at ?? "").toLocaleDateString("pt-BR")}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={statusVariants[order.status ?? "novo"] ?? "outline"}>
-                      {ORDER_STATUS_LABELS[order.status ?? "novo"] ?? order.status}
-                    </Badge>
-                    <span className="font-semibold">{formatCurrency(Number(order.total ?? 0))}</span>
-                  </div>
-                </Link>
+                <div key={order.id} className="flex items-center gap-3 py-3">
+                  <Checkbox
+                    checked={selection.isSelected(order.id)}
+                    onCheckedChange={() => selection.toggle(order.id)}
+                    aria-label="Selecionar pedido"
+                  />
+                  <Link
+                    to="/pedidos/$id"
+                    params={{ id: order.id }}
+                    className="flex flex-1 items-center justify-between hover:bg-accent/50"
+                  >
+                    <div>
+                      <p className="font-medium">{order.customers?.name ?? "Cliente"}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(order.created_at ?? "").toLocaleDateString("pt-BR")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Badge variant={statusVariants[order.status ?? "novo"] ?? "outline"}>
+                        {ORDER_STATUS_LABELS[order.status ?? "novo"] ?? order.status}
+                      </Badge>
+                      <span className="font-semibold">
+                        {formatCurrency(Number(order.total ?? 0))}
+                      </span>
+                    </div>
+                  </Link>
+                </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
+
     </div>
   );
 }

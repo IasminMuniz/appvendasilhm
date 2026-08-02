@@ -18,6 +18,9 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteProduct, listProducts } from "@/lib/products.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
 
 const productsQueryOptions = () =>
   queryOptions({
@@ -43,6 +46,7 @@ function ProductsPage() {
   const { data: products } = useSuspenseQuery(productsQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const selection = useBulkSelection(products.map((p) => p.id));
 
   const remove = useMutation({
     mutationFn: deleteProduct,
@@ -54,8 +58,20 @@ function ProductsPage() {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir produto."),
   });
 
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteProducts,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      selection.clear();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir produtos."),
+  });
+
   return (
     <div className="space-y-6">
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
@@ -74,13 +90,29 @@ function ProductsPage() {
           <CardTitle>Lista de produtos</CardTitle>
         </CardHeader>
         <CardContent>
+          <BulkDeleteBar
+            total={products.length}
+            count={selection.selected.length}
+            allSelected={selection.allSelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+            isPending={removeMany.isPending}
+            entityLabel="produto(s)"
+            description="Os produtos selecionados e seus anexos serão removidos permanentemente."
+          />
           {products.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>
           ) : (
             <div className="divide-y">
               {products.map((product) => (
                 <div key={product.id} className="flex items-center justify-between gap-3 py-3">
+                  <Checkbox
+                    checked={selection.isSelected(product.id)}
+                    onCheckedChange={() => selection.toggle(product.id)}
+                    aria-label={`Selecionar ${product.name}`}
+                  />
                   <button
+
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
                     onClick={() => navigate({ to: "/produtos/$id", params: { id: product.id } })}
