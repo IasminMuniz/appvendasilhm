@@ -118,21 +118,15 @@ export const createLead = createServerFn({ method: "POST" })
     });
 
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
     await recordEvent(context.supabase, {
       eventType: "LEAD_CRIADO",
       entityType: "lead",
       entityId: inserted.id,
-      payload: {
-        lead_id: inserted.id,
-        empresa: inserted.company,
-        contato: inserted.name,
-        origem: inserted.source,
-        responsavel_id: inserted.owner_id,
-        valor_estimado: Number(inserted.estimated_value ?? 0),
-        criado_em: inserted.created_at,
-      },
+      payload: await buildLeadPayload(context.supabase, inserted),
       userId: context.userId,
     });
+
 
     return inserted;
   });
@@ -142,6 +136,11 @@ export const updateLead = createServerFn({ method: "POST" })
   .inputValidator((data) => leadSchema.partial().extend({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { id, ...rest } = data;
+    const { data: previous } = await context.supabase
+      .from("leads")
+      .select("stage")
+      .eq("id", id)
+      .maybeSingle();
     const { error } = await context.supabase
       .from("leads")
       .update({
@@ -155,17 +154,43 @@ export const updateLead = createServerFn({ method: "POST" })
       .eq("id", id);
     if (error) throw new Error(error.message);
 
+    const { data: updated } = await context.supabase
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const payload = await buildLeadPayload(context.supabase, updated ?? { id, ...rest });
     await recordEvent(context.supabase, {
       eventType: "LEAD_ATUALIZADO",
       entityType: "lead",
       entityId: id,
-      payload: { lead: data },
+      payload,
       userId: context.userId,
     });
 
+    const stageChanged = rest.stage && previous?.stage && previous.stage !== rest.stage;
+    if (stageChanged) {
+      await recordEvent(context.supabase, {
+        eventType: "LEAD_STATUS_ALTERADO",
+        entityType: "lead",
+        entityId: id,
+        payload: {
+          ...payload,
+          status_anterior: previous?.stage ?? null,
+          novo_status: rest.stage,
+          alterado_por: context.userId,
+          alterado_em: new Date().toISOString(),
+        },
+        userId: context.userId,
+      });
+    }
+
     return { ok: true };
   });
+
 
 
 export const moveLeadStage = createServerFn({ method: "POST" })
@@ -227,12 +252,19 @@ export const moveLeadStage = createServerFn({ method: "POST" })
           : `Probabilidade atualizada para ${probabilityFor(data.stage)}%`),
     });
 
+    const { data: updated } = await context.supabase
+      .from("leads")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
     await recordEvent(context.supabase, {
       eventType: "LEAD_STATUS_ALTERADO",
       entityType: "lead",
       entityId: data.id,
-      payload: {
+      payload: await buildLeadPayload(context.supabase, updated ?? { id: data.id }, {
         status_anterior: current.stage,
         novo_status: data.stage,
         alterado_por: context.userId,
@@ -241,9 +273,10 @@ export const moveLeadStage = createServerFn({ method: "POST" })
         expected_close_date: forecast,
         note: data.note || null,
         loss_reason: data.loss_reason || null,
-      },
+      }),
       userId: context.userId,
     });
+
 
     if (data.stage === "ganho") {
       const { data: lead } = await context.supabase
