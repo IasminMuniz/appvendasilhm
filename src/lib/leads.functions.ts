@@ -264,22 +264,27 @@ export const moveLeadStage = createServerFn({ method: "POST" })
 
     const { recordEvent } = await import("@/lib/events.server");
     const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const { sendLeadWebhook } = await import("@/lib/lead-webhook.server");
+    const statusPayload = await buildLeadPayload(context.supabase, updated ?? { id: data.id }, {
+      status_anterior: current.stage,
+      novo_status: data.stage,
+      alterado_por: context.userId,
+      alterado_em: new Date().toISOString(),
+      probabilidade: probabilityFor(data.stage),
+      expected_close_date: forecast,
+      note: data.note || null,
+      loss_reason: data.loss_reason || null,
+    });
     await recordEvent(context.supabase, {
       eventType: "LEAD_STATUS_ALTERADO",
       entityType: "lead",
       entityId: data.id,
-      payload: await buildLeadPayload(context.supabase, updated ?? { id: data.id }, {
-        status_anterior: current.stage,
-        novo_status: data.stage,
-        alterado_por: context.userId,
-        alterado_em: new Date().toISOString(),
-        probabilidade: probabilityFor(data.stage),
-        expected_close_date: forecast,
-        note: data.note || null,
-        loss_reason: data.loss_reason || null,
-      }),
+      payload: statusPayload,
       userId: context.userId,
     });
+    await sendLeadWebhook(statusPayload, data.stage);
+
+
 
 
     if (data.stage === "ganho") {
