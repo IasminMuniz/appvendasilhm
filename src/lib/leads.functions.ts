@@ -118,21 +118,15 @@ export const createLead = createServerFn({ method: "POST" })
     });
 
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
     await recordEvent(context.supabase, {
       eventType: "LEAD_CRIADO",
       entityType: "lead",
       entityId: inserted.id,
-      payload: {
-        lead_id: inserted.id,
-        empresa: inserted.company,
-        contato: inserted.name,
-        origem: inserted.source,
-        responsavel_id: inserted.owner_id,
-        valor_estimado: Number(inserted.estimated_value ?? 0),
-        criado_em: inserted.created_at,
-      },
+      payload: await buildLeadPayload(context.supabase, inserted),
       userId: context.userId,
     });
+
 
     return inserted;
   });
