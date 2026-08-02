@@ -474,6 +474,13 @@ export const convertLeadToCustomer = createServerFn({ method: "POST" })
       userId: context.userId,
     });
 
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const { sendLeadWebhook } = await import("@/lib/lead-webhook.server");
+    await sendLeadWebhook(
+      await buildLeadPayload(context.supabase, { ...lead, stage: "convertido" }),
+      "convertido",
+    );
+
     return { customerId: customer.id };
   });
 
