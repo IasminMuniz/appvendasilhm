@@ -188,6 +188,8 @@ export const updateLead = createServerFn({ method: "POST" })
         },
         userId: context.userId,
       });
+      const { sendLeadWebhook } = await import("@/lib/lead-webhook.server");
+      await sendLeadWebhook(payload, rest.stage);
     }
 
     return { ok: true };
