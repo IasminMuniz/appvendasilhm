@@ -252,12 +252,19 @@ export const moveLeadStage = createServerFn({ method: "POST" })
           : `Probabilidade atualizada para ${probabilityFor(data.stage)}%`),
     });
 
+    const { data: updated } = await context.supabase
+      .from("leads")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
     await recordEvent(context.supabase, {
       eventType: "LEAD_STATUS_ALTERADO",
       entityType: "lead",
       entityId: data.id,
-      payload: {
+      payload: await buildLeadPayload(context.supabase, updated ?? { id: data.id }, {
         status_anterior: current.stage,
         novo_status: data.stage,
         alterado_por: context.userId,
@@ -266,9 +273,10 @@ export const moveLeadStage = createServerFn({ method: "POST" })
         expected_close_date: forecast,
         note: data.note || null,
         loss_reason: data.loss_reason || null,
-      },
+      }),
       userId: context.userId,
     });
+
 
     if (data.stage === "ganho") {
       const { data: lead } = await context.supabase
