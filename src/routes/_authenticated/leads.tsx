@@ -417,6 +417,18 @@ function LeadsPage() {
 
       <LocationAnalytics />
 
+      <BulkDeleteBar
+        total={leads.length}
+        count={selection.selected.length}
+        allSelected={selection.allSelected}
+        onToggleAll={selection.toggleAll}
+        onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+        isPending={removeMany.isPending}
+        entityLabel="lead(s)"
+        description="Os leads selecionados e seu histórico de etapas serão removidos permanentemente."
+      />
+
+
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
           const stageLeads = leads.filter((l) => l.stage === stage.value);
