@@ -46,6 +46,7 @@ function CustomersPage() {
   const { data: customers } = useSuspenseQuery(customersQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const selection = useBulkSelection(customers.map((c) => c.id));
 
   const remove = useMutation({
     mutationFn: deleteCustomer,
@@ -57,8 +58,20 @@ function CustomersPage() {
       toast.error(err instanceof Error ? err.message : "Erro ao excluir cliente."),
   });
 
+  const removeMany = useMutation({
+    mutationFn: bulkDeleteCustomers,
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
+      selection.clear();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (err) =>
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir clientes."),
+  });
+
   return (
     <div className="space-y-6">
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
