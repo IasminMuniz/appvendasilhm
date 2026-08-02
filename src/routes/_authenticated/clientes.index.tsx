@@ -92,13 +92,29 @@ function CustomersPage() {
           <CardTitle>Lista de clientes</CardTitle>
         </CardHeader>
         <CardContent>
+          <BulkDeleteBar
+            total={customers.length}
+            count={selection.selected.length}
+            allSelected={selection.allSelected}
+            onToggleAll={selection.toggleAll}
+            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+            isPending={removeMany.isPending}
+            entityLabel="cliente(s)"
+            description="Cadastros, contatos, interações e histórico dos clientes selecionados serão removidos permanentemente."
+          />
           {customers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
           ) : (
             <div className="divide-y">
               {customers.map((customer) => (
                 <div key={customer.id} className="flex items-center justify-between gap-3 py-3">
+                  <Checkbox
+                    checked={selection.isSelected(customer.id)}
+                    onCheckedChange={() => selection.toggle(customer.id)}
+                    aria-label={`Selecionar ${customer.name}`}
+                  />
                   <button
+
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
                     onClick={() => navigate({ to: "/clientes/$id", params: { id: customer.id } })}
