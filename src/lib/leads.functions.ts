@@ -136,6 +136,11 @@ export const updateLead = createServerFn({ method: "POST" })
   .inputValidator((data) => leadSchema.partial().extend({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { id, ...rest } = data;
+    const { data: previous } = await context.supabase
+      .from("leads")
+      .select("stage")
+      .eq("id", id)
+      .maybeSingle();
     const { error } = await context.supabase
       .from("leads")
       .update({
@@ -149,17 +154,43 @@ export const updateLead = createServerFn({ method: "POST" })
       .eq("id", id);
     if (error) throw new Error(error.message);
 
+    const { data: updated } = await context.supabase
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const payload = await buildLeadPayload(context.supabase, updated ?? { id, ...rest });
     await recordEvent(context.supabase, {
       eventType: "LEAD_ATUALIZADO",
       entityType: "lead",
       entityId: id,
-      payload: { lead: data },
+      payload,
       userId: context.userId,
     });
 
+    const stageChanged = rest.stage && previous?.stage && previous.stage !== rest.stage;
+    if (stageChanged) {
+      await recordEvent(context.supabase, {
+        eventType: "LEAD_STATUS_ALTERADO",
+        entityType: "lead",
+        entityId: id,
+        payload: {
+          ...payload,
+          status_anterior: previous?.stage ?? null,
+          novo_status: rest.stage,
+          alterado_por: context.userId,
+          alterado_em: new Date().toISOString(),
+        },
+        userId: context.userId,
+      });
+    }
+
     return { ok: true };
   });
+
 
 
 export const moveLeadStage = createServerFn({ method: "POST" })
