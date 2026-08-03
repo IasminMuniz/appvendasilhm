@@ -94,6 +94,7 @@ export const createLead = createServerFn({ method: "POST" })
         city: data.city || null,
         state: data.state || null,
         postal_code: data.postal_code || null,
+        cnpj: data.cnpj || null,
         segment: data.segment || null,
         source: data.source || null,
         stage: data.stage,
