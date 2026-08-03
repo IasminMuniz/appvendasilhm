@@ -86,9 +86,13 @@ function UsersPage() {
   const { data } = useSuspenseQuery(usersQueryOptions());
   const userSearch = useRecordSearch(data.users, (u) => [u.full_name, u.email, u.id]);
   const isAdmin = data.me.isAdmin;
+  const visibleUsers = userSearch.results;
+  const selection = useBulkSelection(visibleUsers.map((u) => u.id));
 
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [bulkRoleOpen, setBulkRoleOpen] = useState(false);
+  const [bulkRole, setBulkRole] = useState<string>("vendedor");
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -98,6 +102,38 @@ function UsersPage() {
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
+
+  const removeMany = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteUsers({ data: { ids } }),
+    onSuccess: (result) => {
+      selection.clear();
+      invalidate();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkRoleMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) await setUserRole({ data: { user_id: id, role: bulkRole } });
+    },
+    onSuccess: () => {
+      setBulkRoleOpen(false);
+      selection.clear();
+      invalidate();
+      toast.success("Perfil de acesso atualizado para os usuários selecionados");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const handleBulkEdit = () => {
+    if (!isAdmin) {
+      toast.info("Apenas o administrador pode editar perfis de acesso.");
+      return;
+    }
+    setBulkRoleOpen(true);
+  };
+
 
   const roleMutation = useMutation({
     mutationFn: (vars: { user_id: string; role: string }) => setUserRole({ data: vars }),
