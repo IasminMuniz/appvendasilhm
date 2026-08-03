@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
@@ -7,10 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteOrders } from "@/lib/bulk-delete.functions";
 import { listOrders } from "@/lib/orders.functions";
 import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
+
 
 const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   novo: "secondary",
@@ -41,6 +42,7 @@ export const Route = createFileRoute("/_authenticated/pedidos/")({
 function OrdersPage() {
   const { data: orders } = useSuspenseQuery(ordersQueryOptions());
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const selection = useBulkSelection(orders.map((o) => o.id));
 
   const removeMany = useMutation({
@@ -53,6 +55,14 @@ function OrdersPage() {
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : "Erro ao excluir pedidos."),
   });
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      navigate({ to: "/pedidos/$id", params: { id: selection.selected[0]! } });
+      return;
+    }
+    toast.info("Selecione apenas um pedido para abrir o formulário de edição.");
+  };
 
   return (
     <div className="space-y-6">
@@ -70,20 +80,22 @@ function OrdersPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Lista de pedidos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BulkDeleteBar
+          <OptionsMenu
             total={orders.length}
             count={selection.selected.length}
-            allSelected={selection.allSelected}
-            onToggleAll={selection.toggleAll}
+            onSelectAll={selection.selectAll}
+            onClearAll={selection.clear}
+            onEdit={handleEdit}
             onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
             isPending={removeMany.isPending}
             entityLabel="pedido(s)"
             description="Os pedidos selecionados, seus itens e histórico serão removidos permanentemente."
           />
+        </CardHeader>
+        <CardContent>
+
           {orders.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum pedido registrado.</p>
           ) : (
