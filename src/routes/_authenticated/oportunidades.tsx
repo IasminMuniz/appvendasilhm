@@ -356,8 +356,19 @@ function OpportunitiesPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Lista de oportunidades</CardTitle>
+          <OptionsMenu
+            total={opportunities.length}
+            count={selection.selected.length}
+            onSelectAll={selection.selectAll}
+            onClearAll={selection.clear}
+            onEdit={handleEdit}
+            onDelete={() => removeMany.mutate(selection.selected)}
+            isPending={removeMany.isPending}
+            entityLabel="oportunidade(s)"
+            description="As oportunidades selecionadas serão removidas permanentemente."
+          />
         </CardHeader>
         <CardContent>
           {opportunities.length === 0 ? (
@@ -366,13 +377,23 @@ function OpportunitiesPage() {
             <div className="divide-y">
               {opportunities.map((o) => (
                 <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="font-medium">{o.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {o.customers?.company_name || o.customers?.name || o.leads?.name || "Sem cliente"}
-                      {o.products?.name ? ` · ${o.products.name}` : ""} · Previsão{" "}
-                      {formatDate(o.expected_close_date)}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selection.isSelected(o.id)}
+                      onCheckedChange={() => selection.toggle(o.id)}
+                      aria-label={`Selecionar ${o.title}`}
+                    />
+                    <div>
+                      <p className="font-medium">{o.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {o.customers?.company_name ||
+                          o.customers?.name ||
+                          o.leads?.name ||
+                          "Sem cliente"}
+                        {o.products?.name ? ` · ${o.products.name}` : ""} · Previsão{" "}
+                        {formatDate(o.expected_close_date)}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">{formatCurrency(Number(o.amount ?? 0))}</span>
@@ -396,18 +417,11 @@ function OpportunitiesPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Excluir oportunidade"
-                      onClick={() => deleteMutation.mutate({ data: { id: o.id } })}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               ))}
             </div>
+
           )}
         </CardContent>
       </Card>
