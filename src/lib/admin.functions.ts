@@ -205,3 +205,27 @@ export const runInactiveCustomersCheck = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { created: Number(count ?? 0) };
   });
+
+/** Exclui usuários selecionados (somente administrador). */
+export const bulkDeleteUsers = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { ids: string[] }) =>
+    z.object({ ids: z.array(z.string().uuid()).min(1) }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let deleted = 0;
+    let skipped = 0;
+    for (const id of data.ids) {
+      if (id === context.userId) {
+        skipped += 1;
+        continue;
+      }
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
+      if (error) skipped += 1;
+      else deleted += 1;
+    }
+    return { deleted, skipped };
+  });
