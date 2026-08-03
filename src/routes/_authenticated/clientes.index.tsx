@@ -1,25 +1,15 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { deleteCustomer, listCustomers } from "@/lib/customers.functions";
+import { Link } from "@tanstack/react-router";
+import { listCustomers } from "@/lib/customers.functions";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteCustomers } from "@/lib/bulk-delete.functions";
 
 const customersQueryOptions = () =>
@@ -48,16 +38,6 @@ function CustomersPage() {
   const navigate = useNavigate();
   const selection = useBulkSelection(customers.map((c) => c.id));
 
-  const remove = useMutation({
-    mutationFn: deleteCustomer,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["customers"] });
-      toast.success("Cliente excluído.");
-    },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir cliente."),
-  });
-
   const removeMany = useMutation({
     mutationFn: bulkDeleteCustomers,
     onSuccess: (result) => {
@@ -68,6 +48,14 @@ function CustomersPage() {
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : "Erro ao excluir clientes."),
   });
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      navigate({ to: "/clientes/$id/editar", params: { id: selection.selected[0]! } });
+      return;
+    }
+    toast.info("Selecione apenas um cliente para abrir o formulário de edição.");
+  };
 
   return (
     <div className="space-y-6">
@@ -88,20 +76,21 @@ function CustomersPage() {
       <LocationAnalytics show={["customersByCity", "conversionByRegion"]} />
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Lista de clientes</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BulkDeleteBar
+          <OptionsMenu
             total={customers.length}
             count={selection.selected.length}
-            allSelected={selection.allSelected}
-            onToggleAll={selection.toggleAll}
+            onSelectAll={selection.selectAll}
+            onClearAll={selection.clear}
+            onEdit={handleEdit}
             onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
             isPending={removeMany.isPending}
             entityLabel="cliente(s)"
             description="Cadastros, contatos, interações e histórico dos clientes selecionados serão removidos permanentemente."
           />
+        </CardHeader>
+        <CardContent>
           {customers.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
           ) : (
@@ -114,7 +103,6 @@ function CustomersPage() {
                     aria-label={`Selecionar ${customer.name}`}
                   />
                   <button
-
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
                     onClick={() => navigate({ to: "/clientes/$id", params: { id: customer.id } })}
@@ -130,42 +118,6 @@ function CustomersPage() {
                       </p>
                     )}
                   </button>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" asChild aria-label="Editar cliente">
-                      <Link to="/clientes/$id/editar" params={{ id: customer.id }}>
-                        <Pencil className="h-4 w-4" />
-                      </Link>
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          aria-label="Excluir cliente"
-                          disabled={remove.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir {customer.name}?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            O cadastro, contatos, interações e histórico serão removidos
-                            permanentemente.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => remove.mutate({ data: { id: customer.id } })}
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
                 </div>
               ))}
             </div>

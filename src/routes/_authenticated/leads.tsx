@@ -30,6 +30,7 @@ import {
   getPipelineMetrics,
   listLeads,
   moveLeadStage,
+  updateLead,
 } from "@/lib/leads.functions";
 import {
   BRAZIL_STATES,
@@ -41,8 +42,9 @@ import {
 } from "@/lib/commercial-constants";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteLeads } from "@/lib/bulk-delete.functions";
+
 import {
   CEP_ERROR,
   PHONE_ERROR,
@@ -108,13 +110,76 @@ function LeadsPage() {
   const { data: leads } = useSuspenseQuery(leadsQueryOptions());
   const { data: pipeline } = useSuspenseQuery(pipelineQueryOptions());
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyLead);
+  const [massOpen, setMassOpen] = useState(false);
+  const [massStage, setMassStage] = useState("");
   const [lossTarget, setLossTarget] = useState<{ id: string; name: string } | null>(null);
   const [loss, setLoss] = useState({ loss_reason: "", loss_detail: "" });
+
 
   const selection = useBulkSelection(leads.map((l) => l.id));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["leads"] });
+
+  const updateMutation = useMutation({
+    mutationFn: updateLead,
+    onSuccess: () => {
+      toast.success("Lead atualizado");
+      setOpen(false);
+      setEditingId(null);
+      setForm(emptyLead);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const massStageMutation = useMutation({
+    mutationFn: async (stage: string) => {
+      for (const id of selection.selected) {
+        await updateLead({ data: { id, stage } });
+      }
+    },
+    onSuccess: () => {
+      toast.success("Etapa atualizada nos leads selecionados.");
+      setMassOpen(false);
+      setMassStage("");
+      selection.clear();
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      const lead = leads.find((l) => l.id === selection.selected[0]);
+      if (!lead) return;
+      setForm({
+        ...emptyLead,
+        name: lead.name ?? "",
+        company: lead.company ?? "",
+        email: lead.email ?? "",
+        phone: lead.phone ?? "",
+        city: lead.city ?? "",
+        state: lead.state ?? "",
+        postal_code: lead.postal_code ?? "",
+        segment: lead.segment ?? "",
+        source: lead.source ?? "",
+        stage: lead.stage ?? "novo",
+        estimated_value: Number(lead.estimated_value ?? 0),
+        probability: Number(lead.probability ?? 0),
+        next_action: lead.next_action ?? "",
+        next_action_date: lead.next_action_date ?? "",
+        expected_close_date: lead.expected_close_date ?? "",
+        notes: lead.notes ?? "",
+      });
+      setEditingId(lead.id);
+      setOpen(true);
+      return;
+    }
+    setMassOpen(true);
+  };
+
 
   const removeMany = useMutation({
     mutationFn: bulkDeleteLeads,
@@ -187,7 +252,16 @@ function LeadsPage() {
             {leads.length} registros no funil · {formatCurrency(totalValue)} em oportunidades
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) {
+              setEditingId(null);
+              setForm(emptyLead);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -196,7 +270,7 @@ function LeadsPage() {
           </DialogTrigger>
           <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Novo lead</DialogTitle>
+              <DialogTitle>{editingId ? "Editar lead" : "Novo lead"}</DialogTitle>
             </DialogHeader>
             <form
               className="grid gap-3 sm:grid-cols-2"
@@ -207,9 +281,14 @@ function LeadsPage() {
                   toast.error(invalid);
                   return;
                 }
+                if (editingId) {
+                  updateMutation.mutate({ data: { id: editingId, ...form } });
+                  return;
+                }
                 createMutation.mutate({ data: form });
               }}
             >
+
               {[
                 ["name", "Nome *"],
                 ["company", "Empresa"],
@@ -367,9 +446,18 @@ function LeadsPage() {
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 />
               </div>
-              <Button type="submit" className="sm:col-span-2" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Salvando..." : "Criar lead"}
+              <Button
+                type="submit"
+                className="sm:col-span-2"
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {createMutation.isPending || updateMutation.isPending
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Criar lead"}
               </Button>
+
             </form>
           </DialogContent>
         </Dialog>
@@ -417,16 +505,48 @@ function LeadsPage() {
 
       <LocationAnalytics />
 
-      <BulkDeleteBar
+      <OptionsMenu
         total={leads.length}
         count={selection.selected.length}
-        allSelected={selection.allSelected}
-        onToggleAll={selection.toggleAll}
+        onSelectAll={selection.selectAll}
+        onClearAll={selection.clear}
+        onEdit={handleEdit}
         onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
         isPending={removeMany.isPending}
         entityLabel="lead(s)"
         description="Os leads selecionados e seu histórico de etapas serão removidos permanentemente."
       />
+
+      <Dialog open={massOpen} onOpenChange={setMassOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar {selection.selected.length} leads</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Nova etapa do funil</Label>
+            <Select value={massStage} onValueChange={setMassStage}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a etapa" />
+              </SelectTrigger>
+              <SelectContent>
+                {SELECTABLE_STAGES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!massStage || massStageMutation.isPending}
+              onClick={() => massStageMutation.mutate(massStage)}
+            >
+              {massStageMutation.isPending ? "Aplicando..." : "Aplicar aos selecionados"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
 
       <div className="flex gap-4 overflow-x-auto pb-4">

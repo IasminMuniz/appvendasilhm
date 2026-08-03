@@ -1,14 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { OptionsMenu, useBulkSelection } from "@/components/bulk-select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 import {
   Dialog,
   DialogContent,
@@ -100,7 +103,11 @@ function OpportunitiesPage() {
   const { data: customers } = useSuspenseQuery(customersQueryOptions());
   const { data: products } = useSuspenseQuery(productsQueryOptions());
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [massOpen, setMassOpen] = useState(false);
+  const [massStatus, setMassStatus] = useState("");
+  const selection = useBulkSelection(opportunities.map((o) => o.id));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["opportunities"] });
 
@@ -124,14 +131,70 @@ function OpportunitiesPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao atualizar."),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteOpportunity,
+  const updateMutation = useMutation({
+    mutationFn: updateOpportunity,
     onSuccess: () => {
       invalidate();
-      toast.success("Oportunidade excluída.");
+      setOpen(false);
+      setEditingId(null);
+      setForm(emptyForm);
+      toast.success("Oportunidade atualizada.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao atualizar."),
+  });
+
+  const massStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      for (const id of selection.selected) {
+        await updateOpportunity({ data: { id, status: status as "aberta" } });
+      }
+    },
+    onSuccess: () => {
+      invalidate();
+      setMassOpen(false);
+      setMassStatus("");
+      selection.clear();
+      toast.success("Status atualizado nas oportunidades selecionadas.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao atualizar."),
+  });
+
+  const removeMany = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await deleteOpportunity({ data: { id } });
+      }
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      invalidate();
+      selection.clear();
+      toast.success(`${count} registro(s) excluído(s).`);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao excluir."),
   });
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      const opp = opportunities.find((o) => o.id === selection.selected[0]);
+      if (!opp) return;
+      setForm({
+        title: opp.title ?? "",
+        customer_id: opp.customer_id ?? "",
+        product_id: opp.product_id ?? "",
+        product_description: opp.product_description ?? "",
+        amount: String(opp.amount ?? 0),
+        status: (opp.status ?? "aberta") as typeof emptyForm.status,
+        expected_close_date: opp.expected_close_date ?? "",
+        notes: opp.notes ?? "",
+      });
+      setEditingId(opp.id);
+      setOpen(true);
+      return;
+    }
+    setMassOpen(true);
+  };
+
 
   const openOnes = opportunities.filter((o) => o.status === "aberta" || o.status === "em_negociacao");
   const totalOpen = openOnes.reduce((s, o) => s + Number(o.amount ?? 0), 0);
@@ -149,7 +212,17 @@ function OpportunitiesPage() {
             Negociações em andamento com valor, probabilidade e previsão.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) {
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
+
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -158,7 +231,7 @@ function OpportunitiesPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nova oportunidade</DialogTitle>
+              <DialogTitle>{editingId ? "Editar oportunidade" : "Nova oportunidade"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -257,12 +330,23 @@ function OpportunitiesPage() {
             </div>
             <DialogFooter>
               <Button
-                disabled={!form.title.trim() || createMutation.isPending}
-                onClick={() => createMutation.mutate({ data: form })}
+                disabled={
+                  !form.title.trim() || createMutation.isPending || updateMutation.isPending
+                }
+                onClick={() =>
+                  editingId
+                    ? updateMutation.mutate({ data: { id: editingId, ...form } })
+                    : createMutation.mutate({ data: form })
+                }
               >
-                {createMutation.isPending ? "Salvando..." : "Criar"}
+                {createMutation.isPending || updateMutation.isPending
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Criar"}
               </Button>
             </DialogFooter>
+
           </DialogContent>
         </Dialog>
       </div>
@@ -293,8 +377,19 @@ function OpportunitiesPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Lista de oportunidades</CardTitle>
+          <OptionsMenu
+            total={opportunities.length}
+            count={selection.selected.length}
+            onSelectAll={selection.selectAll}
+            onClearAll={selection.clear}
+            onEdit={handleEdit}
+            onDelete={() => removeMany.mutate(selection.selected)}
+            isPending={removeMany.isPending}
+            entityLabel="oportunidade(s)"
+            description="As oportunidades selecionadas serão removidas permanentemente."
+          />
         </CardHeader>
         <CardContent>
           {opportunities.length === 0 ? (
@@ -303,13 +398,23 @@ function OpportunitiesPage() {
             <div className="divide-y">
               {opportunities.map((o) => (
                 <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="font-medium">{o.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {o.customers?.company_name || o.customers?.name || o.leads?.name || "Sem cliente"}
-                      {o.products?.name ? ` · ${o.products.name}` : ""} · Previsão{" "}
-                      {formatDate(o.expected_close_date)}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selection.isSelected(o.id)}
+                      onCheckedChange={() => selection.toggle(o.id)}
+                      aria-label={`Selecionar ${o.title}`}
+                    />
+                    <div>
+                      <p className="font-medium">{o.title}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {o.customers?.company_name ||
+                          o.customers?.name ||
+                          o.leads?.name ||
+                          "Sem cliente"}
+                        {o.products?.name ? ` · ${o.products.name}` : ""} · Previsão{" "}
+                        {formatDate(o.expected_close_date)}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">{formatCurrency(Number(o.amount ?? 0))}</span>
@@ -333,21 +438,45 @@ function OpportunitiesPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label="Excluir oportunidade"
-                      onClick={() => deleteMutation.mutate({ data: { id: o.id } })}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               ))}
             </div>
+
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={massOpen} onOpenChange={setMassOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar {selection.selected.length} oportunidades</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Novo status</Label>
+            <Select value={massStatus} onValueChange={setMassStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o status" />
+              </SelectTrigger>
+              <SelectContent>
+                {OPPORTUNITY_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!massStatus || massStatusMutation.isPending}
+              onClick={() => massStatusMutation.mutate(massStatus)}
+            >
+              {massStatusMutation.isPending ? "Aplicando..." : "Aplicar aos selecionados"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
