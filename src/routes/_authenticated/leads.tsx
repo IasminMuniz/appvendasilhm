@@ -50,7 +50,10 @@ import {
   PHONE_ERROR,
   isValidCep,
   isValidPhone,
+  isValidCnpj,
+  CNPJ_ERROR,
   maskCep,
+  maskCnpj,
   maskPhone,
   validateContactFields,
 } from "@/lib/masks";
