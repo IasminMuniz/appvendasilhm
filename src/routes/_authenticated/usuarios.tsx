@@ -14,6 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -244,11 +245,17 @@ function UsersPage() {
 
 
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle>Usuários</CardTitle>
+          <RecordSearch
+            query={userSearch.query}
+            onQueryChange={userSearch.setQuery}
+            suggestions={[]}
+            placeholder="Pesquisar por nome ou e-mail"
+          />
         </CardHeader>
         <CardContent className="space-y-3">
-          {data.users.map((u) => (
+          {userSearch.results.map((u) => (
             <div
               key={u.id}
               className="flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
