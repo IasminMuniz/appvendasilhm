@@ -24,6 +24,8 @@ export async function sendLeadWebhook(
 ): Promise<void> {
   const body = {
     id: payload.lead_id ?? null,
+    lead_codigo: payload.lead_codigo ?? null,
+    cnpj: payload.cnpj ?? null,
     empresa: payload.empresa ?? null,
     contato: payload.contato ?? null,
     email: payload.email ?? null,

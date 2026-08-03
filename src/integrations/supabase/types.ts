@@ -288,10 +288,12 @@ export type Database = {
           company_name: string | null
           company_size: string | null
           created_at: string
+          customer_code: string
           document: string | null
           email: string | null
           id: string
           last_activity_at: string | null
+          lead_id: string | null
           legal_name: string | null
           name: string
           notes: string | null
@@ -312,10 +314,12 @@ export type Database = {
           company_name?: string | null
           company_size?: string | null
           created_at?: string
+          customer_code?: string
           document?: string | null
           email?: string | null
           id?: string
           last_activity_at?: string | null
+          lead_id?: string | null
           legal_name?: string | null
           name: string
           notes?: string | null
@@ -336,10 +340,12 @@ export type Database = {
           company_name?: string | null
           company_size?: string | null
           created_at?: string
+          customer_code?: string
           document?: string | null
           email?: string | null
           id?: string
           last_activity_at?: string | null
+          lead_id?: string | null
           legal_name?: string | null
           name?: string
           notes?: string | null
@@ -354,7 +360,15 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discount_policies: {
         Row: {
@@ -528,6 +542,7 @@ export type Database = {
       leads: {
         Row: {
           city: string | null
+          cnpj: string | null
           company: string | null
           converted_at: string | null
           converted_by: string | null
@@ -538,6 +553,7 @@ export type Database = {
           expected_close_date: string | null
           id: string
           last_activity_at: string | null
+          lead_code: string
           loss_detail: string | null
           loss_reason: string | null
           name: string
@@ -556,6 +572,7 @@ export type Database = {
         }
         Insert: {
           city?: string | null
+          cnpj?: string | null
           company?: string | null
           converted_at?: string | null
           converted_by?: string | null
@@ -566,6 +583,7 @@ export type Database = {
           expected_close_date?: string | null
           id?: string
           last_activity_at?: string | null
+          lead_code?: string
           loss_detail?: string | null
           loss_reason?: string | null
           name: string
@@ -584,6 +602,7 @@ export type Database = {
         }
         Update: {
           city?: string | null
+          cnpj?: string | null
           company?: string | null
           converted_at?: string | null
           converted_by?: string | null
@@ -594,6 +613,7 @@ export type Database = {
           expected_close_date?: string | null
           id?: string
           last_activity_at?: string | null
+          lead_code?: string
           loss_detail?: string | null
           loss_reason?: string | null
           name?: string
@@ -629,6 +649,7 @@ export type Database = {
           id: string
           lead_id: string | null
           notes: string | null
+          opportunity_code: string
           owner_id: string
           probability: number
           product_description: string | null
@@ -645,6 +666,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          opportunity_code?: string
           owner_id: string
           probability?: number
           product_description?: string | null
@@ -661,6 +683,7 @@ export type Database = {
           id?: string
           lead_id?: string | null
           notes?: string | null
+          opportunity_code?: string
           owner_id?: string
           probability?: number
           product_description?: string | null

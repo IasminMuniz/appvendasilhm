@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { STAGE_FORECAST_DAYS, STAGE_PROBABILITY } from "@/lib/commercial-constants";
 import { z } from "zod";
-import { cepSchema, phoneSchema } from "@/lib/masks";
+import { cepSchema, phoneSchema, cnpjSchema } from "@/lib/masks";
 
 const stageSchema = z.enum([
   "novo",
@@ -39,6 +39,7 @@ const leadSchema = z.object({
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
   postal_code: cepSchema.optional().or(z.literal("")),
+  cnpj: cnpjSchema.optional().or(z.literal("")),
   segment: z.string().max(60).optional().or(z.literal("")),
   source: z.string().max(100).optional().or(z.literal("")),
   stage: stageSchema.default("novo"),
@@ -93,6 +94,7 @@ export const createLead = createServerFn({ method: "POST" })
         city: data.city || null,
         state: data.state || null,
         postal_code: data.postal_code || null,
+        cnpj: data.cnpj || null,
         segment: data.segment || null,
         source: data.source || null,
         stage: data.stage,
@@ -401,6 +403,8 @@ export const convertLeadToCustomer = createServerFn({ method: "POST" })
         state: lead.state,
         postal_code: lead.postal_code,
         segment: lead.segment,
+        document: lead.cnpj ?? null,
+        lead_id: lead.id,
         notes: lead.notes,
         status: "ativo",
         last_activity_at: new Date().toISOString(),
