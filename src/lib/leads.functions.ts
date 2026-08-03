@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { STAGE_FORECAST_DAYS, STAGE_PROBABILITY } from "@/lib/commercial-constants";
 import { z } from "zod";
-import { cepSchema, phoneSchema } from "@/lib/masks";
+import { cepSchema, phoneSchema, cnpjSchema } from "@/lib/masks";
 
 const stageSchema = z.enum([
   "novo",
