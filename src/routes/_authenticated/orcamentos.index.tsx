@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteQuotes } from "@/lib/bulk-delete.functions";
 import { listQuotes } from "@/lib/quotes.functions";
 import { QUOTE_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
+
 
 const quotesQueryOptions = () =>
   queryOptions({ queryKey: ["quotes"], queryFn: () => listQuotes() });
@@ -39,6 +40,7 @@ const variants: Record<string, "default" | "secondary" | "destructive" | "outlin
 function QuotesPage() {
   const { data: quotes } = useSuspenseQuery(quotesQueryOptions());
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const selection = useBulkSelection(quotes.map((q) => q.id));
 
   const removeMany = useMutation({
@@ -51,6 +53,14 @@ function QuotesPage() {
     onError: (err) =>
       toast.error(err instanceof Error ? err.message : "Erro ao excluir orçamentos."),
   });
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      navigate({ to: "/orcamentos/$id", params: { id: selection.selected[0]! } });
+      return;
+    }
+    toast.info("Selecione apenas um orçamento para abrir o formulário de edição.");
+  };
 
   return (
     <div className="space-y-6">
@@ -68,20 +78,22 @@ function QuotesPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
           <CardTitle>Lista de orçamentos</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <BulkDeleteBar
+          <OptionsMenu
             total={quotes.length}
             count={selection.selected.length}
-            allSelected={selection.allSelected}
-            onToggleAll={selection.toggleAll}
+            onSelectAll={selection.selectAll}
+            onClearAll={selection.clear}
+            onEdit={handleEdit}
             onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
             isPending={removeMany.isPending}
             entityLabel="orçamento(s)"
             description="Os orçamentos selecionados, seus itens e aprovações serão removidos permanentemente."
           />
+        </CardHeader>
+        <CardContent>
+
           {quotes.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhum orçamento criado.</p>
           ) : (
