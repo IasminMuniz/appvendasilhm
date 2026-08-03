@@ -9,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteQuotes } from "@/lib/bulk-delete.functions";
 import { listQuotes } from "@/lib/quotes.functions";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { QUOTE_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
 
 
@@ -41,7 +42,16 @@ function QuotesPage() {
   const { data: quotes } = useSuspenseQuery(quotesQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const selection = useBulkSelection(quotes.map((q) => q.id));
+  const search = useRecordSearch(quotes, (q) => [
+    q.customers?.name,
+    q.customers?.company_name,
+    (q.customers as { customer_code?: string | null } | null)?.customer_code,
+    (q.customers as { document?: string | null } | null)?.document,
+    `#${q.number}`,
+    String(q.number),
+  ]);
+  const visibleQuotes = search.results;
+  const selection = useBulkSelection(visibleQuotes.map((q) => q.id));
 
   const removeMany = useMutation({
     mutationFn: bulkDeleteQuotes,
@@ -78,10 +88,11 @@ function QuotesPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Lista de orçamentos</CardTitle>
           <OptionsMenu
-            total={quotes.length}
+            total={visibleQuotes.length}
             count={selection.selected.length}
             onSelectAll={selection.selectAll}
             onClearAll={selection.clear}
@@ -91,14 +102,27 @@ function QuotesPage() {
             entityLabel="orçamento(s)"
             description="Os orçamentos selecionados, seus itens e aprovações serão removidos permanentemente."
           />
+          </div>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={visibleQuotes.map((q) => ({
+              id: q.id,
+              label: q.customers?.company_name || q.customers?.name || "Cliente",
+              sublabel: `#${q.number} · ${formatCurrency(Number(q.total ?? 0))}`,
+            }))}
+            onSelect={(id) => navigate({ to: "/orcamentos/$id", params: { id } })}
+          />
         </CardHeader>
         <CardContent>
 
-          {quotes.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum orçamento criado.</p>
+          {visibleQuotes.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum orçamento criado."}
+            </p>
           ) : (
             <div className="divide-y">
-              {quotes.map((quote) => (
+              {visibleQuotes.map((quote) => (
                 <div key={quote.id} className="flex items-center gap-3 py-3">
                   <Checkbox
                     checked={selection.isSelected(quote.id)}

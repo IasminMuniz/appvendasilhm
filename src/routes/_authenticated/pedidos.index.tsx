@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteOrders } from "@/lib/bulk-delete.functions";
 import { listOrders } from "@/lib/orders.functions";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
 
 
@@ -43,7 +44,15 @@ function OrdersPage() {
   const { data: orders } = useSuspenseQuery(ordersQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const selection = useBulkSelection(orders.map((o) => o.id));
+  const search = useRecordSearch(orders, (o) => [
+    o.customers?.name,
+    (o.customers as { company_name?: string | null } | null)?.company_name,
+    (o.customers as { customer_code?: string | null } | null)?.customer_code,
+    (o.customers as { document?: string | null } | null)?.document,
+    o.id,
+  ]);
+  const visibleOrders = search.results;
+  const selection = useBulkSelection(visibleOrders.map((o) => o.id));
 
   const removeMany = useMutation({
     mutationFn: bulkDeleteOrders,
@@ -80,10 +89,11 @@ function OrdersPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Lista de pedidos</CardTitle>
           <OptionsMenu
-            total={orders.length}
+            total={visibleOrders.length}
             count={selection.selected.length}
             onSelectAll={selection.selectAll}
             onClearAll={selection.clear}
@@ -93,14 +103,30 @@ function OrdersPage() {
             entityLabel="pedido(s)"
             description="Os pedidos selecionados, seus itens e histórico serão removidos permanentemente."
           />
+          </div>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={visibleOrders.map((o) => ({
+              id: o.id,
+              label:
+                (o.customers as { company_name?: string | null } | null)?.company_name ||
+                o.customers?.name ||
+                "Cliente",
+              sublabel: formatCurrency(Number(o.total ?? 0)),
+            }))}
+            onSelect={(id) => navigate({ to: "/pedidos/$id", params: { id } })}
+          />
         </CardHeader>
         <CardContent>
 
-          {orders.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum pedido registrado.</p>
+          {visibleOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum pedido registrado."}
+            </p>
           ) : (
             <div className="divide-y">
-              {orders.map((order) => (
+              {visibleOrders.map((order) => (
                 <div key={order.id} className="flex items-center gap-3 py-3">
                   <Checkbox
                     checked={selection.isSelected(order.id)}
