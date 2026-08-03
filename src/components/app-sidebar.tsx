@@ -2,7 +2,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
-  Package,
   ShoppingCart,
   LogOut,
   ChevronLeft,
@@ -14,7 +13,7 @@ import {
   Plug,
   Download,
   ShieldCheck,
-  Activity,
+  Workflow,
 } from "lucide-react";
 
 import {
