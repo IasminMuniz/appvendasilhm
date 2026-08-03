@@ -389,6 +389,40 @@ function UsersPage() {
         </CardContent>
       </Card>
 
+      <Dialog open={bulkRoleOpen} onOpenChange={setBulkRoleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar {selection.selected.length} usuário(s)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Perfil de acesso</Label>
+            <Select value={bulkRole} onValueChange={setBulkRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => bulkRoleMutation.mutate(selection.selected)}
+              disabled={bulkRoleMutation.isPending || selection.selected.length === 0}
+            >
+              {bulkRoleMutation.isPending ? "Salvando..." : "Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
+
       {isAdmin && (
         <Card>
           <CardHeader>
