@@ -30,6 +30,7 @@ import {
   getPipelineMetrics,
   listLeads,
   moveLeadStage,
+  updateLead,
 } from "@/lib/leads.functions";
 import {
   BRAZIL_STATES,
@@ -41,8 +42,9 @@ import {
 } from "@/lib/commercial-constants";
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
 import { Checkbox } from "@/components/ui/checkbox";
-import { BulkDeleteBar, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteLeads } from "@/lib/bulk-delete.functions";
+
 import {
   CEP_ERROR,
   PHONE_ERROR,
