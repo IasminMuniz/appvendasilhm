@@ -94,6 +94,7 @@ const emptyLead = {
   city: "",
   state: "",
   postal_code: "",
+  cnpj: "",
   segment: "",
   source: "",
   stage: "novo",
