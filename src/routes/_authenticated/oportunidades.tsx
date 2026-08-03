@@ -212,7 +212,17 @@ function OpportunitiesPage() {
             Negociações em andamento com valor, probabilidade e previsão.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) {
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
+
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -221,7 +231,7 @@ function OpportunitiesPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nova oportunidade</DialogTitle>
+              <DialogTitle>{editingId ? "Editar oportunidade" : "Nova oportunidade"}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
@@ -320,12 +330,23 @@ function OpportunitiesPage() {
             </div>
             <DialogFooter>
               <Button
-                disabled={!form.title.trim() || createMutation.isPending}
-                onClick={() => createMutation.mutate({ data: form })}
+                disabled={
+                  !form.title.trim() || createMutation.isPending || updateMutation.isPending
+                }
+                onClick={() =>
+                  editingId
+                    ? updateMutation.mutate({ data: { id: editingId, ...form } })
+                    : createMutation.mutate({ data: form })
+                }
               >
-                {createMutation.isPending ? "Salvando..." : "Criar"}
+                {createMutation.isPending || updateMutation.isPending
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Criar"}
               </Button>
             </DialogFooter>
+
           </DialogContent>
         </Dialog>
       </div>
@@ -425,6 +446,37 @@ function OpportunitiesPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={massOpen} onOpenChange={setMassOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar {selection.selected.length} oportunidades</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Label>Novo status</Label>
+            <Select value={massStatus} onValueChange={setMassStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o status" />
+              </SelectTrigger>
+              <SelectContent>
+                {OPPORTUNITY_STATUSES.map((s) => (
+                  <SelectItem key={s.value} value={s.value}>
+                    {s.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              className="w-full"
+              disabled={!massStatus || massStatusMutation.isPending}
+              onClick={() => massStatusMutation.mutate(massStatus)}
+            >
+              {massStatusMutation.isPending ? "Aplicando..." : "Aplicar aos selecionados"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
