@@ -81,6 +81,7 @@ const newUserSchema = z.object({
 function UsersPage() {
   const queryClient = useQueryClient();
   const { data } = useSuspenseQuery(usersQueryOptions());
+  const userSearch = useRecordSearch(data.users, (u) => [u.full_name, u.email, u.id]);
   const isAdmin = data.me.isAdmin;
 
   const [open, setOpen] = useState(false);
