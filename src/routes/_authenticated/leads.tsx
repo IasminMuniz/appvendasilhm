@@ -519,7 +519,8 @@ function LeadsPage() {
       </div>
 
       {pipeline.lossReasons.length > 0 && (
-        <Card>
+        <Card className="w-full min-w-0 overflow-hidden">
+
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Principais motivos de perda</CardTitle>
           </CardHeader>
