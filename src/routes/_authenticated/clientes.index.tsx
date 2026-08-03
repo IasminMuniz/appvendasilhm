@@ -11,6 +11,7 @@ import { LocationAnalytics } from "@/components/analytics/location-analytics";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteCustomers } from "@/lib/bulk-delete.functions";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 
 const customersQueryOptions = () =>
   queryOptions({
@@ -36,7 +37,16 @@ function CustomersPage() {
   const { data: customers } = useSuspenseQuery(customersQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const selection = useBulkSelection(customers.map((c) => c.id));
+  const search = useRecordSearch(customers, (c) => [
+    c.name,
+    c.company_name,
+    c.legal_name,
+    c.customer_code,
+    c.document,
+    c.email,
+  ]);
+  const visibleCustomers = search.results;
+  const selection = useBulkSelection(visibleCustomers.map((c) => c.id));
 
   const removeMany = useMutation({
     mutationFn: bulkDeleteCustomers,
@@ -76,10 +86,11 @@ function CustomersPage() {
       <LocationAnalytics show={["customersByCity", "conversionByRegion"]} />
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Lista de clientes</CardTitle>
           <OptionsMenu
-            total={customers.length}
+            total={visibleCustomers.length}
             count={selection.selected.length}
             onSelectAll={selection.selectAll}
             onClearAll={selection.clear}
@@ -89,13 +100,26 @@ function CustomersPage() {
             entityLabel="cliente(s)"
             description="Cadastros, contatos, interações e histórico dos clientes selecionados serão removidos permanentemente."
           />
+          </div>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={visibleCustomers.map((c) => ({
+              id: c.id,
+              label: c.company_name || c.name,
+              sublabel: [c.customer_code, c.document].filter(Boolean).join(" · "),
+            }))}
+            onSelect={(id) => navigate({ to: "/clientes/$id", params: { id } })}
+          />
         </CardHeader>
         <CardContent>
-          {customers.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum cliente cadastrado.</p>
+          {visibleCustomers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum cliente cadastrado."}
+            </p>
           ) : (
             <div className="divide-y">
-              {customers.map((customer) => (
+              {visibleCustomers.map((customer) => (
                 <div key={customer.id} className="flex items-center justify-between gap-3 py-3">
                   <Checkbox
                     checked={selection.isSelected(customer.id)}
