@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  bulkDeleteUsers,
   createUser,
   getAccessProfile,
   listUsers,
@@ -32,6 +33,8 @@ import {
   setUserRole,
   setUserSupervisor,
 } from "@/lib/admin.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { ROLE_LABELS } from "@/lib/commercial-constants";
 
 const usersQueryOptions = () =>
@@ -83,9 +86,13 @@ function UsersPage() {
   const { data } = useSuspenseQuery(usersQueryOptions());
   const userSearch = useRecordSearch(data.users, (u) => [u.full_name, u.email, u.id]);
   const isAdmin = data.me.isAdmin;
+  const visibleUsers = userSearch.results;
+  const selection = useBulkSelection(visibleUsers.map((u) => u.id));
 
   const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [bulkRoleOpen, setBulkRoleOpen] = useState(false);
+  const [bulkRole, setBulkRole] = useState<string>("vendedor");
   const [form, setForm] = useState({
     email: "",
     password: "",
@@ -95,6 +102,38 @@ function UsersPage() {
   });
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["users"] });
+
+  const removeMany = useMutation({
+    mutationFn: (ids: string[]) => bulkDeleteUsers({ data: { ids } }),
+    onSuccess: (result) => {
+      selection.clear();
+      invalidate();
+      toast.success(bulkDeleteToastMessage(result));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const bulkRoleMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) await setUserRole({ data: { user_id: id, role: bulkRole } });
+    },
+    onSuccess: () => {
+      setBulkRoleOpen(false);
+      selection.clear();
+      invalidate();
+      toast.success("Perfil de acesso atualizado para os usuários selecionados");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const handleBulkEdit = () => {
+    if (!isAdmin) {
+      toast.info("Apenas o administrador pode editar perfis de acesso.");
+      return;
+    }
+    setBulkRoleOpen(true);
+  };
+
 
   const roleMutation = useMutation({
     mutationFn: (vars: { user_id: string; role: string }) => setUserRole({ data: vars }),
@@ -247,7 +286,20 @@ function UsersPage() {
 
       <Card>
         <CardHeader className="space-y-3">
-          <CardTitle>Usuários</CardTitle>
+          <div className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>Usuários</CardTitle>
+            <OptionsMenu
+              total={visibleUsers.length}
+              count={selection.selected.length}
+              onSelectAll={selection.selectAll}
+              onClearAll={selection.clear}
+              onEdit={handleBulkEdit}
+              onDelete={() => removeMany.mutate(selection.selected)}
+              isPending={removeMany.isPending || bulkRoleMutation.isPending}
+              entityLabel="usuário(s)"
+              description="Os usuários selecionados serão removidos permanentemente do sistema, incluindo o acesso."
+            />
+          </div>
           <RecordSearch
             query={userSearch.query}
             onQueryChange={userSearch.setQuery}
@@ -256,14 +308,21 @@ function UsersPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {userSearch.results.map((u) => (
+          {visibleUsers.map((u) => (
             <div
               key={u.id}
               className="flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
             >
-              <div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={selection.isSelected(u.id)}
+                  onCheckedChange={() => selection.toggle(u.id)}
+                  aria-label={`Selecionar ${u.full_name || u.email}`}
+                />
+                <div>
                 <p className="font-medium">{u.full_name || u.email}</p>
                 <p className="text-sm text-muted-foreground">{u.email}</p>
+
                 <div className="mt-1 flex flex-wrap gap-1">
                   {u.roles.length ? (
                     u.roles.map((r) => (
@@ -278,7 +337,9 @@ function UsersPage() {
                     <Badge variant="outline">Responsável: {u.supervisor_name}</Badge>
                   )}
                 </div>
+                </div>
               </div>
+
 
               {isAdmin && (
                 <div className="flex flex-col gap-2 md:flex-row">
@@ -327,6 +388,40 @@ function UsersPage() {
           ))}
         </CardContent>
       </Card>
+
+      <Dialog open={bulkRoleOpen} onOpenChange={setBulkRoleOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar {selection.selected.length} usuário(s)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Perfil de acesso</Label>
+            <Select value={bulkRole} onValueChange={setBulkRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {ROLE_LABELS[r]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              onClick={() => bulkRoleMutation.mutate(selection.selected)}
+              disabled={bulkRoleMutation.isPending || selection.selected.length === 0}
+            >
+              {bulkRoleMutation.isPending ? "Salvando..." : "Aplicar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       {isAdmin && (
         <Card>
