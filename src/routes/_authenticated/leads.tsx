@@ -591,7 +591,7 @@ function LeadsPage() {
 
 
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex w-full min-w-0 gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
           const stageLeads = visibleLeads.filter((l) => l.stage === stage.value);
           const stageValue = stageLeads.reduce(
