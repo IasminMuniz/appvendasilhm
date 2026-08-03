@@ -264,7 +264,7 @@ function LeadsPage() {
   const totalValue = leads.reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 max-w-none space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pipeline de Oportunidades</h1>
