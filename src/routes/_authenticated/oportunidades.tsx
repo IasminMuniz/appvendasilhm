@@ -103,7 +103,11 @@ function OpportunitiesPage() {
   const { data: customers } = useSuspenseQuery(customersQueryOptions());
   const { data: products } = useSuspenseQuery(productsQueryOptions());
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const [massOpen, setMassOpen] = useState(false);
+  const [massStatus, setMassStatus] = useState("");
+  const selection = useBulkSelection(opportunities.map((o) => o.id));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["opportunities"] });
 
@@ -127,14 +131,70 @@ function OpportunitiesPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao atualizar."),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteOpportunity,
+  const updateMutation = useMutation({
+    mutationFn: updateOpportunity,
     onSuccess: () => {
       invalidate();
-      toast.success("Oportunidade excluída.");
+      setOpen(false);
+      setEditingId(null);
+      setForm(emptyForm);
+      toast.success("Oportunidade atualizada.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao atualizar."),
+  });
+
+  const massStatusMutation = useMutation({
+    mutationFn: async (status: string) => {
+      for (const id of selection.selected) {
+        await updateOpportunity({ data: { id, status: status as "aberta" } });
+      }
+    },
+    onSuccess: () => {
+      invalidate();
+      setMassOpen(false);
+      setMassStatus("");
+      selection.clear();
+      toast.success("Status atualizado nas oportunidades selecionadas.");
+    },
+    onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao atualizar."),
+  });
+
+  const removeMany = useMutation({
+    mutationFn: async (ids: string[]) => {
+      for (const id of ids) {
+        await deleteOpportunity({ data: { id } });
+      }
+      return ids.length;
+    },
+    onSuccess: (count) => {
+      invalidate();
+      selection.clear();
+      toast.success(`${count} registro(s) excluído(s).`);
     },
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao excluir."),
   });
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      const opp = opportunities.find((o) => o.id === selection.selected[0]);
+      if (!opp) return;
+      setForm({
+        title: opp.title ?? "",
+        customer_id: opp.customer_id ?? "",
+        product_id: opp.product_id ?? "",
+        product_description: opp.product_description ?? "",
+        amount: String(opp.amount ?? 0),
+        status: (opp.status ?? "aberta") as typeof emptyForm.status,
+        expected_close_date: opp.expected_close_date ?? "",
+        notes: opp.notes ?? "",
+      });
+      setEditingId(opp.id);
+      setOpen(true);
+      return;
+    }
+    setMassOpen(true);
+  };
+
 
   const openOnes = opportunities.filter((o) => o.status === "aberta" || o.status === "em_negociacao");
   const totalOpen = openOnes.reduce((s, o) => s + Number(o.amount ?? 0), 0);
