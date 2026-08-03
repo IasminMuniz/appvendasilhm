@@ -38,14 +38,13 @@ const items = [
   { title: "Leads", url: "/leads", icon: KanbanSquare },
   { title: "Oportunidades", url: "/oportunidades", icon: Briefcase },
   { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Produtos", url: "/produtos", icon: Package },
+  { title: "Integrações", url: "/produtos", icon: Plug },
+  { title: "Automações", url: "/eventos", icon: Workflow },
   { title: "Orçamentos", url: "/orcamentos", icon: FileText },
   { title: "Pedidos", url: "/pedidos", icon: ShoppingCart },
   { title: "Metas", url: "/metas", icon: Target },
-  { title: "Integrações", url: "/integracoes", icon: Plug },
   { title: "Exportação", url: "/exportacao", icon: Download },
   { title: "Usuários", url: "/usuarios", icon: ShieldCheck },
-  { title: "Eventos", url: "/eventos", icon: Activity },
 ];
 
 export function AppSidebar() {
