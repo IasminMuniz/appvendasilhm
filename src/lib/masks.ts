@@ -18,6 +18,25 @@ export function maskPhone(input: string): string {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 }
 
+/** Aplica máscara de CNPJ: 00.000.000/0000-00 */
+export function maskCnpj(input: string): string {
+  const d = input.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 2) return d;
+  if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+  if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+  if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+  return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+}
+
+export const isValidCnpj = (value: string) => value.replace(/\D/g, "").length === 14;
+export const CNPJ_ERROR = "CNPJ inválido. Informe 14 dígitos.";
+
+export const cnpjSchema = z
+  .string()
+  .trim()
+  .max(18)
+  .refine((v) => v === "" || isValidCnpj(v), { message: CNPJ_ERROR });
+
 export const isValidCep = (value: string) => /^\d{5}-?\d{3}$/.test(value.trim());
 export const isValidPhone = (value: string) => {
   const digits = value.replace(/\D/g, "");
