@@ -43,6 +43,7 @@ import {
 import { LocationAnalytics } from "@/components/analytics/location-analytics";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { bulkDeleteLeads } from "@/lib/bulk-delete.functions";
 
 import {
@@ -122,7 +123,15 @@ function LeadsPage() {
   const [loss, setLoss] = useState({ loss_reason: "", loss_detail: "" });
 
 
-  const selection = useBulkSelection(leads.map((l) => l.id));
+  const search = useRecordSearch(leads, (l) => [
+    l.name,
+    l.company,
+    l.lead_code,
+    l.cnpj,
+    l.email,
+  ]);
+  const visibleLeads = search.results;
+  const selection = useBulkSelection(visibleLeads.map((l) => l.id));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["leads"] });
 
@@ -154,9 +163,9 @@ function LeadsPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const handleEdit = () => {
-    if (selection.selected.length === 1) {
-      const lead = leads.find((l) => l.id === selection.selected[0]);
+  const openEditLead = (id: string) => {
+    {
+      const lead = leads.find((l) => l.id === id);
       if (!lead) return;
       setForm({
         ...emptyLead,
@@ -180,6 +189,12 @@ function LeadsPage() {
       });
       setEditingId(lead.id);
       setOpen(true);
+    }
+  };
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      openEditLead(selection.selected[0]!);
       return;
     }
     setMassOpen(true);
@@ -520,8 +535,19 @@ function LeadsPage() {
 
       <LocationAnalytics />
 
+      <RecordSearch
+        query={search.query}
+        onQueryChange={search.setQuery}
+        suggestions={visibleLeads.map((l) => ({
+          id: l.id,
+          label: l.company || l.name,
+          sublabel: [l.lead_code, l.cnpj, l.name].filter(Boolean).join(" · "),
+        }))}
+        onSelect={openEditLead}
+      />
+
       <OptionsMenu
-        total={leads.length}
+        total={visibleLeads.length}
         count={selection.selected.length}
         onSelectAll={selection.selectAll}
         onClearAll={selection.clear}
@@ -566,7 +592,7 @@ function LeadsPage() {
 
       <div className="flex gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
-          const stageLeads = leads.filter((l) => l.stage === stage.value);
+          const stageLeads = visibleLeads.filter((l) => l.stage === stage.value);
           const stageValue = stageLeads.reduce(
             (sum, l) => sum + Number(l.estimated_value ?? 0),
             0,

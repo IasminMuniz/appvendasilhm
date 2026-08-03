@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, useBulkSelection } from "@/components/bulk-select";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import {
@@ -107,7 +108,16 @@ function OpportunitiesPage() {
   const [form, setForm] = useState(emptyForm);
   const [massOpen, setMassOpen] = useState(false);
   const [massStatus, setMassStatus] = useState("");
-  const selection = useBulkSelection(opportunities.map((o) => o.id));
+  const search = useRecordSearch(opportunities, (o) => [
+    o.title,
+    o.opportunity_code,
+    o.customers?.name,
+    o.customers?.company_name,
+    (o.customers as { customer_code?: string | null } | null)?.customer_code,
+    (o.customers as { document?: string | null } | null)?.document,
+  ]);
+  const visibleOpportunities = search.results;
+  const selection = useBulkSelection(visibleOpportunities.map((o) => o.id));
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ["opportunities"] });
 
@@ -174,9 +184,9 @@ function OpportunitiesPage() {
     onError: (e) => toast.error(e instanceof Error ? e.message : "Erro ao excluir."),
   });
 
-  const handleEdit = () => {
-    if (selection.selected.length === 1) {
-      const opp = opportunities.find((o) => o.id === selection.selected[0]);
+  const openEditOpportunity = (id: string) => {
+    {
+      const opp = opportunities.find((o) => o.id === id);
       if (!opp) return;
       setForm({
         title: opp.title ?? "",
@@ -190,6 +200,12 @@ function OpportunitiesPage() {
       });
       setEditingId(opp.id);
       setOpen(true);
+    }
+  };
+
+  const handleEdit = () => {
+    if (selection.selected.length === 1) {
+      openEditOpportunity(selection.selected[0]!);
       return;
     }
     setMassOpen(true);
@@ -377,10 +393,11 @@ function OpportunitiesPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Lista de oportunidades</CardTitle>
           <OptionsMenu
-            total={opportunities.length}
+            total={visibleOpportunities.length}
             count={selection.selected.length}
             onSelectAll={selection.selectAll}
             onClearAll={selection.clear}
@@ -390,13 +407,26 @@ function OpportunitiesPage() {
             entityLabel="oportunidade(s)"
             description="As oportunidades selecionadas serão removidas permanentemente."
           />
+          </div>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={visibleOpportunities.map((o) => ({
+              id: o.id,
+              label: o.customers?.company_name || o.customers?.name || o.title,
+              sublabel: [o.opportunity_code, o.title].filter(Boolean).join(" · "),
+            }))}
+            onSelect={openEditOpportunity}
+          />
         </CardHeader>
         <CardContent>
-          {opportunities.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma oportunidade registrada.</p>
+          {visibleOpportunities.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhuma oportunidade registrada."}
+            </p>
           ) : (
             <div className="divide-y">
-              {opportunities.map((o) => (
+              {visibleOpportunities.map((o) => (
                 <div key={o.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="flex items-center gap-3">
                     <Checkbox
