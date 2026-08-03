@@ -264,7 +264,7 @@ function LeadsPage() {
   const totalValue = leads.reduce((sum, l) => sum + Number(l.estimated_value ?? 0), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-w-0 max-w-none space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Pipeline de Oportunidades</h1>
@@ -493,7 +493,7 @@ function LeadsPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {[
           { label: "Oportunidades abertas", value: String(pipeline.openCount) },
           { label: "Valor em aberto", value: formatCurrency(pipeline.openValue) },
@@ -504,7 +504,7 @@ function LeadsPage() {
             hint: `Ciclo médio ${pipeline.averageCycleDays.toFixed(0)} dias`,
           },
         ].map((card) => (
-          <Card key={card.label}>
+          <Card key={card.label} className="w-full min-w-0 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {card.label}
@@ -519,7 +519,8 @@ function LeadsPage() {
       </div>
 
       {pipeline.lossReasons.length > 0 && (
-        <Card>
+        <Card className="w-full min-w-0 overflow-hidden">
+
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Principais motivos de perda</CardTitle>
           </CardHeader>
@@ -590,7 +591,7 @@ function LeadsPage() {
 
 
 
-      <div className="flex gap-4 overflow-x-auto pb-4">
+      <div className="flex w-full min-w-0 gap-4 overflow-x-auto pb-4">
         {LEAD_STAGES.map((stage) => {
           const stageLeads = visibleLeads.filter((l) => l.stage === stage.value);
           const stageValue = stageLeads.reduce(

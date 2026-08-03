@@ -32,9 +32,9 @@ export function LocationAnalytics({
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
       {show.includes("leadsByState") && (
-        <Card>
+        <Card className="flex h-full w-full min-w-0 flex-col overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Leads por estado</CardTitle>
           </CardHeader>
@@ -53,7 +53,7 @@ export function LocationAnalytics({
       )}
 
       {show.includes("customersByCity") && (
-        <Card>
+        <Card className="flex h-full w-full min-w-0 flex-col overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Clientes por cidade</CardTitle>
           </CardHeader>
@@ -72,7 +72,7 @@ export function LocationAnalytics({
       )}
 
       {show.includes("conversionByRegion") && (
-        <Card>
+        <Card className="flex h-full w-full min-w-0 flex-col overflow-hidden">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm">Conversão por região</CardTitle>
           </CardHeader>
