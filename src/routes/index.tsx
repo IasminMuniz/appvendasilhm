@@ -33,10 +33,10 @@ function Index() {
         <p className="mt-6 text-lg text-muted-foreground">{NEXUS_DESCRIPTION}</p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Button asChild size="lg">
-            <Link to="/auth">Começar agora</Link>
+            <Link to="/auth" search={{ next: undefined }}>Começar agora</Link>
           </Button>
           <Button asChild variant="outline" size="lg">
-            <Link to="/auth">Fazer login</Link>
+            <Link to="/auth" search={{ next: undefined }}>Fazer login</Link>
           </Button>
         </div>
       </div>
