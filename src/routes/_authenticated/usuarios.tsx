@@ -286,7 +286,20 @@ function UsersPage() {
 
       <Card>
         <CardHeader className="space-y-3">
-          <CardTitle>Usuários</CardTitle>
+          <div className="flex flex-row items-center justify-between gap-3">
+            <CardTitle>Usuários</CardTitle>
+            <OptionsMenu
+              total={visibleUsers.length}
+              count={selection.selected.length}
+              onSelectAll={selection.selectAll}
+              onClearAll={selection.clear}
+              onEdit={handleBulkEdit}
+              onDelete={() => removeMany.mutate(selection.selected)}
+              isPending={removeMany.isPending || bulkRoleMutation.isPending}
+              entityLabel="usuário(s)"
+              description="Os usuários selecionados serão removidos permanentemente do sistema, incluindo o acesso."
+            />
+          </div>
           <RecordSearch
             query={userSearch.query}
             onQueryChange={userSearch.setQuery}
@@ -295,14 +308,21 @@ function UsersPage() {
           />
         </CardHeader>
         <CardContent className="space-y-3">
-          {userSearch.results.map((u) => (
+          {visibleUsers.map((u) => (
             <div
               key={u.id}
               className="flex flex-col gap-3 rounded-lg border p-3 md:flex-row md:items-center md:justify-between"
             >
-              <div>
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={selection.isSelected(u.id)}
+                  onCheckedChange={() => selection.toggle(u.id)}
+                  aria-label={`Selecionar ${u.full_name || u.email}`}
+                />
+                <div>
                 <p className="font-medium">{u.full_name || u.email}</p>
                 <p className="text-sm text-muted-foreground">{u.email}</p>
+
                 <div className="mt-1 flex flex-wrap gap-1">
                   {u.roles.length ? (
                     u.roles.map((r) => (
