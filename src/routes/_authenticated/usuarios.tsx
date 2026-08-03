@@ -337,7 +337,9 @@ function UsersPage() {
                     <Badge variant="outline">Responsável: {u.supervisor_name}</Badge>
                   )}
                 </div>
+                </div>
               </div>
+
 
               {isAdmin && (
                 <div className="flex flex-col gap-2 md:flex-row">
