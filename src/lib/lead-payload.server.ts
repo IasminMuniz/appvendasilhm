@@ -51,6 +51,8 @@ export async function buildLeadPayload(
 
   return {
     lead_id: lead.id ?? null,
+    lead_codigo: lead.lead_code ?? null,
+    cnpj: lead.cnpj ?? null,
     empresa: lead.company ?? null,
     contato: lead.name ?? null,
     telefone: lead.phone ?? null,
