@@ -164,6 +164,7 @@ function LeadsPage() {
         city: lead.city ?? "",
         state: lead.state ?? "",
         postal_code: lead.postal_code ?? "",
+        cnpj: lead.cnpj ?? "",
         segment: lead.segment ?? "",
         source: lead.source ?? "",
         stage: lead.stage ?? "novo",
@@ -297,6 +298,7 @@ function LeadsPage() {
                 ["phone", "Telefone"],
                 ["city", "Cidade"],
                 ["postal_code", "CEP"],
+                ["cnpj", "CNPJ"],
                 ["source", "Origem"],
                 ["next_action", "Próxima ação"],
               ].map(([key, label]) => {
