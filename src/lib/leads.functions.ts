@@ -403,6 +403,8 @@ export const convertLeadToCustomer = createServerFn({ method: "POST" })
         state: lead.state,
         postal_code: lead.postal_code,
         segment: lead.segment,
+        document: lead.cnpj ?? null,
+        lead_id: lead.id,
         notes: lead.notes,
         status: "ativo",
         last_activity_at: new Date().toISOString(),
