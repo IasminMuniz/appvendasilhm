@@ -504,7 +504,7 @@ function LeadsPage() {
             hint: `Ciclo médio ${pipeline.averageCycleDays.toFixed(0)} dias`,
           },
         ].map((card) => (
-          <Card key={card.label}>
+          <Card key={card.label} className="w-full min-w-0 overflow-hidden">
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {card.label}
