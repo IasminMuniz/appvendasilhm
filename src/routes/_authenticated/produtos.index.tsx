@@ -10,6 +10,7 @@ import { listProducts } from "@/lib/products.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 
 const productsQueryOptions = () =>
   queryOptions({
@@ -35,7 +36,9 @@ function ProductsPage() {
   const { data: products } = useSuspenseQuery(productsQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const selection = useBulkSelection(products.map((p) => p.id));
+  const search = useRecordSearch(products, (p) => [p.name, p.code, p.sku, p.category]);
+  const visibleProducts = search.results;
+  const selection = useBulkSelection(visibleProducts.map((p) => p.id));
 
   const removeMany = useMutation({
     mutationFn: bulkDeleteProducts,
@@ -73,10 +76,11 @@ function ProductsPage() {
       </div>
 
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0">
+        <CardHeader className="space-y-3">
+          <div className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Lista de produtos</CardTitle>
           <OptionsMenu
-            total={products.length}
+            total={visibleProducts.length}
             count={selection.selected.length}
             onSelectAll={selection.selectAll}
             onClearAll={selection.clear}
@@ -86,13 +90,26 @@ function ProductsPage() {
             entityLabel="produto(s)"
             description="Os produtos selecionados e seus anexos serão removidos permanentemente."
           />
+          </div>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={visibleProducts.map((p) => ({
+              id: p.id,
+              label: p.name,
+              sublabel: [p.code, p.sku, p.category].filter(Boolean).join(" · "),
+            }))}
+            onSelect={(id) => navigate({ to: "/produtos/$id", params: { id } })}
+          />
         </CardHeader>
         <CardContent>
-          {products.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhum produto cadastrado.</p>
+          {visibleProducts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum produto cadastrado."}
+            </p>
           ) : (
             <div className="divide-y">
-              {products.map((product) => (
+              {visibleProducts.map((product) => (
                 <div key={product.id} className="flex items-center justify-between gap-3 py-3">
                   <Checkbox
                     checked={selection.isSelected(product.id)}
