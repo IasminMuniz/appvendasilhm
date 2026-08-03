@@ -39,6 +39,7 @@ const leadSchema = z.object({
   city: z.string().max(100).optional().or(z.literal("")),
   state: z.string().max(50).optional().or(z.literal("")),
   postal_code: cepSchema.optional().or(z.literal("")),
+  cnpj: cnpjSchema.optional().or(z.literal("")),
   segment: z.string().max(60).optional().or(z.literal("")),
   source: z.string().max(100).optional().or(z.literal("")),
   stage: stageSchema.default("novo"),
