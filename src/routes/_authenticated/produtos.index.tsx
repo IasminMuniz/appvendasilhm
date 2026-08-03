@@ -11,34 +11,53 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
+import {
+  INTEGRATION_STATUS_LABELS,
+  formatDateTime,
+  integrationStatusVariant,
+} from "@/lib/commercial-constants";
 
-const productsQueryOptions = () =>
+const integrationsQueryOptions = () =>
   queryOptions({
     queryKey: ["products"],
     queryFn: () => listProducts(),
   });
 
 export const Route = createFileRoute("/_authenticated/produtos/")({
-  loader: ({ context }) => context.queryClient.ensureQueryData(productsQueryOptions()),
-  component: ProductsPage,
+  loader: ({ context }) => context.queryClient.ensureQueryData(integrationsQueryOptions()),
+  component: IntegrationsPage,
   errorComponent: ({ error }) => (
     <p role="alert" className="text-sm text-destructive">
       {error.message}
     </p>
   ),
-  notFoundComponent: () => <p>Nenhum produto encontrado.</p>,
+  notFoundComponent: () => <p>Nenhuma integração encontrada.</p>,
   head: () => ({
-    meta: [{ title: "Produtos - Vendas Comercial" }],
+    meta: [
+      { title: "Integrações - Nexus 360" },
+      {
+        name: "description",
+        content:
+          "Conexões com sistemas corporativos de CRM, ERP, marketing e atendimento no Nexus 360.",
+      },
+      { property: "og:title", content: "Integrações - Nexus 360" },
+      {
+        property: "og:description",
+        content: "Status de conexão e sincronização dos sistemas integrados ao Nexus 360.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
   }),
 });
 
-function ProductsPage() {
-  const { data: products } = useSuspenseQuery(productsQueryOptions());
+function IntegrationsPage() {
+  const { data: integrations } = useSuspenseQuery(integrationsQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const search = useRecordSearch(products, (p) => [p.name, p.code, p.sku, p.category]);
-  const visibleProducts = search.results;
-  const selection = useBulkSelection(visibleProducts.map((p) => p.id));
+  const search = useRecordSearch(integrations, (i) => [i.name, i.category, i.code]);
+  const visible = search.results;
+  const selection = useBulkSelection(visible.map((i) => i.id));
 
   const removeMany = useMutation({
     mutationFn: bulkDeleteProducts,
@@ -48,7 +67,7 @@ function ProductsPage() {
       toast.success(bulkDeleteToastMessage(result));
     },
     onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir produtos."),
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir integrações."),
   });
 
   const handleEdit = () => {
@@ -56,21 +75,22 @@ function ProductsPage() {
       navigate({ to: "/produtos/$id", params: { id: selection.selected[0]! } });
       return;
     }
-    toast.info("Selecione apenas um produto para abrir o formulário de edição.");
+    toast.info("Selecione apenas uma integração para abrir o formulário de edição.");
   };
 
   return (
     <div className="space-y-6">
-
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
-          <p className="text-muted-foreground">Catálogo de produtos disponíveis.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Integrações</h1>
+          <p className="text-muted-foreground">
+            Conexões com sistemas corporativos (CRM, ERP, Marketing e Atendimento).
+          </p>
         </div>
         <Button asChild>
           <Link to="/produtos/novo">
             <Plus className="mr-2 h-4 w-4" />
-            Novo produto
+            Nova integração
           </Link>
         </Button>
       </div>
@@ -78,72 +98,72 @@ function ProductsPage() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Lista de produtos</CardTitle>
-          <OptionsMenu
-            total={visibleProducts.length}
-            count={selection.selected.length}
-            onSelectAll={selection.selectAll}
-            onClearAll={selection.clear}
-            onEdit={handleEdit}
-            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
-            isPending={removeMany.isPending}
-            entityLabel="produto(s)"
-            description="Os produtos selecionados e seus anexos serão removidos permanentemente."
-          />
+            <CardTitle>Sistemas integrados</CardTitle>
+            <OptionsMenu
+              total={visible.length}
+              count={selection.selected.length}
+              onSelectAll={selection.selectAll}
+              onClearAll={selection.clear}
+              onEdit={handleEdit}
+              onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+              isPending={removeMany.isPending}
+              entityLabel="integração(ões)"
+              description="As integrações selecionadas serão removidas permanentemente."
+            />
           </div>
           <RecordSearch
             query={search.query}
             onQueryChange={search.setQuery}
-            suggestions={visibleProducts.map((p) => ({
-              id: p.id,
-              label: p.name,
-              sublabel: [p.code, p.sku, p.category].filter(Boolean).join(" · "),
+            suggestions={visible.map((i) => ({
+              id: i.id,
+              label: i.name,
+              sublabel: [i.category, INTEGRATION_STATUS_LABELS[i.code ?? ""]]
+                .filter(Boolean)
+                .join(" · "),
             }))}
             onSelect={(id) => navigate({ to: "/produtos/$id", params: { id } })}
           />
         </CardHeader>
         <CardContent>
-          {visibleProducts.length === 0 ? (
+          {visible.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum produto cadastrado."}
+              {search.isSearching
+                ? "Nenhum resultado para a pesquisa."
+                : "Nenhuma integração cadastrada."}
             </p>
           ) : (
             <div className="divide-y">
-              {visibleProducts.map((product) => (
-                <div key={product.id} className="flex items-center justify-between gap-3 py-3">
+              {visible.map((integration) => (
+                <div key={integration.id} className="flex items-center justify-between gap-3 py-3">
                   <Checkbox
-                    checked={selection.isSelected(product.id)}
-                    onCheckedChange={() => selection.toggle(product.id)}
-                    aria-label={`Selecionar ${product.name}`}
+                    checked={selection.isSelected(integration.id)}
+                    onCheckedChange={() => selection.toggle(integration.id)}
+                    aria-label={`Selecionar ${integration.name}`}
                   />
                   <button
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
-                    onClick={() => navigate({ to: "/produtos/$id", params: { id: product.id } })}
+                    onClick={() =>
+                      navigate({ to: "/produtos/$id", params: { id: integration.id } })
+                    }
                   >
-                    <p className="font-medium">
-                      {product.name}
-                      {product.code ? (
-                        <span className="ml-2 text-xs text-muted-foreground">({product.code})</span>
-                      ) : null}
-                    </p>
+                    <p className="font-medium">{integration.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {[
-                        product.category,
-                        `Margem ${Number(product.margin_percent ?? 0)}%`,
-                        `Estoque ${Number(product.stock ?? 0)}`,
+                        integration.category,
+                        `Última sincronização: ${formatDateTime(integration.updated_at)}`,
+                        `${Number(integration.stock ?? 0)} registros sincronizados`,
                       ]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                   </button>
                   <div className="flex items-center gap-3">
-                    <span className="font-semibold">R$ {(product.price ?? 0).toFixed(2)}</span>
-                    <Badge variant={Number(product.stock ?? 0) > 0 ? "outline" : "destructive"}>
-                      {Number(product.stock ?? 0) > 0 ? "Em estoque" : "Sem estoque"}
+                    <Badge variant={integrationStatusVariant(integration.code)}>
+                      {INTEGRATION_STATUS_LABELS[integration.code ?? ""] ?? "Desconectado"}
                     </Badge>
-                    <Badge variant={product.active ? "default" : "secondary"}>
-                      {product.active ? "Ativo" : "Inativo"}
+                    <Badge variant={integration.active ? "default" : "secondary"}>
+                      {integration.active ? "Ativa" : "Inativa"}
                     </Badge>
                   </div>
                 </div>
