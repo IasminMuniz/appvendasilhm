@@ -89,7 +89,7 @@ function ExportPage() {
               {[
                 ["customers", "Clientes"],
                 ["leads", "Leads"],
-                ["products", "Produtos"],
+                ["products", "Integrações"],
                 ["orders", "Pedidos"],
                 ["quotes", "Orçamentos"],
               ].map(([value, label]) => (

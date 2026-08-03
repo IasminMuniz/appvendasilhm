@@ -222,3 +222,101 @@ export const BRAZIL_STATES = [
   "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR",
   "PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
 ] as const;
+
+/* ------------------------------------------------------------------ */
+/* Integrações (módulo que reutiliza a estrutura de produtos)          */
+/* ------------------------------------------------------------------ */
+
+export const INTEGRATION_SYSTEMS = [
+  "Salesforce",
+  "HubSpot",
+  "RD Station",
+  "SAP",
+  "TOTVS",
+  "Zendesk",
+  "n8n",
+  "Outro",
+] as const;
+
+export const INTEGRATION_CATEGORIES = [
+  "CRM",
+  "ERP",
+  "Marketing",
+  "Atendimento",
+  "Automação",
+  "BI",
+] as const;
+
+export const INTEGRATION_CONNECTION_STATUSES = [
+  { value: "conectado", label: "Conectado" },
+  { value: "pendente", label: "Pendente" },
+  { value: "erro", label: "Erro de conexão" },
+  { value: "desconectado", label: "Desconectado" },
+] as const;
+
+export const INTEGRATION_STATUS_LABELS: Record<string, string> = Object.fromEntries(
+  INTEGRATION_CONNECTION_STATUSES.map((s) => [s.value, s.label]),
+);
+
+export function integrationStatusVariant(status?: string | null) {
+  if (status === "conectado") return "default" as const;
+  if (status === "erro") return "destructive" as const;
+  return "secondary" as const;
+}
+
+export function formatDateTime(value?: string | null): string {
+  if (!value) return "—";
+  return new Date(value).toLocaleString("pt-BR");
+}
+
+/* ------------------------------------------------------------------ */
+/* Automações (módulo que reutiliza a estrutura de eventos internos)   */
+/* ------------------------------------------------------------------ */
+
+/** Sistema de origem apresentado a partir da entidade do evento. */
+export const AUTOMATION_SOURCE_BY_ENTITY: Record<string, string> = {
+  lead: "Nexus 360 · Leads",
+  customer: "Nexus 360 · Clientes",
+  cliente: "Nexus 360 · Clientes",
+  opportunity: "Nexus 360 · Oportunidades",
+  oportunidade: "Nexus 360 · Oportunidades",
+  order: "Nexus 360 · Pedidos",
+  pedido: "Nexus 360 · Pedidos",
+  quote: "Nexus 360 · Orçamentos",
+  orcamento: "Nexus 360 · Orçamentos",
+};
+
+/** Sistema de destino apresentado a partir do evento inicial. */
+export const AUTOMATION_TARGET_BY_EVENT: Record<string, string> = {
+  LEAD_CRIADO: "n8n · E-mail + PostgreSQL",
+  LEAD_STATUS_ALTERADO: "n8n · E-mail + PostgreSQL",
+  LEAD_ATUALIZADO: "n8n · PostgreSQL",
+  CLIENTE_CRIADO: "n8n · CRM",
+  CLIENTE_ATUALIZADO: "n8n · CRM",
+  CLIENTE_INATIVO: "n8n · E-mail",
+  OPORTUNIDADE_CRIADA: "n8n · CRM",
+  OPORTUNIDADE_STATUS_ALTERADO: "n8n · CRM",
+  PEDIDO_STATUS_ALTERADO: "n8n · ERP",
+  VENDA_FECHADA: "n8n · ERP + BI",
+};
+
+export function automationSource(entityType?: string | null): string {
+  return AUTOMATION_SOURCE_BY_ENTITY[entityType ?? ""] ?? "Nexus 360";
+}
+
+export function automationTarget(eventType?: string | null): string {
+  return AUTOMATION_TARGET_BY_EVENT[eventType ?? ""] ?? "n8n";
+}
+
+export function automationName(eventType?: string | null, entityType?: string | null): string {
+  const label = NEXUS_EVENT_LABELS[eventType ?? ""] ?? eventType ?? "Fluxo";
+  const source = automationSource(entityType).replace("Nexus 360 · ", "");
+  return `${source}: ${label}`;
+}
+
+/** Status de execução da automação a partir do status de entrega do evento. */
+export function automationStatus(status?: string | null): { label: string; variant: "default" | "destructive" | "secondary" } {
+  if (status === "entregue") return { label: "Executada", variant: "default" };
+  if (status === "erro") return { label: "Falha na execução", variant: "destructive" };
+  return { label: "Aguardando execução", variant: "secondary" };
+}

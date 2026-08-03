@@ -14,26 +14,41 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PRODUCT_CATEGORIES } from "@/lib/commercial-constants";
+import {
+  INTEGRATION_CATEGORIES,
+  INTEGRATION_CONNECTION_STATUSES,
+  INTEGRATION_SYSTEMS,
+} from "@/lib/commercial-constants";
 import { createProduct } from "@/lib/products.functions";
 
 export const Route = createFileRoute("/_authenticated/produtos/novo")({
-  component: NewProductPage,
+  component: NewIntegrationPage,
   head: () => ({
-    meta: [{ title: "Novo Produto - Vendas Comercial" }],
+    meta: [
+      { title: "Nova integração - Nexus 360" },
+      {
+        name: "description",
+        content: "Cadastre uma conexão com sistemas corporativos como Salesforce, SAP ou TOTVS.",
+      },
+      { property: "og:title", content: "Nova integração - Nexus 360" },
+      {
+        property: "og:description",
+        content: "Cadastre uma conexão com sistemas corporativos no Nexus 360.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
   }),
 });
 
-function NewProductPage() {
+function NewIntegrationPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [form, setForm] = useState({
     name: "",
     description: "",
     category: "",
-    code: "",
-    price: "",
-    margin_percent: "0",
+    code: "pendente",
     stock: "0",
     active: true,
   });
@@ -46,7 +61,7 @@ function NewProductPage() {
       navigate({ to: "/produtos" });
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Erro ao criar produto.");
+      setError(err instanceof Error ? err.message : "Erro ao criar integração.");
     },
   });
 
@@ -57,10 +72,10 @@ function NewProductPage() {
       data: {
         name: form.name,
         description: form.description,
-        price: Number(form.price),
+        price: 0,
         category: form.category,
         code: form.code,
-        margin_percent: Number(form.margin_percent || 0),
+        margin_percent: 0,
         stock: Number(form.stock || 0),
         active: form.active,
       },
@@ -78,27 +93,29 @@ function NewProductPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Novo produto</CardTitle>
+          <CardTitle>Nova integração</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Nome *</Label>
-              <Input
-                id="name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                required
-              />
+              <Label htmlFor="name">Sistema *</Label>
+              <Select
+                value={form.name || undefined}
+                onValueChange={(v) => setForm({ ...form, name: v })}
+              >
+                <SelectTrigger id="name">
+                  <SelectValue placeholder="Selecione o sistema" />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTEGRATION_SYSTEMS.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Input
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </div>
+
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="category">Categoria</Label>
@@ -110,7 +127,7 @@ function NewProductPage() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {PRODUCT_CATEGORIES.map((c) => (
+                    {INTEGRATION_CATEGORIES.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>
@@ -119,50 +136,42 @@ function NewProductPage() {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="code">Código interno</Label>
-                <Input
-                  id="code"
-                  value={form.code}
-                  onChange={(e) => setForm({ ...form, code: e.target.value })}
-                />
+                <Label htmlFor="code">Status da conexão</Label>
+                <Select value={form.code} onValueChange={(v) => setForm({ ...form, code: v })}>
+                  <SelectTrigger id="code">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INTEGRATION_CONNECTION_STATUSES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="margin">Margem (%)</Label>
-                <Input
-                  id="margin"
-                  type="number"
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  value={form.margin_percent}
-                  onChange={(e) => setForm({ ...form, margin_percent: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="stock">Estoque</Label>
-                <Input
-                  id="stock"
-                  type="number"
-                  min="0"
-                  value={form.stock}
-                  onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                />
-              </div>
-            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="price">Preço *</Label>
+              <Label htmlFor="stock">Registros sincronizados</Label>
               <Input
-                id="price"
+                id="stock"
                 type="number"
-                step="0.01"
                 min="0"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                required
+                value={form.stock}
+                onChange={(e) => setForm({ ...form, stock: e.target.value })}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="description">Observações da integração</Label>
+              <Input
+                id="description"
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+              />
+            </div>
+
             <div className="flex items-center gap-2">
               <Checkbox
                 id="active"
@@ -170,14 +179,14 @@ function NewProductPage() {
                 onCheckedChange={(checked) => setForm({ ...form, active: checked === true })}
               />
               <Label htmlFor="active" className="font-normal">
-                Produto ativo
+                Integração ativa
               </Label>
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? "Salvando..." : "Salvar produto"}
+              {mutation.isPending ? "Salvando..." : "Salvar integração"}
             </Button>
           </form>
         </CardContent>

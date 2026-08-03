@@ -18,7 +18,6 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedEventosRouteImport } from './routes/_authenticated/eventos'
 import { Route as AuthenticatedExportacaoRouteImport } from './routes/_authenticated/exportacao'
-import { Route as AuthenticatedIntegracoesRouteImport } from './routes/_authenticated/integracoes'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
@@ -85,12 +84,6 @@ const AuthenticatedExportacaoRoute = AuthenticatedExportacaoRouteImport.update({
   path: '/exportacao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedIntegracoesRoute =
-  AuthenticatedIntegracoesRouteImport.update({
-    id: '/integracoes',
-    path: '/integracoes',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -208,7 +201,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
-  '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -238,7 +230,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
-  '/integracoes': typeof AuthenticatedIntegracoesRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -270,7 +261,6 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/eventos': typeof AuthenticatedEventosRoute
   '/_authenticated/exportacao': typeof AuthenticatedExportacaoRoute
-  '/_authenticated/integracoes': typeof AuthenticatedIntegracoesRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -302,7 +292,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/eventos'
     | '/exportacao'
-    | '/integracoes'
     | '/leads'
     | '/metas'
     | '/oportunidades'
@@ -332,7 +321,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/eventos'
     | '/exportacao'
-    | '/integracoes'
     | '/leads'
     | '/metas'
     | '/oportunidades'
@@ -363,7 +351,6 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/eventos'
     | '/_authenticated/exportacao'
-    | '/_authenticated/integracoes'
     | '/_authenticated/leads'
     | '/_authenticated/metas'
     | '/_authenticated/oportunidades'
@@ -459,13 +446,6 @@ declare module '@tanstack/react-router' {
       path: '/exportacao'
       fullPath: '/exportacao'
       preLoaderRoute: typeof AuthenticatedExportacaoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/integracoes': {
-      id: '/_authenticated/integracoes'
-      path: '/integracoes'
-      fullPath: '/integracoes'
-      preLoaderRoute: typeof AuthenticatedIntegracoesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads': {
@@ -622,7 +602,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedEventosRoute: typeof AuthenticatedEventosRoute
   AuthenticatedExportacaoRoute: typeof AuthenticatedExportacaoRoute
-  AuthenticatedIntegracoesRoute: typeof AuthenticatedIntegracoesRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRoute
@@ -645,7 +624,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedEventosRoute: AuthenticatedEventosRoute,
   AuthenticatedExportacaoRoute: AuthenticatedExportacaoRoute,
-  AuthenticatedIntegracoesRoute: AuthenticatedIntegracoesRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRoute,
