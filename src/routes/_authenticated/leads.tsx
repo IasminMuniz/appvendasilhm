@@ -592,7 +592,14 @@ function LeadsPage() {
                         onCheckedChange={() => selection.toggle(lead.id)}
                         aria-label={`Selecionar ${lead.name}`}
                       />
-                      <p className="text-sm font-medium">{lead.name}</p>
+                      <div>
+                        {lead.lead_code && (
+                          <p className="text-[10px] font-mono text-muted-foreground">
+                            {lead.lead_code}
+                          </p>
+                        )}
+                        <p className="text-sm font-medium">{lead.name}</p>
+                      </div>
                     </div>
                     {lead.company && (
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
