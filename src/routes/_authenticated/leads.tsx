@@ -305,7 +305,8 @@ function LeadsPage() {
                 const value = String(form[key as keyof typeof form] ?? "");
                 const invalid =
                   (key === "phone" && !!value && !isValidPhone(value)) ||
-                  (key === "postal_code" && !!value && !isValidCep(value));
+                  (key === "postal_code" && !!value && !isValidCep(value)) ||
+                  (key === "cnpj" && !!value && !isValidCnpj(value));
                 return (
                   <div key={key} className="space-y-1">
                     <Label htmlFor={key}>{label}</Label>
@@ -317,10 +318,16 @@ function LeadsPage() {
                           ? "(00) 00000-0000"
                           : key === "postal_code"
                             ? "00000-000"
-                            : undefined
+                            : key === "cnpj"
+                              ? "00.000.000/0000-00"
+                              : undefined
                       }
                       inputMode={
-                        key === "phone" ? "tel" : key === "postal_code" ? "numeric" : undefined
+                        key === "phone"
+                          ? "tel"
+                          : key === "postal_code" || key === "cnpj"
+                            ? "numeric"
+                            : undefined
                       }
                       aria-invalid={invalid}
                       onChange={(e) => {
@@ -330,14 +337,16 @@ function LeadsPage() {
                             ? maskPhone(raw)
                             : key === "postal_code"
                               ? maskCep(raw)
-                              : raw;
+                              : key === "cnpj"
+                                ? maskCnpj(raw)
+                                : raw;
                         setForm({ ...form, [key!]: next });
                       }}
                       required={key === "name"}
                     />
                     {invalid && (
                       <p className="text-xs text-destructive">
-                        {key === "phone" ? PHONE_ERROR : CEP_ERROR}
+                        {key === "phone" ? PHONE_ERROR : key === "cnpj" ? CNPJ_ERROR : CEP_ERROR}
                       </p>
                     )}
                   </div>
