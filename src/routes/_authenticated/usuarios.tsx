@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  bulkDeleteUsers,
   createUser,
   getAccessProfile,
   listUsers,
@@ -32,6 +33,8 @@ import {
   setUserRole,
   setUserSupervisor,
 } from "@/lib/admin.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { ROLE_LABELS } from "@/lib/commercial-constants";
 
 const usersQueryOptions = () =>
