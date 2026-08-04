@@ -67,11 +67,18 @@ export const createCustomer = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const { recordEvent } = await import("@/lib/events.server");
+    const { buildNexusContract } = await import("@/lib/nexus-contract.server");
+    const contract = buildNexusContract({
+      evento: "CLIENTE_CRIADO",
+      customer: inserted,
+      mensagem: inserted.notes,
+    });
     await recordEvent(context.supabase, {
       eventType: "CLIENTE_CRIADO",
       entityType: "customer",
       entityId: inserted.id,
       payload: {
+        ...contract,
         cliente_id: inserted.id,
         cliente_nome: inserted.name,
         responsavel_id: inserted.owner_id ?? inserted.seller_id,
