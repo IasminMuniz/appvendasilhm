@@ -96,7 +96,7 @@ export function buildNexusContract(input: BuildContractInput): NexusContract {
     status: pick(lead, "stage") ?? pick(customer, "status"),
     origem_lead: pick(lead, "source"),
     ultima_interacao:
-      pick(lead, "last_activity_at", "updated_at") ??
+      pick(lead, "ultima_interacao", "last_activity_at", "updated_at") ??
       pick(customer, "last_activity_at", "updated_at"),
     // Nunca calculado no banco: responsabilidade do n8n.
     dias_sem_interacao: null,
