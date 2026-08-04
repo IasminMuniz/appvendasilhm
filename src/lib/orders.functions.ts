@@ -156,6 +156,9 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       note: data.note || null,
     });
 
+    const { touchCustomerActivity } = await import("@/lib/activity.server");
+    await touchCustomerActivity(context.supabase, order.customer_id, context.userId);
+
     const { recordEvent } = await import("@/lib/events.server");
     const done = ["entregue", "faturado", "finalizado", "concluido"];
     await recordEvent(context.supabase, {

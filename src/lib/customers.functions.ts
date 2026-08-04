@@ -123,6 +123,7 @@ export const updateCustomer = createServerFn({ method: "POST" })
         region: rest.region || null,
         status: rest.status,
         updated_by: context.userId,
+        last_activity_at: new Date().toISOString(),
 
       })
       .eq("id", id);
@@ -154,7 +155,11 @@ export const changeCustomerOwner = createServerFn({ method: "POST" })
 
     const { error } = await context.supabase
       .from("customers")
-      .update({ owner_id: data.owner_id, updated_by: context.userId })
+      .update({
+        owner_id: data.owner_id,
+        updated_by: context.userId,
+        last_activity_at: new Date().toISOString(),
+      })
       .eq("id", data.id);
     if (error) throw new Error(error.message);
 
