@@ -52,7 +52,6 @@ export async function buildLeadPayload(
   const { buildNexusContract } = await import("@/lib/nexus-contract.server");
   const contract = buildNexusContract({
     lead,
-    responsavel: responsavelNome,
     mensagem: (lead.notes as string | null) ?? null,
   });
 
@@ -61,10 +60,7 @@ export async function buildLeadPayload(
     lead_id: lead.id ?? null,
     lead_codigo: lead.lead_code ?? null,
     cnpj: lead.cnpj ?? null,
-    empresa: lead.company ?? null,
     contato: lead.name ?? null,
-    telefone: lead.phone ?? null,
-    email: lead.email ?? null,
     cidade: lead.city ?? null,
     estado: lead.state ?? null,
     cep: lead.postal_code ?? null,
@@ -76,7 +72,6 @@ export async function buildLeadPayload(
     responsavel_id: ownerId,
     email_responsavel: responsavelEmail,
     email_supervisor: supervisorEmail,
-    status: lead.stage ?? null,
     proxima_acao: lead.next_action ?? null,
     proxima_acao_data: lead.next_action_date ?? null,
     previsao_fechamento: lead.expected_close_date ?? null,
