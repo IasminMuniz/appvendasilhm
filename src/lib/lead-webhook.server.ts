@@ -22,20 +22,27 @@ export async function sendLeadWebhook(
   payload: Record<string, unknown>,
   stage: string | null | undefined,
 ): Promise<void> {
-  const body = {
-    id: payload.lead_id ?? null,
-    lead_codigo: payload.lead_codigo ?? null,
-    cnpj: payload.cnpj ?? null,
-    empresa: payload.empresa ?? null,
-    contato: payload.contato ?? null,
-    email: payload.email ?? null,
-    telefone: payload.telefone ?? null,
-    status: mapLeadStatus(stage),
-    valor_proposta: Number(payload.valor_estimado ?? 0),
-    vendedor: payload.responsavel ?? null,
-    origem: payload.origem ?? null,
-    observacoes: payload.observacoes ?? null,
-  };
+  const { ensureNexusContract } = await import("@/lib/nexus-contract.server");
+  const status = mapLeadStatus(stage);
+
+  const body = ensureNexusContract(
+    {
+      ...payload,
+      status,
+      id: payload.lead_id ?? null,
+      lead_codigo: payload.lead_codigo ?? null,
+      cnpj: payload.cnpj ?? null,
+      empresa: payload.empresa ?? null,
+      contato: payload.contato ?? null,
+      email: payload.email ?? null,
+      telefone: payload.telefone ?? null,
+      valor_proposta: Number(payload.valor_estimado ?? 0),
+      vendedor: payload.responsavel ?? null,
+      origem: payload.origem ?? null,
+      observacoes: payload.observacoes ?? null,
+    },
+    (payload.evento as string | null) ?? "LEAD_WEBHOOK",
+  );
 
   // 1) Webhook de e-mail (existente) e 2) webhook de persistência no PostgreSQL.
   await Promise.all([postLeadWebhook(body), postLeadPersistWebhook(body)]);

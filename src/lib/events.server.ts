@@ -67,14 +67,21 @@ export async function recordEvent(
     console.error("[events] falha ao registrar evento:", error);
   }
 
-  const result = await notifyN8n(params.eventType, {
-    evento: params.eventType,
-    entity_type: params.entityType,
-    entity_id: params.entityId ?? null,
-    usuario_responsavel: params.userId,
-    ocorrido_em: new Date().toISOString(),
-    ...payload,
-  });
+  const { ensureNexusContract } = await import("@/lib/nexus-contract.server");
+  const result = await notifyN8n(
+    params.eventType,
+    ensureNexusContract(
+      {
+        evento: params.eventType,
+        entity_type: params.entityType,
+        entity_id: params.entityId ?? null,
+        usuario_responsavel: params.userId,
+        ocorrido_em: new Date().toISOString(),
+        ...payload,
+      },
+      params.eventType,
+    ),
+  );
 
   if (!eventId) return;
   try {
