@@ -68,7 +68,7 @@ export async function buildLeadPayload(
     segmento: lead.segment ?? null,
     valor_estimado: Number(lead.estimated_value ?? 0),
     probabilidade: Number(lead.probability ?? 0),
-    responsavel: responsavelNome,
+    responsavel_nome: responsavelNome,
     responsavel_id: ownerId,
     email_responsavel: responsavelEmail,
     email_supervisor: supervisorEmail,
