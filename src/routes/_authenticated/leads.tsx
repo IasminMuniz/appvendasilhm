@@ -45,6 +45,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { bulkDeleteLeads } from "@/lib/bulk-delete.functions";
+import { LeadFollowUp } from "@/components/leads/lead-followup";
 
 import {
   CEP_ERROR,
@@ -687,6 +688,7 @@ function LeadsPage() {
                           </SelectContent>
                         </Select>
                       )}
+                      <LeadFollowUp leadId={lead.id} leadName={lead.name} />
                       {!lead.converted_customer_id && (
                         <Button
                           size="sm"
