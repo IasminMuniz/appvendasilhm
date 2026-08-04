@@ -546,3 +546,171 @@ export const deleteLead = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/* ===================== Ciclo comercial do lead (pré-conversão) ===================== */
+
+/** Lead + histórico de etapas + interações registradas, para o painel de acompanhamento. */
+export const getLeadFollowUp = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const [leadRes, historyRes, interactionsRes, ownersRes] = await Promise.all([
+      context.supabase.from("leads").select("*").eq("id", data.id).single(),
+      context.supabase
+        .from("lead_stage_history")
+        .select("*")
+        .eq("lead_id", data.id)
+        .order("created_at", { ascending: false }),
+      context.supabase
+        .from("customer_interactions")
+        .select("*")
+        .eq("lead_id", data.id)
+        .order("created_at", { ascending: false }),
+      context.supabase.from("profiles").select("id, full_name, email").order("full_name"),
+    ]);
+    if (leadRes.error) throw new Error(leadRes.error.message);
+    return {
+      lead: leadRes.data,
+      history: historyRes.data ?? [],
+      interactions: interactionsRes.data ?? [],
+      owners: ownersRes.data ?? [],
+    };
+  });
+
+/** Registra interação/observação no lead e atualiza `ultima_interacao`. */
+export const addLeadInteraction = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { lead_id: string; kind: string; content: string }) =>
+    z
+      .object({
+        lead_id: z.string().uuid(),
+        kind: z.string().min(1).max(40),
+        content: z.string().min(1, "Descreva a interação").max(2000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: lead, error: readError } = await context.supabase
+      .from("leads")
+      .select("*")
+      .eq("id", data.lead_id)
+      .single();
+    if (readError) throw new Error(readError.message);
+
+    const { error } = await context.supabase.from("customer_interactions").insert({
+      lead_id: data.lead_id,
+      customer_id: lead.converted_customer_id ?? null,
+      user_id: context.userId,
+      kind: data.kind,
+      content: data.content,
+    });
+    if (error) throw new Error(error.message);
+
+    const { touchActivity } = await import("@/lib/activity.server");
+    await touchActivity(context.supabase, {
+      leadId: data.lead_id,
+      customerId: lead.converted_customer_id,
+      userId: context.userId,
+    });
+
+    const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const payload = await buildLeadPayload(context.supabase, lead, {
+      tipo_interacao: data.kind,
+      mensagem: data.content,
+      registrado_por: context.userId,
+      registrado_em: new Date().toISOString(),
+    });
+    await recordEvent(context.supabase, {
+      eventType: "LEAD_INTERACAO_REGISTRADA",
+      entityType: "lead",
+      entityId: data.lead_id,
+      payload,
+      userId: context.userId,
+    });
+
+    return { ok: true };
+  });
+
+/** Troca o responsável pelo lead, registra no histórico e atualiza `ultima_interacao`. */
+export const reassignLead = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string; owner_id: string; note?: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        owner_id: z.string().uuid(),
+        note: z.string().max(500).optional().or(z.literal("")),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: lead, error: readError } = await context.supabase
+      .from("leads")
+      .select("*")
+      .eq("id", data.id)
+      .single();
+    if (readError) throw new Error(readError.message);
+    if (lead.owner_id === data.owner_id) return { ok: true };
+
+    const { error } = await context.supabase
+      .from("leads")
+      .update({ owner_id: data.owner_id, last_activity_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    await context.supabase.from("lead_stage_history").insert({
+      lead_id: data.id,
+      from_stage: lead.stage,
+      to_stage: lead.stage,
+      changed_by: context.userId,
+      note: data.note || "Responsável alterado",
+    });
+
+    const { recordEvent } = await import("@/lib/events.server");
+    const { buildLeadPayload } = await import("@/lib/lead-payload.server");
+    const payload = await buildLeadPayload(
+      context.supabase,
+      { ...lead, owner_id: data.owner_id },
+      {
+        responsavel_anterior: lead.owner_id,
+        novo_responsavel: data.owner_id,
+        alterado_por: context.userId,
+        alterado_em: new Date().toISOString(),
+      },
+    );
+    await recordEvent(context.supabase, {
+      eventType: "LEAD_RESPONSAVEL_ALTERADO",
+      entityType: "lead",
+      entityId: data.id,
+      payload,
+      userId: context.userId,
+    });
+
+    return { ok: true };
+  });
+
+/** Atualiza a próxima ação comercial do lead (follow-up agendado). */
+export const setLeadNextAction = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { id: string; next_action: string; next_action_date?: string }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        next_action: z.string().max(300),
+        next_action_date: z.string().optional().or(z.literal("")),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("leads")
+      .update({
+        next_action: data.next_action || null,
+        next_action_date: data.next_action_date || null,
+        last_activity_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
