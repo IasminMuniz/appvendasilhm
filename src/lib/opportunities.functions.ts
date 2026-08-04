@@ -57,6 +57,13 @@ export const createOpportunity = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
+    const { touchActivity } = await import("@/lib/activity.server");
+    await touchActivity(context.supabase, {
+      leadId: inserted.lead_id,
+      customerId: inserted.customer_id,
+      userId: context.userId,
+    });
+
     const { recordEvent } = await import("@/lib/events.server");
     await recordEvent(context.supabase, {
       eventType: "OPORTUNIDADE_CRIADA",
@@ -94,6 +101,18 @@ export const updateOpportunity = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     if (status) {
+      const { data: current } = await context.supabase
+        .from("opportunities")
+        .select("lead_id, customer_id")
+        .eq("id", id)
+        .maybeSingle();
+      const { touchActivity } = await import("@/lib/activity.server");
+      await touchActivity(context.supabase, {
+        leadId: current?.lead_id,
+        customerId: current?.customer_id,
+        userId: context.userId,
+      });
+
       const { recordEvent } = await import("@/lib/events.server");
       await recordEvent(context.supabase, {
         eventType: "OPORTUNIDADE_STATUS_ALTERADO",

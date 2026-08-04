@@ -134,6 +134,9 @@ export const createQuote = createServerFn({ method: "POST" })
       throw new Error(itemsError.message);
     }
 
+    const { touchCustomerActivity } = await import("@/lib/activity.server");
+    await touchCustomerActivity(context.supabase, quote.customer_id, context.userId);
+
     return quote;
   });
 
@@ -159,6 +162,10 @@ export const submitQuote = createServerFn({ method: "POST" })
       .reduce((max, p) => Math.max(max, Number(p.max_discount_percent)), 0);
 
     const discount = Number(quote.discount_percent ?? 0);
+
+    const { touchCustomerActivity } = await import("@/lib/activity.server");
+    await touchCustomerActivity(context.supabase, quote.customer_id, context.userId);
+
 
     if (discount <= myLimit) {
       const { error: upErr } = await context.supabase
@@ -293,6 +300,10 @@ export const convertQuoteToOrder = createServerFn({ method: "POST" })
       .from("quotes")
       .update({ status: "convertido", order_id: order.id })
       .eq("id", data.id);
+
+    const { touchCustomerActivity } = await import("@/lib/activity.server");
+    await touchCustomerActivity(context.supabase, quote.customer_id, context.userId);
+
 
     await context.supabase.from("order_status_history").insert({
       order_id: order.id,
@@ -458,6 +469,9 @@ export const sendQuoteEmail = createServerFn({ method: "POST" })
       status = "falha";
       errorMessage = e instanceof Error ? e.message : "Falha ao enviar e-mail";
     }
+
+    const { touchCustomerActivity } = await import("@/lib/activity.server");
+    await touchCustomerActivity(context.supabase, quote.customer_id, context.userId);
 
     await context.supabase.from("quote_sends").insert({
       quote_id: data.id,
