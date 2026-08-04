@@ -687,6 +687,7 @@ function LeadsPage() {
                           </SelectContent>
                         </Select>
                       )}
+                      <LeadFollowUp leadId={lead.id} leadName={lead.name} />
                       {!lead.converted_customer_id && (
                         <Button
                           size="sm"
