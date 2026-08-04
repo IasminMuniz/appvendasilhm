@@ -49,7 +49,15 @@ export async function buildLeadPayload(
     }
   }
 
+  const { buildNexusContract } = await import("@/lib/nexus-contract.server");
+  const contract = buildNexusContract({
+    lead,
+    responsavel: responsavelNome,
+    mensagem: (lead.notes as string | null) ?? null,
+  });
+
   return {
+    ...contract,
     lead_id: lead.id ?? null,
     lead_codigo: lead.lead_code ?? null,
     cnpj: lead.cnpj ?? null,
@@ -76,5 +84,12 @@ export async function buildLeadPayload(
     criado_em: lead.created_at ?? null,
     atualizado_em: lead.updated_at ?? null,
     ...extra,
+    // O contrato oficial prevalece sobre chaves legadas homônimas.
+    empresa: contract.empresa,
+    email: contract.email,
+    telefone: contract.telefone,
+    responsavel: contract.responsavel,
+    status: (extra["novo_status"] as string | null) ?? contract.status,
+    dias_sem_interacao: null,
   };
 }
