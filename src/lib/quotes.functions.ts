@@ -470,6 +470,9 @@ export const sendQuoteEmail = createServerFn({ method: "POST" })
       errorMessage = e instanceof Error ? e.message : "Falha ao enviar e-mail";
     }
 
+    const { touchCustomerActivity } = await import("@/lib/activity.server");
+    await touchCustomerActivity(context.supabase, quote.customer_id, context.userId);
+
     await context.supabase.from("quote_sends").insert({
       quote_id: data.id,
       sent_by: context.userId,
