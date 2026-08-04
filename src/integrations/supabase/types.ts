@@ -568,6 +568,7 @@ export type Database = {
           source: string | null
           stage: Database["public"]["Enums"]["lead_stage"]
           state: string | null
+          ultima_interacao: string | null
           updated_at: string
         }
         Insert: {
@@ -598,6 +599,7 @@ export type Database = {
           source?: string | null
           stage?: Database["public"]["Enums"]["lead_stage"]
           state?: string | null
+          ultima_interacao?: string | null
           updated_at?: string
         }
         Update: {
@@ -628,6 +630,7 @@ export type Database = {
           source?: string | null
           stage?: Database["public"]["Enums"]["lead_stage"]
           state?: string | null
+          ultima_interacao?: string | null
           updated_at?: string
         }
         Relationships: [
