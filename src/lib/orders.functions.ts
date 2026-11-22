@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
 import { fetchPackagingCost } from "@/lib/store.functions";
+import { saleCode } from "@/lib/sales";
 import { insertOrderPayments, paymentPlanSchema } from "@/lib/payments.functions";
 
 const orderStatusSchema = z.enum([
@@ -28,12 +29,24 @@ const saleInfoSchema = z.object({
   delivery_method: z.string().max(80).optional().or(z.literal("")),
   other_costs: z.coerce.number().min(0).default(0),
   other_cost_type: z.string().max(80).optional().or(z.literal("")),
+  include_packaging: z.boolean().default(false),
 });
 
 type SaleInfo = z.infer<typeof saleInfoSchema>;
 
-function saleColumns(info: SaleInfo, items: SaleItem[], productCost: number, packagingPerPiece: number) {
-  const r = calcSale({ items, channel: info.channel, otherCosts: info.other_costs, productCost, packagingCost: packagingPerPiece });
+function saleColumns(
+  info: SaleInfo,
+  items: SaleItem[],
+  productCost: number,
+  packagingPerPiece: number,
+) {
+  const r = calcSale({
+    items,
+    channel: info.channel,
+    otherCosts: info.other_costs,
+    productCost,
+    packagingCost: packagingPerPiece,
+  });
   return {
     channel: info.channel || null,
     payment_method: info.payment_method || null,
@@ -52,15 +65,26 @@ async function productCostOf(supabase: any, items: { product_id: string; quantit
   const ids = [...new Set(items.map((i) => i.product_id))];
   if (ids.length === 0) return 0;
   const { data } = await supabase.from("products").select("id, cost").in("id", ids);
-  const cost = Object.fromEntries((data ?? []).map((p: { id: string; cost: number }) => [p.id, Number(p.cost ?? 0)]));
-  return Math.round(items.reduce((s, i) => s + (cost[i.product_id] ?? 0) * i.quantity, 0) * 100) / 100;
+  const cost = Object.fromEntries(
+    (data ?? []).map((p: { id: string; cost: number }) => [p.id, Number(p.cost ?? 0)]),
+  );
+  return (
+    Math.round(items.reduce((s, i) => s + (cost[i.product_id] ?? 0) * i.quantity, 0) * 100) / 100
+  );
 }
 
 /** Ajusta estoque dos itens da venda: sign -1 baixa, +1 devolve. */
 async function adjustStock(supabase: any, orderId: string, sign: 1 | -1) {
-  const { data: items } = await supabase.from("order_items").select("product_id, quantity").eq("order_id", orderId);
+  const { data: items } = await supabase
+    .from("order_items")
+    .select("product_id, quantity")
+    .eq("order_id", orderId);
   for (const it of items ?? []) {
-    const { data: prod } = await supabase.from("products").select("stock").eq("id", it.product_id).single();
+    const { data: prod } = await supabase
+      .from("products")
+      .select("stock")
+      .eq("id", it.product_id)
+      .single();
     if (!prod) continue;
     await supabase
       .from("products")
@@ -117,8 +141,19 @@ export const getOrder = createServerFn({ method: "GET" })
       (profilesRes.data ?? []).map((p) => [p.id, p.full_name || p.email || "Usuário"]),
     );
 
+    // Número da venda: do banco (order_number); até a migration, pela ordem de cadastro.
+    let orderNumber = (orderRes.data as { order_number?: number | null }).order_number ?? null;
+    if (orderNumber == null) {
+      const { count } = await context.supabase
+        .from("orders")
+        .select("id", { count: "exact", head: true })
+        .lte("created_at", orderRes.data.created_at);
+      orderNumber = count ?? null;
+    }
+
     return {
       order: orderRes.data,
+      orderCode: orderNumber ? saleCode(orderNumber) : "",
       history: (historyRes.data ?? []).map((h) => ({
         ...h,
         changed_by_name: profileMap[h.changed_by] ?? "Usuário",
@@ -132,7 +167,9 @@ export const createOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     const productCost = await productCostOf(context.supabase, data.items);
-    const packagingPerPiece = await fetchPackagingCost(context.supabase);
+    const packagingPerPiece = data.include_packaging
+      ? await fetchPackagingCost(context.supabase)
+      : 0;
 
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
@@ -172,7 +209,14 @@ export const createOrder = createServerFn({ method: "POST" })
       note: "Venda criada",
     });
 
-    await insertOrderPayments(context.supabase, order.id, total, data.payment_method, data, context.userId);
+    await insertOrderPayments(
+      context.supabase,
+      order.id,
+      total,
+      data.payment_method,
+      data,
+      context.userId,
+    );
 
     return order;
   });
@@ -259,7 +303,6 @@ export const deleteOrder = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 /** Atualiza canal, pagamento, entrega e outros custos, recalculando taxa, lucro e margem. */
 export const updateOrderSaleInfo = createServerFn({ method: "POST" })
   .middleware([requireAuth])
@@ -271,12 +314,19 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .single();
     if (readError) throw new Error(readError.message);
-    const items = (order.order_items ?? []).map((i) => ({ unit_price: Number(i.unit_price ?? 0), quantity: Number(i.quantity ?? 0) }));
+    const items = (order.order_items ?? []).map((i) => ({
+      unit_price: Number(i.unit_price ?? 0),
+      quantity: Number(i.quantity ?? 0),
+    }));
     const productCost = await productCostOf(context.supabase, order.order_items ?? []);
     // Mantém a embalagem registrada na venda (histórico); sem registro, usa a configuração atual.
     const pieces = items.reduce((s, i) => s + i.quantity, 0);
     const stored = Number(order.packaging_cost ?? 0);
-    const packagingPerPiece = stored > 0 && pieces > 0 ? stored / pieces : await fetchPackagingCost(context.supabase);
+    const packagingPerPiece = !data.include_packaging
+      ? 0
+      : stored > 0 && pieces > 0
+        ? stored / pieces
+        : await fetchPackagingCost(context.supabase);
     const { error } = await context.supabase
       .from("orders")
       .update(saleColumns(data, items, productCost, packagingPerPiece))

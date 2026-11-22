@@ -1,6 +1,8 @@
+import { packagingCostQuery } from "@/components/store/packaging-cost-card";
+import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
 import { createFileRoute, Link, useParams, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { ArrowLeft, History, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -68,7 +70,8 @@ function OrderDetailPage() {
     quantity: Number(i.quantity ?? 0),
   }));
   const pieces = saleItems.reduce((s, i) => s + i.quantity, 0);
-  const packagingPerPiece = pieces > 0 ? Number(order.packaging_cost ?? 0) / pieces : 0;
+  const storedPackaging = pieces > 0 ? Number(order.packaging_cost ?? 0) / pieces : 0;
+  const { data: packagingSetting } = useQuery(packagingCostQuery);
 
   const mutation = useMutation({
     mutationFn: updateOrderStatus,
@@ -88,6 +91,7 @@ function OrderDetailPage() {
     delivery_method: order.delivery_method ?? "",
     other_costs: String(order.other_costs ?? 0),
     other_cost_type: order.other_cost_type ?? "",
+    include_packaging: Number(order.packaging_cost ?? 0) > 0,
   });
   const saveSale = useMutation({
     mutationFn: updateOrderSaleInfo,
@@ -146,7 +150,7 @@ function OrderDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Venda</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Venda {data.orderCode}</h1>
           <p className="text-muted-foreground">
             {new Date(order.created_at).toLocaleDateString("pt-BR")}
           </p>
@@ -207,7 +211,13 @@ function OrderDetailPage() {
             channel={sale.channel}
             otherCosts={Number(sale.other_costs || 0)}
             productCost={Number(order.product_cost ?? 0)}
-            packagingCost={packagingPerPiece}
+            packagingCost={
+              !sale.include_packaging
+                ? 0
+                : storedPackaging > 0
+                  ? storedPackaging
+                  : (packagingSetting?.value ?? DEFAULT_PACKAGING_COST)
+            }
           />
           <Button
             disabled={saveSale.isPending}

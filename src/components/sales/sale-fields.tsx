@@ -1,8 +1,22 @@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency } from "@/lib/commercial-constants";
-import { CHANNELS, DELIVERY_METHODS, OTHER_COST_TYPES, PAYMENT_METHODS, calcSale, type SaleItem } from "@/lib/sales";
+import {
+  CHANNELS,
+  DELIVERY_METHODS,
+  OTHER_COST_TYPES,
+  PAYMENT_METHODS,
+  calcSale,
+  type SaleItem,
+} from "@/lib/sales";
 
 export interface SaleInfoValues {
   channel: string;
@@ -10,47 +24,123 @@ export interface SaleInfoValues {
   delivery_method: string;
   other_costs: string;
   other_cost_type: string;
+  /** Usar embalagem nesta venda? Desligado por padrão. */
+  include_packaging: boolean;
 }
 
 export const emptySaleInfo: SaleInfoValues = {
-  channel: "", payment_method: "", delivery_method: "", other_costs: "0", other_cost_type: "",
+  channel: "",
+  payment_method: "",
+  delivery_method: "",
+  other_costs: "0",
+  other_cost_type: "",
+  include_packaging: false,
 };
 
-function Pick({ id, label, value, options, onChange }: {
-  id: string; label: string; value: string; options: readonly string[]; onChange: (v: string) => void;
+function Pick({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  options: readonly string[];
+  onChange: (v: string) => void;
 }) {
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
       <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger id={id}><SelectValue placeholder="Selecione" /></SelectTrigger>
+        <SelectTrigger id={id}>
+          <SelectValue placeholder="Selecione" />
+        </SelectTrigger>
         <SelectContent>
-          {options.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
   );
 }
 
-export function SaleFields({ value, onChange }: { value: SaleInfoValues; onChange: (v: SaleInfoValues) => void }) {
+export function SaleFields({
+  value,
+  onChange,
+}: {
+  value: SaleInfoValues;
+  onChange: (v: SaleInfoValues) => void;
+}) {
   const set = (patch: Partial<SaleInfoValues>) => onChange({ ...value, ...patch });
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Pick id="channel" label="Canal" value={value.channel} options={CHANNELS} onChange={(v) => set({ channel: v })} />
-      <Pick id="payment" label="Forma de pagamento" value={value.payment_method} options={PAYMENT_METHODS} onChange={(v) => set({ payment_method: v })} />
-      <Pick id="delivery" label="Entrega" value={value.delivery_method} options={DELIVERY_METHODS} onChange={(v) => set({ delivery_method: v })} />
+      <Pick
+        id="channel"
+        label="Canal"
+        value={value.channel}
+        options={CHANNELS}
+        onChange={(v) => set({ channel: v })}
+      />
+      <Pick
+        id="payment"
+        label="Forma de pagamento"
+        value={value.payment_method}
+        options={PAYMENT_METHODS}
+        onChange={(v) => set({ payment_method: v })}
+      />
+      <Pick
+        id="delivery"
+        label="Entrega"
+        value={value.delivery_method}
+        options={DELIVERY_METHODS}
+        onChange={(v) => set({ delivery_method: v })}
+      />
       <div />
       <div className="space-y-2">
         <Label htmlFor="other_costs">Outros custos (R$)</Label>
-        <Input id="other_costs" type="number" min="0" step="0.01" value={value.other_costs} onChange={(e) => set({ other_costs: e.target.value })} />
+        <Input
+          id="other_costs"
+          type="number"
+          min="0"
+          step="0.01"
+          value={value.other_costs}
+          onChange={(e) => set({ other_costs: e.target.value })}
+        />
       </div>
-      <Pick id="other_cost_type" label="Tipo de custo" value={value.other_cost_type} options={OTHER_COST_TYPES} onChange={(v) => set({ other_cost_type: v })} />
+      <Pick
+        id="other_cost_type"
+        label="Tipo de custo"
+        value={value.other_cost_type}
+        options={OTHER_COST_TYPES}
+        onChange={(v) => set({ other_cost_type: v })}
+      />
+      <label className="flex items-center gap-2 text-sm sm:col-span-2">
+        <Checkbox
+          checked={value.include_packaging}
+          onCheckedChange={(c) => set({ include_packaging: c === true })}
+        />
+        Usei embalagem nesta venda (envelope, sacola, tag)
+      </label>
     </div>
   );
 }
 
-export function SaleSummary({ items, channel, otherCosts, productCost, packagingCost }: {
-  items: SaleItem[]; channel: string | null | undefined; otherCosts: number; productCost: number;
+export function SaleSummary({
+  items,
+  channel,
+  otherCosts,
+  productCost,
+  packagingCost,
+}: {
+  items: SaleItem[];
+  channel: string | null | undefined;
+  otherCosts: number;
+  productCost: number;
   /** Custo de embalagem por peça. */
   packagingCost: number;
 }) {
@@ -80,4 +170,7 @@ export function SaleSummary({ items, channel, otherCosts, productCost, packaging
   );
 }
 
-export const toSaleInput = (v: SaleInfoValues) => ({ ...v, other_costs: Number(v.other_costs || 0) });
+export const toSaleInput = (v: SaleInfoValues) => ({
+  ...v,
+  other_costs: Number(v.other_costs || 0),
+});

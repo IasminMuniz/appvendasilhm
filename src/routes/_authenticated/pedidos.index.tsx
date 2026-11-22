@@ -1,3 +1,4 @@
+import { saleCode } from "@/lib/sales";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
@@ -12,7 +13,6 @@ import { bulkDeleteOrders } from "@/lib/bulk-delete.functions";
 import { listOrders } from "@/lib/orders.functions";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
-
 
 const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   novo: "secondary",
@@ -53,7 +53,16 @@ function OrdersPage() {
   const { data: orders } = useSuspenseQuery(ordersQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  // Número da venda: do banco (order_number) ou, até a migration, pela ordem de cadastro.
+  const codes = new Map<string, string>();
+  [...orders]
+    .sort((a, b) => a.created_at.localeCompare(b.created_at))
+    .forEach((o, i) => {
+      codes.set(o.id, saleCode((o as { order_number?: number | null }).order_number ?? i + 1));
+    });
+  const code = (id: string) => codes.get(id) ?? "";
   const search = useRecordSearch(orders, (o) => [
+    code(o.id),
     o.customers?.name,
     (o.customers as { company_name?: string | null } | null)?.company_name,
     (o.customers as { customer_code?: string | null } | null)?.customer_code,
@@ -76,8 +85,7 @@ function OrdersPage() {
       selection.clear();
       toast.success(bulkDeleteToastMessage(result));
     },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir vendas."),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao excluir vendas."),
   });
 
   const handleEdit = () => {
@@ -106,21 +114,21 @@ function OrdersPage() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Lista de vendas</CardTitle>
-          <OptionsMenu
-            total={visibleOrders.length}
-            count={selection.selected.length}
-            onSelectAll={selection.selectAll}
-            onClearAll={selection.clear}
-            onEdit={handleEdit}
-            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
-            isPending={removeMany.isPending}
-            entityLabel="venda(s)"
-            description="As vendas selecionadas, seus itens e histórico serão removidos permanentemente."
-          />
+            <CardTitle>Lista de vendas</CardTitle>
+            <OptionsMenu
+              total={visibleOrders.length}
+              count={selection.selected.length}
+              onSelectAll={selection.selectAll}
+              onClearAll={selection.clear}
+              onEdit={handleEdit}
+              onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+              isPending={removeMany.isPending}
+              entityLabel="venda(s)"
+              description="As vendas selecionadas, seus itens e histórico serão removidos permanentemente."
+            />
           </div>
           <RecordSearch
-            placeholder="Pesquisar por cliente, peça, canal, status..."
+            placeholder="Pesquisar por nº (V-0001), cliente, peça, canal, status..."
             query={search.query}
             onQueryChange={search.setQuery}
             suggestions={visibleOrders.map((o) => ({
@@ -135,10 +143,11 @@ function OrdersPage() {
           />
         </CardHeader>
         <CardContent>
-
           {visibleOrders.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhuma venda registrada."}
+              {search.isSearching
+                ? "Nenhum resultado para a pesquisa."
+                : "Nenhuma venda registrada."}
             </p>
           ) : (
             <div className="divide-y">
@@ -155,9 +164,18 @@ function OrdersPage() {
                     className="flex flex-1 items-center justify-between hover:bg-accent/50"
                   >
                     <div>
-                      <p className="font-medium">{order.customers?.name ?? "Cliente"}</p>
+                      <p className="font-medium">
+                        <span className="mr-2 font-mono text-xs text-muted-foreground">
+                          {code(order.id)}
+                        </span>
+                        {order.customers?.name ?? "Cliente"}
+                      </p>
                       <p className="text-sm text-muted-foreground">
-                        {[new Date(order.created_at ?? "").toLocaleDateString("pt-BR"), order.channel, order.payment_method]
+                        {[
+                          new Date(order.created_at ?? "").toLocaleDateString("pt-BR"),
+                          order.channel,
+                          order.payment_method,
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
@@ -168,8 +186,11 @@ function OrdersPage() {
                       </Badge>
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(Number(order.total ?? 0))}</p>
-                        <p className={`text-xs ${Number(order.profit ?? 0) < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                          Lucro {formatCurrency(Number(order.profit ?? 0))} · {Number(order.margin_percent ?? 0).toLocaleString("pt-BR")}%
+                        <p
+                          className={`text-xs ${Number(order.profit ?? 0) < 0 ? "text-destructive" : "text-muted-foreground"}`}
+                        >
+                          Lucro {formatCurrency(Number(order.profit ?? 0))} ·{" "}
+                          {Number(order.margin_percent ?? 0).toLocaleString("pt-BR")}%
                         </p>
                       </div>
                     </div>
@@ -180,7 +201,6 @@ function OrdersPage() {
           )}
         </CardContent>
       </Card>
-
     </div>
   );
 }

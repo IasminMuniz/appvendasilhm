@@ -263,7 +263,9 @@ function NewOrderPage() {
               channel={sale.channel}
               otherCosts={Number(sale.other_costs || 0)}
               productCost={productCost}
-              packagingCost={packaging?.value ?? DEFAULT_PACKAGING_COST}
+              packagingCost={
+                sale.include_packaging ? (packaging?.value ?? DEFAULT_PACKAGING_COST) : 0
+              }
             />
 
             {error && <p className="text-sm text-destructive">{error}</p>}

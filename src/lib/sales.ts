@@ -7,8 +7,19 @@ export const CHANNELS = [
   "Indicação (boca a boca)",
   "Venda direta (família e amigos)",
 ] as const;
-export const PAYMENT_METHODS = ["Pix", "Cartão de crédito", "Cartão de débito", "Dinheiro", "Pago pela Shopee"] as const;
-export const DELIVERY_METHODS = ["Shopee", "Correios/plataforma de frete", "Estação do metrô", "Retirada"] as const;
+export const PAYMENT_METHODS = [
+  "Pix",
+  "Cartão de crédito",
+  "Cartão de débito",
+  "Dinheiro",
+  "Pago pela Shopee",
+] as const;
+export const DELIVERY_METHODS = [
+  "Shopee",
+  "Correios/plataforma de frete",
+  "Estação do metrô",
+  "Retirada",
+] as const;
 export const OTHER_COST_TYPES = [
   "Shopee Ads",
   "Ads Fácil",
@@ -40,7 +51,9 @@ export interface SaleItem {
 /** Taxa do canal: na Shopee é cobrada por item (faixa do preço unitário × quantidade). */
 export function channelFee(channel: string | null | undefined, items: SaleItem[]): number {
   if (channel !== "Shopee") return 0;
-  return round2(items.reduce((s, i) => s + shopeeFee(Number(i.unit_price)) * Number(i.quantity), 0));
+  return round2(
+    items.reduce((s, i) => s + shopeeFee(Number(i.unit_price)) * Number(i.quantity), 0),
+  );
 }
 
 export interface SaleCalc {
@@ -78,3 +91,6 @@ export const SALE_STATUSES = [
 
 /** Status em que o estoque deve estar baixado. */
 export const STOCK_OUT_STATUSES = ["pago", "entregue"];
+
+/** Código da venda exibido na tela: V-0001, V-0002... */
+export const saleCode = (n: number) => `V-${String(n).padStart(4, "0")}`;

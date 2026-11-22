@@ -907,6 +907,7 @@ export type Database = {
           id: string
           margin_percent: number
           notes: string | null
+          order_number: number | null
           other_cost_type: string | null
           other_costs: number
           packaging_cost: number
@@ -928,6 +929,7 @@ export type Database = {
           id?: string
           margin_percent?: number
           notes?: string | null
+          order_number?: number | null
           other_cost_type?: string | null
           other_costs?: number
           packaging_cost?: number
@@ -949,6 +951,7 @@ export type Database = {
           id?: string
           margin_percent?: number
           notes?: string | null
+          order_number?: number | null
           other_cost_type?: string | null
           other_costs?: number
           packaging_cost?: number
