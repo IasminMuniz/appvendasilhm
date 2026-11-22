@@ -32,10 +32,11 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
       packaging: Number(o.packaging_cost ?? 0),
       reservePct,
     });
-    await supabase
+    const { error } = await supabase
       .from("orders")
       .update({ product_cost: productCost, profit, margin_percent: margin })
       .eq("id", o.id);
+    if (error) console.error("Falha ao recalcular venda", o.id, error.message);
   }
 }
 

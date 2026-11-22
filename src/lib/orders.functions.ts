@@ -3,8 +3,39 @@ import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
 import { fetchCashPlan, fetchPackagingCost } from "@/lib/store.functions";
-import { saleCode } from "@/lib/sales";
+import { profitOf, saleCode } from "@/lib/sales";
+import { reservePctOf } from "@/lib/order-recalc";
 import { insertOrderPayments, paymentPlanSchema } from "@/lib/payments.functions";
+
+type LiveOrder = {
+  total: number | null;
+  channel_fee: number | null;
+  other_costs: number | null;
+  packaging_cost: number | null;
+  order_items?: { quantity: number | null; products: { cost: number | null } | null }[] | null;
+};
+
+/** Custo dos produtos (custo atual do cadastro) e lucro da venda. */
+function liveProfit(o: LiveOrder, reservePct: number) {
+  const productCost =
+    Math.round(
+      (o.order_items ?? []).reduce(
+        (s, i) => s + Number(i.quantity ?? 0) * Number(i.products?.cost ?? 0),
+        0,
+      ) * 100,
+    ) / 100;
+  return {
+    productCost,
+    ...profitOf({
+      total: Number(o.total ?? 0),
+      channelFee: Number(o.channel_fee ?? 0),
+      otherCosts: Number(o.other_costs ?? 0),
+      productCost,
+      packaging: Number(o.packaging_cost ?? 0),
+      reservePct,
+    }),
+  };
+}
 
 const orderStatusSchema = z.enum([
   "pendente",
@@ -112,11 +143,13 @@ export const listOrders = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("orders")
-      .select("*, customers(name, company_name), order_items(*, products(name))")
+      .select("*, customers(name, company_name), order_items(*, products(name, cost))")
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
-    return data ?? [];
+    // Lucro sempre calculado na hora, com o custo atual dos produtos e o % para outros fins.
+    const reservePct = await reservePctOf(context.supabase);
+    return (data ?? []).map((o) => ({ ...o, profit: liveProfit(o, reservePct).profit }));
   });
 
 export const getOrder = createServerFn({ method: "GET" })
@@ -126,7 +159,7 @@ export const getOrder = createServerFn({ method: "GET" })
     const [orderRes, historyRes, profilesRes] = await Promise.all([
       context.supabase
         .from("orders")
-        .select("*, customers(*), order_items(*, products(name))")
+        .select("*, customers(*), order_items(*, products(name, cost))")
         .eq("id", data.id)
         .single(),
       context.supabase
@@ -153,8 +186,11 @@ export const getOrder = createServerFn({ method: "GET" })
       orderNumber = count ?? null;
     }
 
+    const reservePct = await reservePctOf(context.supabase);
+    const live = liveProfit(orderRes.data, reservePct);
+
     return {
-      order: orderRes.data,
+      order: { ...orderRes.data, product_cost: live.productCost, profit: live.profit },
       orderCode: orderNumber ? saleCode(orderNumber) : "",
       history: (historyRes.data ?? []).map((h) => ({
         ...h,
