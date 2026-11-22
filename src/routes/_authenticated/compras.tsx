@@ -114,7 +114,19 @@ function PurchasesPage() {
   });
 
   const purchases = data.purchases;
+  // Número da compra: vem do banco (purchase_number); até a migration ser aplicada, usa a ordem de cadastro.
+  const codes = new Map<string, string>();
+  [...purchases]
+    .sort((a, b) =>
+      `${a.purchase_date}${a.created_at}`.localeCompare(`${b.purchase_date}${b.created_at}`),
+    )
+    .forEach((p, i) => {
+      const n = (p as { purchase_number?: number | null }).purchase_number ?? i + 1;
+      codes.set(p.id, `C-${String(n).padStart(4, "0")}`);
+    });
+  const code = (id: string) => codes.get(id) ?? "";
   const search = useRecordSearch(purchases, (p) => [
+    code(p.id),
     p.supplier,
     p.description,
     p.status,
@@ -188,7 +200,7 @@ function PurchasesPage() {
             query={search.query}
             onQueryChange={search.setQuery}
             suggestions={[]}
-            placeholder="Pesquisar por fornecedor, peça, status, pagamento..."
+            placeholder="Pesquisar por nº (C-0001), fornecedor, peça, status, pagamento..."
           />
         </CardHeader>
         <CardContent>
@@ -200,6 +212,7 @@ function PurchasesPage() {
                 <div key={p.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-xs text-muted-foreground">{code(p.id)}</span>
                       <p className="font-medium">{p.supplier || "Sem fornecedor"}</p>
                       {p.status && (
                         <Badge variant={STATUS_VARIANT[p.status] ?? "secondary"}>{p.status}</Badge>
@@ -266,7 +279,7 @@ function PurchasesPage() {
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{form?.id ? "Editar compra" : "Nova compra"}</DialogTitle>
+            <DialogTitle>{form?.id ? `Editar compra ${code(form.id)}` : "Nova compra"}</DialogTitle>
           </DialogHeader>
           {form && (
             <form

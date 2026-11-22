@@ -1196,6 +1196,7 @@ export type Database = {
           notes: string | null
           payment_method: string | null
           purchase_date: string
+          purchase_number: number | null
           status: string
           stock_added: boolean
           supplier: string | null
@@ -1211,6 +1212,7 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           purchase_date?: string
+          purchase_number?: number | null
           status?: string
           stock_added?: boolean
           supplier?: string | null
@@ -1226,6 +1228,7 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           purchase_date?: string
+          purchase_number?: number | null
           status?: string
           stock_added?: boolean
           supplier?: string | null
