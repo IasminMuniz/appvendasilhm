@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
 import { fetchPackagingCost } from "@/lib/store.functions";
+import { insertOrderPayments, paymentPlanSchema } from "@/lib/payments.functions";
 
 const orderStatusSchema = z.enum([
   "pendente",
@@ -74,7 +75,7 @@ const orderItemSchema = z.object({
   unit_price: z.coerce.number().min(0),
 });
 
-const createOrderSchema = saleInfoSchema.extend({
+const createOrderSchema = saleInfoSchema.merge(paymentPlanSchema).extend({
   customer_id: z.string().uuid(),
   notes: z.string().max(2000).optional().or(z.literal("")),
   items: z.array(orderItemSchema).min(1, "Adicione pelo menos um item"),
@@ -170,6 +171,8 @@ export const createOrder = createServerFn({ method: "POST" })
       changed_by: context.userId,
       note: "Venda criada",
     });
+
+    await insertOrderPayments(context.supabase, order.id, total, data.payment_method, data, context.userId);
 
     return order;
   });

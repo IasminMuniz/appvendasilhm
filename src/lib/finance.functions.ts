@@ -281,15 +281,17 @@ export const getCashFlow = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
-    const [ordersRes, purchasesRes, expensesRes, productsRes, plan] = await Promise.all([
+    const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes] = await Promise.all([
       sb
         .from("orders")
-        .select("total, channel_fee, other_costs, product_cost, packaging_cost, created_at, status")
-        .in("status", ["pago", "entregue"]),
+        .select("id, total, channel_fee, other_costs, product_cost, packaging_cost, created_at, status, customers(name)")
+        .neq("status", "cancelado"),
       sb.from("purchases").select("*"),
       sb.from("expenses").select("*"),
       sb.from("products").select("id, name, sku, stock, active").eq("active", true).order("stock"),
       fetchCashPlan(sb),
+      // Parcelas das clientes (se a migration ainda não foi aplicada, vem com erro e é ignorado).
+      sb.from("order_payments").select("order_id, number, due_date, amount, status, paid_at"),
     ]);
     for (const r of [ordersRes, purchasesRes, expensesRes, productsRes]) if (r.error) throw new Error(r.error.message);
 
@@ -298,7 +300,11 @@ export const getCashFlow = createServerFn({ method: "GET" })
     const in30 = addMonths(today, 1);
     const n = (v: unknown) => Number(v ?? 0) || 0;
 
-    const sales = (ordersRes.data ?? []).map((o) => ({
+    const allOrders = ordersRes.data ?? [];
+    const payments = paymentsRes.error ? [] : (paymentsRes.data ?? []);
+    const paysByOrder = new Map<string, typeof payments>();
+    for (const p of payments) paysByOrder.set(p.order_id, [...(paysByOrder.get(p.order_id) ?? []), p]);
+    const sales = allOrders.filter((o) => o.status === "pago" || o.status === "entregue").map((o) => ({
       total: n(o.total), channel_fee: n(o.channel_fee), other_costs: n(o.other_costs),
       product_cost: n(o.product_cost), packaging_cost: n(o.packaging_cost), date: String(o.created_at).slice(0, 10),
     }));
@@ -309,11 +315,38 @@ export const getCashFlow = createServerFn({ method: "GET" })
     const paidExpenses = expenses.filter(isPaid);
     const expenseDate = (e: { paid_at?: string | null; expense_date: string }) => e.paid_at || e.expense_date;
 
-    const received = (s: (typeof sales)[number]) => s.total - s.channel_fee;
     const sumBy = <T,>(rows: T[], f: (r: T) => number) => Math.round(rows.reduce((t, r) => t + f(r), 0) * 100) / 100;
 
+    // Entradas de dinheiro: com parcelas lançadas, conta só o que a cliente já pagou (na data do recebimento);
+    // sem parcelas, conta a venda paga/entregue inteira na data da venda. A taxa do canal é descontada.
+    const inflows: { date: string; amount: number }[] = [];
+    const toReceive: { customer: string; orderId: string; number: number; count: number; date: string; amount: number; overdue: boolean }[] = [];
+    for (const o of allOrders) {
+      const total = n(o.total);
+      const net = total > 0 ? (total - n(o.channel_fee)) / total : 1;
+      const pays = paysByOrder.get(o.id);
+      if (pays?.length) {
+        for (const p of pays) {
+          if (p.status === "Pago") inflows.push({ date: p.paid_at || p.due_date, amount: n(p.amount) * net });
+          else
+            toReceive.push({
+              customer: (o.customers as { name?: string } | null)?.name ?? "Cliente",
+              orderId: o.id,
+              number: p.number,
+              count: pays.length,
+              date: p.due_date,
+              amount: n(p.amount),
+              overdue: p.due_date < today,
+            });
+        }
+      } else if (o.status === "pago" || o.status === "entregue") {
+        inflows.push({ date: String(o.created_at).slice(0, 10), amount: total - n(o.channel_fee) });
+      }
+    }
+    toReceive.sort((a, b) => a.date.localeCompare(b.date));
+
     // Saldo atual (desde o início): aporte + o que entrou das vendas − tudo que saiu.
-    const totalIn = sumBy(sales, received);
+    const totalIn = sumBy(inflows, (f) => f.amount);
     const totalOut =
       sumBy(purchases, (p) => n(p.amount)) + sumBy(paidExpenses, (e) => n(e.amount)) + sumBy(sales, (s) => s.other_costs);
     const balance = Math.round((plan.initialCapital + totalIn - totalOut) * 100) / 100;
@@ -324,7 +357,7 @@ export const getCashFlow = createServerFn({ method: "GET" })
     const pExpenses = paidExpenses.filter((e) => inPeriod(expenseDate(e)));
     const period = {
       salesCount: pSales.length,
-      received: sumBy(pSales, received),
+      received: sumBy(inflows.filter((f) => inPeriod(f.date)), (f) => f.amount),
       purchases: sumBy(pPurchases, (p) => n(p.amount)),
       expenses: sumBy(pExpenses, (e) => n(e.amount)),
       saleCosts: sumBy(pSales, (s) => s.other_costs),
@@ -357,6 +390,8 @@ export const getCashFlow = createServerFn({ method: "GET" })
       rebuyPurchases,
       upcoming: upcoming.map((e) => ({ description: e.description, date: e.expense_date, amount: n(e.amount), overdue: e.expense_date < today })),
       upcomingTotal: sumBy(upcoming, (e) => n(e.amount)),
+      toReceive,
+      toReceiveTotal: sumBy(toReceive, (r) => r.amount),
       lowStock: (productsRes.data ?? []).filter((p) => n(p.stock) <= 1).map((p) => ({ id: p.id, name: p.name, sku: p.sku, stock: n(p.stock) })),
       piecesInStock: sumBy(productsRes.data ?? [], (p) => n(p.stock)),
     };

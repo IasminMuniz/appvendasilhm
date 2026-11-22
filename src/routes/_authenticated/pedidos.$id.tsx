@@ -24,15 +24,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { deleteOrder, getOrder, updateOrderSaleInfo, updateOrderStatus } from "@/lib/orders.functions";
+import {
+  deleteOrder,
+  getOrder,
+  updateOrderSaleInfo,
+  updateOrderStatus,
+} from "@/lib/orders.functions";
 import { SaleFields, SaleSummary, toSaleInput } from "@/components/sales/sale-fields";
+import { OrderPaymentsCard } from "@/components/sales/payment-plan";
 import { useState } from "react";
 
-import {
-  ORDER_STATUSES,
-  ORDER_STATUS_LABELS,
-  formatCurrency,
-} from "@/lib/commercial-constants";
+import { ORDER_STATUSES, ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
 
 const orderQueryOptions = (id: string) =>
   queryOptions({
@@ -61,7 +63,10 @@ function OrderDetailPage() {
   const navigate = useNavigate();
   const { data } = useSuspenseQuery(orderQueryOptions(id));
   const order = data.order;
-  const saleItems = (order.order_items ?? []).map((i) => ({ unit_price: Number(i.unit_price ?? 0), quantity: Number(i.quantity ?? 0) }));
+  const saleItems = (order.order_items ?? []).map((i) => ({
+    unit_price: Number(i.unit_price ?? 0),
+    quantity: Number(i.quantity ?? 0),
+  }));
   const pieces = saleItems.reduce((s, i) => s + i.quantity, 0);
   const packagingPerPiece = pieces > 0 ? Number(order.packaging_cost ?? 0) / pieces : 0;
 
@@ -139,7 +144,6 @@ function OrderDetailPage() {
         </AlertDialog>
       </div>
 
-
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Venda</h1>
@@ -205,16 +209,27 @@ function OrderDetailPage() {
             productCost={Number(order.product_cost ?? 0)}
             packagingCost={packagingPerPiece}
           />
-          <Button disabled={saveSale.isPending} onClick={() => saveSale.mutate({ data: { id: order.id, ...toSaleInput(sale) } })}>
+          <Button
+            disabled={saveSale.isPending}
+            onClick={() => saveSale.mutate({ data: { id: order.id, ...toSaleInput(sale) } })}
+          >
             {saveSale.isPending ? "Salvando..." : "Salvar dados da venda"}
           </Button>
         </CardContent>
       </Card>
 
+      <OrderPaymentsCard
+        orderId={order.id}
+        total={Number(order.total ?? 0)}
+        method={order.payment_method ?? null}
+      />
+
       <Card>
         <CardHeader>
           <CardTitle>Atualizar status</CardTitle>
-          <p className="text-sm text-muted-foreground">Ao marcar como Pago, o estoque dos produtos é baixado.</p>
+          <p className="text-sm text-muted-foreground">
+            Ao marcar como Pago, o estoque dos produtos é baixado.
+          </p>
         </CardHeader>
         <CardContent>
           <Select
@@ -256,8 +271,7 @@ function OrderDetailPage() {
                     {ORDER_STATUS_LABELS[entry.to_status] ?? entry.to_status}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    {entry.changed_by_name} ·{" "}
-                    {new Date(entry.created_at).toLocaleString("pt-BR")}
+                    {entry.changed_by_name} · {new Date(entry.created_at).toLocaleString("pt-BR")}
                   </p>
                   {entry.note && <p className="text-xs text-muted-foreground">{entry.note}</p>}
                 </div>

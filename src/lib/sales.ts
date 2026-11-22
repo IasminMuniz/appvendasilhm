@@ -7,7 +7,7 @@ export const CHANNELS = [
   "Indicação (boca a boca)",
   "Venda direta (família e amigos)",
 ] as const;
-export const PAYMENT_METHODS = ["Pix", "Cartão"] as const;
+export const PAYMENT_METHODS = ["Pix", "Cartão de crédito", "Cartão de débito", "Dinheiro", "Pago pela Shopee"] as const;
 export const DELIVERY_METHODS = ["Shopee", "Correios/plataforma de frete", "Estação do metrô", "Retirada"] as const;
 export const OTHER_COST_TYPES = [
   "Shopee Ads",

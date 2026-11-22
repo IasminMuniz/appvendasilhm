@@ -1,3 +1,8 @@
+import {
+  PaymentPlanFields,
+  emptyPaymentPlan,
+  toPaymentPlanInput,
+} from "@/components/sales/payment-plan";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
@@ -17,7 +22,12 @@ import {
 import { listCustomers } from "@/lib/customers.functions";
 import { listProducts } from "@/lib/products.functions";
 import { createOrder } from "@/lib/orders.functions";
-import { SaleFields, SaleSummary, emptySaleInfo, toSaleInput } from "@/components/sales/sale-fields";
+import {
+  SaleFields,
+  SaleSummary,
+  emptySaleInfo,
+  toSaleInput,
+} from "@/components/sales/sale-fields";
 import { packagingCostQuery } from "@/components/store/packaging-cost-card";
 import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
 
@@ -43,7 +53,10 @@ export const Route = createFileRoute("/_authenticated/pedidos/novo")({
   head: () => ({
     meta: [
       { title: "Nova venda - Nexus 360" },
-      { name: "description", content: "Registre uma venda com canal, pagamento, entrega, taxa e lucro calculados." },
+      {
+        name: "description",
+        content: "Registre uma venda com canal, pagamento, entrega, taxa e lucro calculados.",
+      },
       { property: "og:title", content: "Nova venda - Nexus 360" },
       { property: "og:description", content: "Registro de vendas da loja com lucro automático." },
       { property: "og:type", content: "website" },
@@ -68,6 +81,7 @@ function NewOrderPage() {
   const [items, setItems] = useState<OrderItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
   const [error, setError] = useState<string | null>(null);
   const [sale, setSale] = useState(emptySaleInfo);
+  const [payPlan, setPayPlan] = useState(emptyPaymentPlan);
   const { data: packaging } = useQuery(packagingCostQuery);
 
   const activeProducts = products.filter((p) => p.active);
@@ -76,7 +90,11 @@ function NewOrderPage() {
     const next = [...items];
     if (field === "product_id") {
       const product = products.find((p) => p.id === value);
-      next[index] = { ...next[index], product_id: value as string, unit_price: product?.price ?? 0 };
+      next[index] = {
+        ...next[index],
+        product_id: value as string,
+        unit_price: product?.price ?? 0,
+      };
     } else {
       next[index] = { ...next[index], [field]: value };
     }
@@ -127,6 +145,7 @@ function NewOrderPage() {
         notes,
         items: validItems,
         ...toSaleInput(sale),
+        ...toPaymentPlanInput(payPlan),
       },
     });
   };
@@ -167,7 +186,10 @@ function NewOrderPage() {
               {items.map((item, index) => (
                 <div key={index} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-12">
                   <div className="sm:col-span-6">
-                    <Select value={item.product_id} onValueChange={(value) => updateItem(index, "product_id", value)}>
+                    <Select
+                      value={item.product_id}
+                      onValueChange={(value) => updateItem(index, "product_id", value)}
+                    >
                       <SelectTrigger>
                         <SelectValue placeholder="Produto" />
                       </SelectTrigger>
@@ -200,7 +222,12 @@ function NewOrderPage() {
                     />
                   </div>
                   <div className="flex items-center justify-end sm:col-span-1">
-                    <Button type="button" variant="ghost" size="icon" onClick={() => removeItem(index)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeItem(index)}
+                    >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
@@ -213,6 +240,13 @@ function NewOrderPage() {
             </div>
 
             <SaleFields value={sale} onChange={setSale} />
+
+            <PaymentPlanFields
+              value={payPlan}
+              onChange={setPayPlan}
+              total={total}
+              method={sale.payment_method}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>

@@ -304,6 +304,32 @@ function CashPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>A receber das clientes</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Parcelas ainda não pagas. Total: {formatCurrency(data.toReceiveTotal)}
+          </p>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {data.toReceive.length === 0 ? (
+            <p className="text-muted-foreground">Nenhuma parcela em aberto.</p>
+          ) : (
+            <ul className="space-y-1">
+              {data.toReceive.map((r) => (
+                <li key={r.orderId + r.number} className={r.overdue ? "text-destructive" : ""}>
+                  <Link to="/pedidos/$id" params={{ id: r.orderId }} className="hover:underline">
+                    {formatDate(r.date)} · {r.customer}
+                    {r.count > 1 ? ` · ${r.number}/${r.count}` : ""} · {formatCurrency(r.amount)}
+                    {r.overdue ? " (atrasada)" : ""}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Plano do caixa</CardTitle>
           <p className="text-sm text-muted-foreground">
             Defina quanto você colocou para começar e quanto de cada venda vai para cada pote.
