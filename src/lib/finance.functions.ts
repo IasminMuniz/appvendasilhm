@@ -302,9 +302,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
     const [ordersRes, productsRes, purchMonth, purchAll, expRes] = await Promise.all([
       sb
         .from("orders")
-        .select(
-          "total, channel, channel_fee, other_costs, packaging_cost, created_at, order_items(quantity, products(cost))",
-        )
+        .select("*, order_items(quantity, products(cost))")
         .in("status", ["pago", "entregue"])
         .gte("created_at", start)
         .lt("created_at", end),
@@ -391,12 +389,7 @@ export const getCashFlow = createServerFn({ method: "GET" })
     await recountStock(sb);
     const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes] =
       await Promise.all([
-        sb
-          .from("orders")
-          .select(
-            "id, total, channel_fee, other_costs, product_cost, packaging_cost, created_at, status, customers(name)",
-          )
-          .neq("status", "cancelado"),
+        sb.from("orders").select("*, customers(name)").neq("status", "cancelado"),
         sb.from("purchases").select("*"),
         sb.from("expenses").select("*"),
         sb

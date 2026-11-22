@@ -159,7 +159,7 @@ export function SaleSummary({
     ["Taxa do canal", -r.channelFee],
     ["Outros custos", -otherCosts],
     ["Custo dos produtos", -productCost],
-    ["Embalagem", -r.packaging],
+    ...(r.packaging > 0 ? ([["Embalagem", -r.packaging]] as [string, number][]) : []),
     [`Outros fins (${reservePct.toLocaleString("pt-BR")}% da venda)`, -r.reserve],
   ];
   return (

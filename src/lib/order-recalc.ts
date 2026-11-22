@@ -9,9 +9,7 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
   if (orderIds && orderIds.length === 0) return;
   let q = supabase
     .from("orders")
-    .select(
-      "id, total, channel_fee, other_costs, packaging_cost, created_at, status, order_items(quantity, products(cost))",
-    )
+    .select("*, order_items(quantity, products(cost))")
     .neq("status", "cancelado");
   if (orderIds) q = q.in("id", orderIds);
   const { data: orders } = await q;

@@ -58,8 +58,8 @@ export function PackagingCostCard() {
             {save.isPending ? "Salvando..." : "Salvar"}
           </Button>
           <p className="w-full text-sm text-muted-foreground">
-            Envelope, sacola, tag e afins de cada peça. É descontado no lucro das próximas vendas,
-            por isso não lance as embalagens também como despesa.
+            Valor de envelope, sacola e tag por peça. Só é descontado nas vendas em que você marcar
+            "Usei embalagem nesta venda". Sem marcar, não há custo de embalagem.
           </p>
         </form>
       </CardContent>

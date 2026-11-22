@@ -13,6 +13,7 @@ type LiveOrder = {
   other_costs: number | null;
   packaging_cost: number | null;
   created_at?: string | null;
+  uses_packaging?: boolean | null;
   order_items?: { quantity: number | null; products: { cost: number | null } | null }[] | null;
 };
 
@@ -90,6 +91,7 @@ function saleColumns(
     channel_fee: r.channelFee,
     product_cost: productCost,
     packaging_cost: r.packaging,
+    uses_packaging: !!info.include_packaging,
     profit: r.profit,
     margin_percent: r.margin,
   };
@@ -227,24 +229,27 @@ export const createOrder = createServerFn({ method: "POST" })
       ? await fetchPackagingCost(context.supabase)
       : 0;
 
-    const { data: order, error: orderError } = await context.supabase
-      .from("orders")
-      .insert({
-        customer_id: data.customer_id,
-        seller_id: context.userId,
-        notes: data.notes || null,
-        status: "novo",
-        total,
-        ...saleColumns(
-          data,
-          data.items,
-          productCost,
-          packagingPerPiece,
-          (await fetchCashPlan(context.supabase)).otherPurposesPct,
-        ),
-      })
-      .select()
-      .single();
+    const insertRow = {
+      customer_id: data.customer_id,
+      seller_id: context.userId,
+      notes: data.notes || null,
+      status: "novo" as const,
+      total,
+      ...saleColumns(
+        data,
+        data.items,
+        productCost,
+        packagingPerPiece,
+        (await fetchCashPlan(context.supabase)).otherPurposesPct,
+      ),
+    };
+    let res = await context.supabase.from("orders").insert(insertRow).select().single();
+    if (res.error && /uses_packaging/.test(res.error.message)) {
+      // Banco ainda sem a coluna (migration pendente): grava sem ela.
+      const { uses_packaging: _ignored, ...rest } = insertRow;
+      res = await context.supabase.from("orders").insert(rest).select().single();
+    }
+    const { data: order, error: orderError } = res;
 
     if (orderError) throw new Error(orderError.message);
 
@@ -383,7 +388,7 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: order, error: readError } = await context.supabase
       .from("orders")
-      .select("total, packaging_cost, created_at, order_items(product_id, quantity, unit_price)")
+      .select("*, order_items(product_id, quantity, unit_price)")
       .eq("id", data.id)
       .single();
     if (readError) throw new Error(readError.message);
@@ -400,18 +405,18 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
       : stored > 0 && pieces > 0
         ? stored / pieces
         : await fetchPackagingCost(context.supabase);
-    const { error } = await context.supabase
-      .from("orders")
-      .update(
-        saleColumns(
-          data,
-          items,
-          productCost,
-          packagingPerPiece,
-          (await fetchCashPlan(context.supabase)).otherPurposesPct,
-        ),
-      )
-      .eq("id", data.id);
+    const cols = saleColumns(
+      data,
+      items,
+      productCost,
+      packagingPerPiece,
+      (await fetchCashPlan(context.supabase)).otherPurposesPct,
+    );
+    let { error } = await context.supabase.from("orders").update(cols).eq("id", data.id);
+    if (error && /uses_packaging/.test(error.message)) {
+      const { uses_packaging: _ignored, ...rest } = cols;
+      ({ error } = await context.supabase.from("orders").update(rest).eq("id", data.id));
+    }
     if (error) throw new Error(error.message);
     return { ok: true };
   });

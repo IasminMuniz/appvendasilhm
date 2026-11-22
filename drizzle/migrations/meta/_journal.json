@@ -85,6 +85,13 @@
       "when": 1795385591281,
       "tag": "0011_clear_auto_packaging",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795386742832,
+      "tag": "0012_order_uses_packaging",
+      "breakpoints": true
     }
   ]
 }

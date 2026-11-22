@@ -919,6 +919,7 @@ export type Database = {
           stock_deducted: boolean
           total: number
           updated_at: string
+          uses_packaging: boolean
         }
         Insert: {
           channel?: string | null
@@ -941,6 +942,7 @@ export type Database = {
           stock_deducted?: boolean
           total?: number
           updated_at?: string
+          uses_packaging?: boolean
         }
         Update: {
           channel?: string | null
@@ -963,6 +965,7 @@ export type Database = {
           stock_deducted?: boolean
           total?: number
           updated_at?: string
+          uses_packaging?: boolean
         }
         Relationships: [
           {

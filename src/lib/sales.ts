@@ -119,14 +119,18 @@ export function profitOf(o: {
 }
 
 /**
- * Vendas lançadas antes de a embalagem virar opcional receberam a embalagem automaticamente,
- * sem a dona marcar. Essas são tratadas como "sem embalagem" (a migration 0011 zera no banco).
+ * Embalagem só conta quando foi marcada na venda (coluna uses_packaging).
+ * Enquanto a coluna não existir no banco, vendas feitas até AUTO_PACKAGING_UNTIL
+ * (que receberam embalagem automática) contam como sem embalagem.
  */
-export const AUTO_PACKAGING_UNTIL = "2026-11-22T22:20:00Z";
+export const AUTO_PACKAGING_UNTIL = "2026-11-22T23:30:00Z";
 export function effectivePackaging(o: {
   packaging_cost?: number | null;
   created_at?: string | null;
+  uses_packaging?: boolean | null;
 }): number {
+  if (typeof o.uses_packaging === "boolean")
+    return o.uses_packaging ? Number(o.packaging_cost ?? 0) : 0;
   if (o.created_at && new Date(o.created_at).getTime() < Date.parse(AUTO_PACKAGING_UNTIL)) return 0;
   return Number(o.packaging_cost ?? 0);
 }
