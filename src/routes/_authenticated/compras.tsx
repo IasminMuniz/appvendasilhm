@@ -364,71 +364,85 @@ function PurchasesPage() {
               <div className="space-y-2">
                 <Label>Itens</Label>
                 {form.items.map((it, idx) => (
-                  <div key={idx} className="grid gap-2 rounded-md border p-2 sm:grid-cols-12">
-                    <div className="sm:col-span-5">
-                      <Select
-                        value={it.product_id || NO_PRODUCT}
-                        onValueChange={(v) => {
-                          const prod = products?.find((p) => p.id === v);
-                          setItem(
-                            idx,
-                            v === NO_PRODUCT
-                              ? { product_id: "" }
-                              : { product_id: v, description: prod?.name ?? it.description },
-                          );
-                        }}
+                  <div key={idx} className="space-y-2 rounded-md border p-3">
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1 space-y-1">
+                        <span className="text-xs text-muted-foreground">Produto</span>
+                        <Select
+                          value={it.product_id || NO_PRODUCT}
+                          onValueChange={(v) => {
+                            const prod = products?.find((p) => p.id === v);
+                            setItem(
+                              idx,
+                              v === NO_PRODUCT
+                                ? { product_id: "" }
+                                : { product_id: v, description: prod?.name ?? it.description },
+                            );
+                          }}
+                        >
+                          <SelectTrigger aria-label="Produto">
+                            <SelectValue placeholder="Produto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NO_PRODUCT}>Sem produto (ex.: embalagem)</SelectItem>
+                            {(products ?? []).map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name}
+                                {p.sku ? ` · ${p.sku}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        aria-label="Remover item"
+                        disabled={form.items.length === 1}
+                        onClick={() =>
+                          setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })
+                        }
                       >
-                        <SelectTrigger aria-label="Produto">
-                          <SelectValue placeholder="Produto" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={NO_PRODUCT}>Sem produto (ex.: embalagem)</SelectItem>
-                          {(products ?? []).map((p) => (
-                            <SelectItem key={p.id} value={p.id}>
-                              {p.name}
-                              {p.sku ? ` · ${p.sku}` : ""}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <X className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Input
-                      className="sm:col-span-3"
-                      placeholder="Descrição"
-                      value={it.description}
-                      onChange={(e) => setItem(idx, { description: e.target.value })}
-                    />
-                    <Input
-                      className="sm:col-span-1"
-                      type="number"
-                      min="1"
-                      aria-label="Quantidade"
-                      value={it.quantity}
-                      onChange={(e) => setItem(idx, { quantity: e.target.value })}
-                    />
-                    <Input
-                      className="sm:col-span-2"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Valor pago"
-                      aria-label="Valor pago no item"
-                      value={it.amount}
-                      onChange={(e) => setItem(idx, { amount: e.target.value })}
-                    />
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="sm:col-span-1"
-                      aria-label="Remover item"
-                      disabled={form.items.length === 1}
-                      onClick={() =>
-                        setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    <div className="grid gap-2 sm:grid-cols-[1fr_6rem_9rem]">
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Descrição</span>
+                        <Input
+                          placeholder="Descrição"
+                          value={it.description}
+                          onChange={(e) => setItem(idx, { description: e.target.value })}
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Quantidade</span>
+                        <Input
+                          type="number"
+                          min="1"
+                          inputMode="numeric"
+                          value={it.quantity}
+                          onChange={(e) => setItem(idx, { quantity: e.target.value })}
+                        />
+                      </label>
+                      <label className="space-y-1">
+                        <span className="text-xs text-muted-foreground">Valor total pago (R$)</span>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="0,00"
+                          value={it.amount}
+                          onChange={(e) => setItem(idx, { amount: e.target.value })}
+                        />
+                      </label>
+                    </div>
+                    {Number(it.quantity) > 1 && Number(it.amount) > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Custo por peça: {formatCurrency(Number(it.amount) / Number(it.quantity))}
+                      </p>
+                    )}
                   </div>
                 ))}
                 <Button
