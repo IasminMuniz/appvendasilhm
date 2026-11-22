@@ -15,11 +15,13 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AuthenticatedCodigosRouteImport } from './routes/_authenticated/codigos'
 import { Route as AuthenticatedComprasRouteImport } from './routes/_authenticated/compras'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedDespesasRouteImport } from './routes/_authenticated/despesas'
 import { Route as AuthenticatedEventosRouteImport } from './routes/_authenticated/eventos'
 import { Route as AuthenticatedExportacaoRouteImport } from './routes/_authenticated/exportacao'
+import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
@@ -71,6 +73,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AuthenticatedCodigosRoute = AuthenticatedCodigosRouteImport.update({
+  id: '/codigos',
+  path: '/codigos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedComprasRoute = AuthenticatedComprasRouteImport.update({
   id: '/compras',
   path: '/compras',
@@ -96,6 +103,12 @@ const AuthenticatedExportacaoRoute = AuthenticatedExportacaoRouteImport.update({
   path: '/exportacao',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFornecedoresRoute =
+  AuthenticatedFornecedoresRouteImport.update({
+    id: '/fornecedores',
+    path: '/fornecedores',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -210,11 +223,13 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/codigos': typeof AuthenticatedCodigosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/despesas': typeof AuthenticatedDespesasRoute
   '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -241,11 +256,13 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/codigos': typeof AuthenticatedCodigosRoute
   '/compras': typeof AuthenticatedComprasRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/despesas': typeof AuthenticatedDespesasRoute
   '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
+  '/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -274,11 +291,13 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/_authenticated/codigos': typeof AuthenticatedCodigosRoute
   '/_authenticated/compras': typeof AuthenticatedComprasRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/despesas': typeof AuthenticatedDespesasRoute
   '/_authenticated/eventos': typeof AuthenticatedEventosRoute
   '/_authenticated/exportacao': typeof AuthenticatedExportacaoRoute
+  '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -307,11 +326,13 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/codigos'
     | '/compras'
     | '/dashboard'
     | '/despesas'
     | '/eventos'
     | '/exportacao'
+    | '/fornecedores'
     | '/leads'
     | '/metas'
     | '/oportunidades'
@@ -338,11 +359,13 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/codigos'
     | '/compras'
     | '/dashboard'
     | '/despesas'
     | '/eventos'
     | '/exportacao'
+    | '/fornecedores'
     | '/leads'
     | '/metas'
     | '/oportunidades'
@@ -370,11 +393,13 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/_authenticated/codigos'
     | '/_authenticated/compras'
     | '/_authenticated/dashboard'
     | '/_authenticated/despesas'
     | '/_authenticated/eventos'
     | '/_authenticated/exportacao'
+    | '/_authenticated/fornecedores'
     | '/_authenticated/leads'
     | '/_authenticated/metas'
     | '/_authenticated/oportunidades'
@@ -451,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/codigos': {
+      id: '/_authenticated/codigos'
+      path: '/codigos'
+      fullPath: '/codigos'
+      preLoaderRoute: typeof AuthenticatedCodigosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/compras': {
       id: '/_authenticated/compras'
       path: '/compras'
@@ -484,6 +516,13 @@ declare module '@tanstack/react-router' {
       path: '/exportacao'
       fullPath: '/exportacao'
       preLoaderRoute: typeof AuthenticatedExportacaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/fornecedores': {
+      id: '/_authenticated/fornecedores'
+      path: '/fornecedores'
+      fullPath: '/fornecedores'
+      preLoaderRoute: typeof AuthenticatedFornecedoresRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads': {
@@ -637,11 +676,13 @@ const AuthenticatedClientesIdRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCodigosRoute: typeof AuthenticatedCodigosRoute
   AuthenticatedComprasRoute: typeof AuthenticatedComprasRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedDespesasRoute: typeof AuthenticatedDespesasRoute
   AuthenticatedEventosRoute: typeof AuthenticatedEventosRoute
   AuthenticatedExportacaoRoute: typeof AuthenticatedExportacaoRoute
+  AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRoute
@@ -661,11 +702,13 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCodigosRoute: AuthenticatedCodigosRoute,
   AuthenticatedComprasRoute: AuthenticatedComprasRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedDespesasRoute: AuthenticatedDespesasRoute,
   AuthenticatedEventosRoute: AuthenticatedEventosRoute,
   AuthenticatedExportacaoRoute: AuthenticatedExportacaoRoute,
+  AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRoute,

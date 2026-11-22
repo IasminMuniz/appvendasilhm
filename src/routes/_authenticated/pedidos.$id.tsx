@@ -61,6 +61,9 @@ function OrderDetailPage() {
   const navigate = useNavigate();
   const { data } = useSuspenseQuery(orderQueryOptions(id));
   const order = data.order;
+  const saleItems = (order.order_items ?? []).map((i) => ({ unit_price: Number(i.unit_price ?? 0), quantity: Number(i.quantity ?? 0) }));
+  const pieces = saleItems.reduce((s, i) => s + i.quantity, 0);
+  const packagingPerPiece = pieces > 0 ? Number(order.packaging_cost ?? 0) / pieces : 0;
 
   const mutation = useMutation({
     mutationFn: updateOrderStatus,
@@ -196,10 +199,11 @@ function OrderDetailPage() {
         <CardContent className="space-y-4">
           <SaleFields value={sale} onChange={setSale} />
           <SaleSummary
-            price={Number(order.total ?? 0)}
+            items={saleItems}
             channel={sale.channel}
             otherCosts={Number(sale.other_costs || 0)}
             productCost={Number(order.product_cost ?? 0)}
+            packagingCost={packagingPerPiece}
           />
           <Button disabled={saveSale.isPending} onClick={() => saveSale.mutate({ data: { id: order.id, ...toSaleInput(sale) } })}>
             {saveSale.isPending ? "Salvando..." : "Salvar dados da venda"}

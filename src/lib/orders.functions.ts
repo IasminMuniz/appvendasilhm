@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
-import { PACKAGING_COST, STOCK_OUT_STATUSES, calcSale } from "@/lib/sales";
+import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
+import { fetchPackagingCost } from "@/lib/store.functions";
 
 const orderStatusSchema = z.enum([
   "pendente",
@@ -30,8 +31,8 @@ const saleInfoSchema = z.object({
 
 type SaleInfo = z.infer<typeof saleInfoSchema>;
 
-function saleColumns(info: SaleInfo, total: number, productCost: number) {
-  const r = calcSale({ price: total, channel: info.channel, otherCosts: info.other_costs, productCost });
+function saleColumns(info: SaleInfo, items: SaleItem[], productCost: number, packagingPerPiece: number) {
+  const r = calcSale({ items, channel: info.channel, otherCosts: info.other_costs, productCost, packagingCost: packagingPerPiece });
   return {
     channel: info.channel || null,
     payment_method: info.payment_method || null,
@@ -40,7 +41,7 @@ function saleColumns(info: SaleInfo, total: number, productCost: number) {
     other_cost_type: info.other_cost_type || null,
     channel_fee: r.channelFee,
     product_cost: productCost,
-    packaging_cost: PACKAGING_COST,
+    packaging_cost: r.packaging,
     profit: r.profit,
     margin_percent: r.margin,
   };
@@ -130,6 +131,7 @@ export const createOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     const productCost = await productCostOf(context.supabase, data.items);
+    const packagingPerPiece = await fetchPackagingCost(context.supabase);
 
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
@@ -139,7 +141,7 @@ export const createOrder = createServerFn({ method: "POST" })
         notes: data.notes || null,
         status: "novo",
         total,
-        ...saleColumns(data, total, productCost),
+        ...saleColumns(data, data.items, productCost, packagingPerPiece),
       })
       .select()
       .single();
@@ -262,14 +264,19 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: order, error: readError } = await context.supabase
       .from("orders")
-      .select("total, order_items(product_id, quantity)")
+      .select("total, packaging_cost, order_items(product_id, quantity, unit_price)")
       .eq("id", data.id)
       .single();
     if (readError) throw new Error(readError.message);
+    const items = (order.order_items ?? []).map((i) => ({ unit_price: Number(i.unit_price ?? 0), quantity: Number(i.quantity ?? 0) }));
     const productCost = await productCostOf(context.supabase, order.order_items ?? []);
+    // Mantém a embalagem registrada na venda (histórico); sem registro, usa a configuração atual.
+    const pieces = items.reduce((s, i) => s + i.quantity, 0);
+    const stored = Number(order.packaging_cost ?? 0);
+    const packagingPerPiece = stored > 0 && pieces > 0 ? stored / pieces : await fetchPackagingCost(context.supabase);
     const { error } = await context.supabase
       .from("orders")
-      .update(saleColumns(data, Number(order.total ?? 0), productCost))
+      .update(saleColumns(data, items, productCost, packagingPerPiece))
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

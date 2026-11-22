@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -18,6 +18,8 @@ import { listCustomers } from "@/lib/customers.functions";
 import { listProducts } from "@/lib/products.functions";
 import { createOrder } from "@/lib/orders.functions";
 import { SaleFields, SaleSummary, emptySaleInfo, toSaleInput } from "@/components/sales/sale-fields";
+import { packagingCostQuery } from "@/components/store/packaging-cost-card";
+import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
 
 const customersQueryOptions = () =>
   queryOptions({
@@ -66,6 +68,7 @@ function NewOrderPage() {
   const [items, setItems] = useState<OrderItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
   const [error, setError] = useState<string | null>(null);
   const [sale, setSale] = useState(emptySaleInfo);
+  const { data: packaging } = useQuery(packagingCostQuery);
 
   const activeProducts = products.filter((p) => p.active);
 
@@ -221,7 +224,13 @@ function NewOrderPage() {
               <span className="text-2xl font-bold">R$ {total.toFixed(2)}</span>
             </div>
 
-            <SaleSummary price={total} channel={sale.channel} otherCosts={Number(sale.other_costs || 0)} productCost={productCost} />
+            <SaleSummary
+              items={items.filter((i) => i.product_id)}
+              channel={sale.channel}
+              otherCosts={Number(sale.other_costs || 0)}
+              productCost={productCost}
+              packagingCost={packaging?.value ?? DEFAULT_PACKAGING_COST}
+            />
 
             {error && <p className="text-sm text-destructive">{error}</p>}
 

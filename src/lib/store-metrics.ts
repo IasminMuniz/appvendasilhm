@@ -7,4 +7,4 @@ export function breakEven(p: { fixedExpenses: number; profit: number; revenue: n
   return { missingProfit, missingRevenue, avgMarginPercent: Math.round(avgMargin * 10000) / 100, coveredPercent, covered: missingProfit === 0 };
 }
 
-export const EXPENSE_CATEGORIES = ["Aluguel", "Internet", "Energia", "Embalagens", "Marketing", "Pró-labore", "Outro"] as const;
+export const EXPENSE_CATEGORIES = ["Impostos (DAS)", "Marketing", "Assinaturas e apps", "Aluguel", "Internet", "Energia", "Embalagens", "Pró-labore", "Outro"] as const;

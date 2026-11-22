@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { buildSku, calcMargin } from "@/lib/clothing";
+import { fetchSuppliers } from "@/lib/store.functions";
 
 const specSchema = z.object({ label: z.string().max(120), value: z.string().max(300) });
 
@@ -32,8 +33,8 @@ const productSchema = z.object({
   cost: z.coerce.number().min(0).default(0),
 });
 
-function clothingFields(d: z.infer<typeof productSchema>) {
-  const sku = buildSku(d);
+function clothingFields(d: z.infer<typeof productSchema>, suppliers: { value: string; code: string }[]) {
+  const sku = buildSku(d, suppliers);
   return {
     supplier: d.supplier || null,
     style: d.style || null,
@@ -70,6 +71,7 @@ export const createProduct = createServerFn({ method: "POST" })
   .inputValidator((data) => productSchema.parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    const suppliers = (await fetchSuppliers(context.supabase)).map((x) => ({ value: x.name, code: x.code }));
     const { data: inserted, error } = await context.supabase
       .from("products")
       .insert({
@@ -88,7 +90,7 @@ export const createProduct = createServerFn({ method: "POST" })
         code: data.code || null,
         stock: data.stock,
         active: data.active,
-        ...clothingFields(data),
+        ...clothingFields(data, suppliers),
       })
       .select()
       .single();
@@ -102,6 +104,7 @@ export const updateProduct = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { id, ...rest } = data;
+    const suppliers = (await fetchSuppliers(context.supabase)).map((x) => ({ value: x.name, code: x.code }));
     const { data: current } = await context.supabase
       .from("products")
       .select("price")
@@ -125,7 +128,7 @@ export const updateProduct = createServerFn({ method: "POST" })
         code: rest.code || null,
         stock: rest.stock,
         active: rest.active,
-        ...clothingFields(rest),
+        ...clothingFields(rest, suppliers),
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
@@ -178,7 +181,8 @@ export const getProduct = createServerFn({ method: "GET" })
         .from("product_images")
         .select("*")
         .eq("product_id", data.id)
-        .order("position"),
+        .order("position")
+        .order("created_at"),
       context.supabase.from("product_documents").select("*").eq("product_id", data.id),
     ]);
     if (productRes.error) throw new Error(productRes.error.message);
@@ -216,9 +220,13 @@ export const addProductAsset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     if (data.kind === "image") {
+      const { count } = await context.supabase
+        .from("product_images")
+        .select("id", { count: "exact", head: true })
+        .eq("product_id", data.product_id);
       const { error } = await context.supabase
         .from("product_images")
-        .insert({ product_id: data.product_id, url: data.url, caption: data.name || null });
+        .insert({ product_id: data.product_id, url: data.url, caption: data.name || null, position: count ?? 0 });
       if (error) throw new Error(error.message);
     } else {
       const { error } = await context.supabase
@@ -237,7 +245,11 @@ export const removeProductAsset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const table = data.kind === "image" ? "product_images" : "product_documents";
+    const { data: row } = await context.supabase.from(table).select("url").eq("id", data.id).maybeSingle();
     const { error } = await context.supabase.from(table).delete().eq("id", data.id);
+    if (!error && row?.url && !row.url.startsWith("http")) {
+      await context.supabase.storage.from("product-assets").remove([row.url]);
+    }
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -253,4 +265,52 @@ export const deleteProduct = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+/** Define a foto principal (posição 0) e reordena as demais. */
+export const setPrimaryProductImage = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data: { product_id: string; image_id: string }) =>
+    z.object({ product_id: z.string().uuid(), image_id: z.string().uuid() }).parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: imgs, error } = await context.supabase
+      .from("product_images")
+      .select("id, position, created_at")
+      .eq("product_id", data.product_id)
+      .order("position")
+      .order("created_at");
+    if (error) throw new Error(error.message);
+    const ordered = [
+      ...(imgs ?? []).filter((i) => i.id === data.image_id),
+      ...(imgs ?? []).filter((i) => i.id !== data.image_id),
+    ];
+    for (const [pos, img] of ordered.entries()) {
+      await context.supabase.from("product_images").update({ position: pos }).eq("id", img.id);
+    }
+    return { ok: true };
+  });
+
+/** Foto principal de cada produto (para a lista), com link assinado. */
+export const listPrimaryImages = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("product_images")
+      .select("product_id, url, position, created_at")
+      .order("position")
+      .order("created_at");
+    if (error) return {} as Record<string, string>;
+    const first: Record<string, string> = {};
+    for (const img of data ?? []) if (!(img.product_id in first)) first[img.product_id] = img.url;
+    const out: Record<string, string> = {};
+    await Promise.all(
+      Object.entries(first).map(async ([pid, url]) => {
+        if (url.startsWith("http")) { out[pid] = url; return; }
+        const { data: signed } = await context.supabase.storage.from("product-assets").createSignedUrl(url, 60 * 60);
+        if (signed?.signedUrl) out[pid] = signed.signedUrl;
+      }),
+    );
+    return out;
   });

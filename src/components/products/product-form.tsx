@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { COLORS, PATTERNS, SIZES, STYLES, SUPPLIERS, buildSku, calcMargin } from "@/lib/clothing";
+import { COLORS, PATTERNS, SIZES, STYLES, buildSku, calcMargin } from "@/lib/clothing";
+import { getNextModelNumber, listSuppliers } from "@/lib/store.functions";
 
 export interface ProductFormValues {
   name: string;
@@ -46,10 +48,16 @@ function Pick({ id, label, value, options, onChange }: {
 const withCode = (l: readonly { value: string; code: string }[]) =>
   l.map((i) => ({ value: i.value, label: `${i.value} (${i.code})` }));
 
-export function ProductForm({ initial, submitLabel, pending, error, onSubmit }: {
+export const suppliersQueryOptions = { queryKey: ["suppliers"], queryFn: () => listSuppliers() };
+
+export function ProductForm({ initial, submitLabel, pending, error, onSubmit, productId }: {
   initial: ProductFormValues; submitLabel: string; pending: boolean; error: string | null;
   onSubmit: (v: ProductFormValues) => void;
+  /** Id do produto em edição (para não contar ele mesmo no próximo Modelo nº). */
+  productId?: string;
 }) {
+  const { data: supplierRows } = useQuery(suppliersQueryOptions);
+  const suppliers = (supplierRows ?? []).map((x) => ({ value: x.name, code: x.code }));
   const [f, setF] = useState({
     ...initial,
     price: String(initial.price ?? 0),
@@ -58,10 +66,22 @@ export function ProductForm({ initial, submitLabel, pending, error, onSubmit }: 
     model_number: initial.model_number == null ? "" : String(initial.model_number),
   });
   const set = (patch: Partial<typeof f>) => setF((p) => ({ ...p, ...patch }));
+  // Preenche o Modelo nº sozinho em produtos novos ou quando a combinação muda (editável).
+  const autoModel = useRef(initial.model_number == null);
+  const setCombo = (patch: Partial<typeof f>) => { autoModel.current = true; set(patch); };
+  useEffect(() => {
+    if (!autoModel.current || !f.supplier || !f.style || !f.color || !f.pattern) return;
+    let cancelled = false;
+    getNextModelNumber({ data: { supplier: f.supplier, style: f.style, color: f.color, pattern: f.pattern, excludeId: productId } })
+      .then((r) => { if (!cancelled && autoModel.current) set({ model_number: String(r.next) }); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f.supplier, f.style, f.color, f.pattern, productId]);
   const price = Number(f.price || 0);
   const cost = Number(f.cost || 0);
   const model = f.model_number === "" ? null : Number(f.model_number);
-  const sku = buildSku({ ...f, model_number: model });
+  const sku = buildSku({ ...f, model_number: model }, suppliers);
   const margin = calcMargin(price, cost);
 
   return (
@@ -78,14 +98,15 @@ export function ProductForm({ initial, submitLabel, pending, error, onSubmit }: 
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Pick id="supplier" label="Fornecedor" value={f.supplier} options={withCode(SUPPLIERS)} onChange={(v) => set({ supplier: v })} />
-        <Pick id="style" label="Estilo" value={f.style} options={withCode(STYLES)} onChange={(v) => set({ style: v })} />
-        <Pick id="color" label="Cor" value={f.color} options={withCode(COLORS)} onChange={(v) => set({ color: v })} />
-        <Pick id="pattern" label="Padrão" value={f.pattern} options={withCode(PATTERNS)} onChange={(v) => set({ pattern: v })} />
+        <Pick id="supplier" label="Fornecedor" value={f.supplier} options={withCode(suppliers)} onChange={(v) => setCombo({ supplier: v })} />
+        <Pick id="style" label="Estilo" value={f.style} options={withCode(STYLES)} onChange={(v) => setCombo({ style: v })} />
+        <Pick id="color" label="Cor" value={f.color} options={withCode(COLORS)} onChange={(v) => setCombo({ color: v })} />
+        <Pick id="pattern" label="Padrão" value={f.pattern} options={withCode(PATTERNS)} onChange={(v) => setCombo({ pattern: v })} />
         <Pick id="size" label="Tamanho" value={f.size} options={SIZES.map((s) => ({ value: s, label: s }))} onChange={(v) => set({ size: v })} />
         <div className="space-y-2">
           <Label htmlFor="model">Modelo nº</Label>
-          <Input id="model" type="number" min="0" max="99" value={f.model_number} onChange={(e) => set({ model_number: e.target.value })} />
+          <Input id="model" type="number" min="0" max="99" value={f.model_number} onChange={(e) => { autoModel.current = false; set({ model_number: e.target.value }); }} />
+          <p className="text-xs text-muted-foreground">Preenchido sozinho com o próximo número livre para peças com o mesmo fornecedor, estilo, cor e padrão.</p>
         </div>
       </div>
 

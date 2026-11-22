@@ -19,6 +19,7 @@ import {
 import { deleteProduct, getProduct, updateProduct } from "@/lib/products.functions";
 import { formatDateTime } from "@/lib/commercial-constants";
 import { ProductForm } from "@/components/products/product-form";
+import { ProductImages } from "@/components/products/product-images";
 
 const integrationQueryOptions = (id: string) =>
   queryOptions({
@@ -146,6 +147,7 @@ function EditIntegrationPage() {
               size: integration.size ?? "",
               model_number: integration.model_number ?? null,
             }}
+            productId={id}
             submitLabel="Salvar alterações"
             pending={update.isPending}
             error={error}
@@ -164,6 +166,8 @@ function EditIntegrationPage() {
           />
         </CardContent>
       </Card>
+
+      <ProductImages productId={id} images={data.images} />
     </div>
   );
 }

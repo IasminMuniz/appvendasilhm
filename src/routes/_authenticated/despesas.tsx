@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PackagingCostCard } from "@/components/store/packaging-cost-card";
 import { deleteExpense, listExpenses, saveExpense } from "@/lib/finance.functions";
 import { EXPENSE_CATEGORIES } from "@/lib/store-metrics";
 import { formatCurrency, formatDate } from "@/lib/commercial-constants";
@@ -56,10 +57,11 @@ function ExpensesPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Despesas</h1>
-          <p className="text-muted-foreground">Marque como fixa o que se repete todo mês (aluguel, internet...).</p>
+          <p className="text-muted-foreground">Marque como fixa o que se repete todo mês (DAS, assinaturas...).</p>
         </div>
         <Button onClick={() => setForm(empty())}><Plus className="mr-2 h-4 w-4" />Nova despesa</Button>
       </div>
+      <PackagingCostCard />
       <Card>
         <CardHeader><CardTitle>Despesas registradas</CardTitle></CardHeader>
         <CardContent>

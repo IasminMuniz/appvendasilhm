@@ -10,6 +10,8 @@ import {
   PackagePlus,
   Receipt,
   Download,
+  Truck,
+  BookOpen,
 } from "lucide-react";
 
 import {
@@ -34,7 +36,9 @@ const items = [
   { title: "Produtos", url: "/produtos", icon: Shirt },
   { title: "Vendas", url: "/pedidos", icon: ShoppingCart },
   { title: "Compras", url: "/compras", icon: PackagePlus },
+  { title: "Fornecedores", url: "/fornecedores", icon: Truck },
   { title: "Despesas", url: "/despesas", icon: Receipt },
+  { title: "Códigos", url: "/codigos", icon: BookOpen },
   { title: "Exportação", url: "/exportacao", icon: Download },
 ];
 

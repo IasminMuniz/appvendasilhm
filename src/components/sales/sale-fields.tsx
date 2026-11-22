@@ -2,7 +2,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatCurrency } from "@/lib/commercial-constants";
-import { CHANNELS, DELIVERY_METHODS, OTHER_COST_TYPES, PACKAGING_COST, PAYMENT_METHODS, calcSale } from "@/lib/sales";
+import { CHANNELS, DELIVERY_METHODS, OTHER_COST_TYPES, PAYMENT_METHODS, calcSale, type SaleItem } from "@/lib/sales";
 
 export interface SaleInfoValues {
   channel: string;
@@ -49,16 +49,18 @@ export function SaleFields({ value, onChange }: { value: SaleInfoValues; onChang
   );
 }
 
-export function SaleSummary({ price, channel, otherCosts, productCost }: {
-  price: number; channel: string | null | undefined; otherCosts: number; productCost: number;
+export function SaleSummary({ items, channel, otherCosts, productCost, packagingCost }: {
+  items: SaleItem[]; channel: string | null | undefined; otherCosts: number; productCost: number;
+  /** Custo de embalagem por peça. */
+  packagingCost: number;
 }) {
-  const r = calcSale({ price, channel, otherCosts, productCost });
+  const r = calcSale({ items, channel, otherCosts, productCost, packagingCost });
   const rows: [string, number][] = [
-    ["Valor da venda", price],
+    ["Valor da venda", r.price],
     ["Taxa do canal", -r.channelFee],
     ["Outros custos", -otherCosts],
     ["Custo dos produtos", -productCost],
-    ["Embalagem", -PACKAGING_COST],
+    ["Embalagem", -r.packaging],
   ];
   return (
     <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">

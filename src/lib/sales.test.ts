@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcSale, shopeeFee } from "./sales";
+import { calcSale, channelFee, shopeeFee } from "./sales";
 
 describe("shopeeFee", () => {
   it("abaixo de 80: 20% + 4,50", () => expect(shopeeFee(50)).toBe(14.5));
@@ -9,16 +9,26 @@ describe("shopeeFee", () => {
   it("500 ou mais: 14% + 26", () => expect(shopeeFee(600)).toBe(110));
 });
 
+describe("channelFee", () => {
+  it("Shopee cobra por item, pelo preço unitário", () => {
+    // 2 vestidos de 139,90: 2 × (14% × 139,90 + 20 = 39,59) = 79,18
+    expect(channelFee("Shopee", [{ unit_price: 139.9, quantity: 2 }])).toBe(79.18);
+  });
+  it("outros canais não têm taxa", () => {
+    expect(channelFee("Facebook", [{ unit_price: 139.9, quantity: 2 }])).toBe(0);
+  });
+});
+
 describe("calcSale", () => {
   it("lucro Shopee desconta taxa, custos e embalagem 1,84", () => {
-    const r = calcSale({ price: 150, channel: "Shopee", otherCosts: 10, productCost: 50 });
+    const r = calcSale({ items: [{ unit_price: 150, quantity: 1 }], channel: "Shopee", otherCosts: 10, productCost: 50 });
     expect(r.channelFee).toBe(41);
     expect(r.profit).toBe(47.16);
     expect(r.margin).toBe(31.44);
   });
-  it("outros canais têm taxa 0", () => {
-    const r = calcSale({ price: 100, channel: "Instagram", otherCosts: 0, productCost: 40 });
-    expect(r.channelFee).toBe(0);
-    expect(r.profit).toBe(58.16);
+  it("embalagem é por peça e usa o valor configurado", () => {
+    const r = calcSale({ items: [{ unit_price: 100, quantity: 2 }], channel: "Instagram", otherCosts: 0, productCost: 80, packagingCost: 2 });
+    expect(r.packaging).toBe(4);
+    expect(r.profit).toBe(116);
   });
 });

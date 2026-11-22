@@ -1,5 +1,20 @@
 /** Catálogo de códigos da loja de roupas e regras de SKU/margem. */
-export const SUPPLIERS = [{ value: "PML Fashion", code: "F01" }] as const;
+/** Fornecedor padrão, usado enquanto a tabela de fornecedores não estiver disponível. */
+export const SUPPLIERS: readonly { value: string; code: string }[] = [{ value: "PML Fashion", code: "F01" }];
+
+/** Próximo código de fornecedor livre: F01, F02, F03... */
+export function nextSupplierCode(codes: readonly string[]): string {
+  const max = codes.reduce((m, c) => {
+    const n = /^F(\d+)$/i.exec(c.trim())?.[1];
+    return n ? Math.max(m, Number(n)) : m;
+  }, 0);
+  return `F${String(max + 1).padStart(2, "0")}`;
+}
+
+/** Próximo Modelo nº livre entre os números já usados na mesma combinação. */
+export function nextModelNumber(used: readonly (number | null | undefined)[]): number {
+  return used.reduce<number>((m, n) => (n != null && n > m ? n : m), 0) + 1;
+}
 
 export const STYLES = [
   { value: "Mini/Curto", code: "MI" },
@@ -52,8 +67,8 @@ export interface SkuInput {
 }
 
 /** VE-[fornecedor]-[estilo]-[cor]-[padrão][modelo 2 dígitos]-[tamanho]; null se incompleto. */
-export function buildSku(i: SkuInput): string | null {
-  const s = codeOf(SUPPLIERS, i.supplier);
+export function buildSku(i: SkuInput, suppliers: Coded = SUPPLIERS): string | null {
+  const s = codeOf(suppliers, i.supplier);
   const st = codeOf(STYLES, i.style);
   const c = codeOf(COLORS, i.color);
   const p = codeOf(PATTERNS, i.pattern);

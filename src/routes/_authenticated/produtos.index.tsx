@@ -1,12 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
-import { Plus } from "lucide-react";
+import { ImageIcon, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { listProducts } from "@/lib/products.functions";
+import { listPrimaryImages, listProducts } from "@/lib/products.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
@@ -51,6 +51,7 @@ function IntegrationsPage() {
   const { data: integrations } = useSuspenseQuery(integrationsQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: photos } = useQuery({ queryKey: ["product-primary-images"], queryFn: () => listPrimaryImages() });
   const search = useRecordSearch(integrations, (i) => [i.name, i.sku, i.supplier, i.style, i.color]);
   const visible = search.results;
   const selection = useBulkSelection(visible.map((i) => i.id));
@@ -136,6 +137,13 @@ function IntegrationsPage() {
                     onCheckedChange={() => selection.toggle(integration.id)}
                     aria-label={`Selecionar ${integration.name}`}
                   />
+                  <div className="flex h-16 w-12 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted">
+                    {photos?.[integration.id] ? (
+                      <img src={photos[integration.id]} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
                   <button
                     type="button"
                     className="flex-1 text-left hover:opacity-80"
