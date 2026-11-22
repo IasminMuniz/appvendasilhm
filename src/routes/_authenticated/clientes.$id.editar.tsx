@@ -56,6 +56,8 @@ function EditCustomerPage() {
     company_name: customer.company_name ?? "",
     document: customer.document ?? "",
     segment: customer.segment ?? "",
+    company_size: customer.company_size ?? "",
+    region: customer.region ?? "",
     contact_name: "",
     email: customer.email ?? "",
     phone: customer.phone ?? "",

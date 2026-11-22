@@ -43,10 +43,10 @@ export const STAGE_FORECAST_DAYS: Record<string, number> = {
 };
 
 export const CUSTOMER_STATUSES = [
-  { value: "prospect", label: "Prospect" },
-  { value: "ativo", label: "Cliente ativo" },
-  { value: "inativo", label: "Cliente inativo" },
-  { value: "perdido", label: "Cliente perdido" },
+  { value: "prospect", label: "Interessada (ainda não comprou)" },
+  { value: "ativo", label: "Cliente (já comprou)" },
+  { value: "inativo", label: "Inativa" },
+  { value: "perdido", label: "Sem interesse" },
 ] as const;
 
 export const CUSTOMER_STATUS_LABELS: Record<string, string> = Object.fromEntries(
@@ -81,7 +81,6 @@ export const PRODUCT_CATEGORIES = [
 ] as const;
 
 export type LeadStage = (typeof LEAD_STAGES)[number]["value"];
-
 
 export const ORDER_STATUSES = [
   { value: "novo", label: "Novo" },
@@ -131,7 +130,6 @@ export const QUOTE_STATUS_LABELS: Record<string, string> = {
   convertido: "Convertido em pedido",
 };
 
-
 export const HEALTH_LABELS: Record<string, string> = {
   saudavel: "Saudável",
   atencao: "Atenção",
@@ -149,6 +147,33 @@ export const CUSTOMER_SEGMENTS = [
 ] as const;
 
 export const COMPANY_SIZES = ["Micro", "Pequeno", "Médio", "Grande"] as const;
+
+/* Clientes pessoa física da loja. As colunas da tabela customers são reaproveitadas:
+ * segment = como conheceu a loja · company_size = tamanho que veste ·
+ * region = entrega preferida · company_name = Instagram · document = CPF. */
+export const CUSTOMER_SOURCES = [
+  "Facebook",
+  "Marketplace",
+  "Instagram",
+  "WhatsApp",
+  "Shopee",
+  "Indicação",
+  "Outro",
+] as const;
+
+export const DELIVERY_PREFERENCES = [
+  "Estação Bresser-Mooca",
+  "Estação Belém",
+  "Estação Tatuapé",
+  "Estação Portuguesa-Tietê",
+  "Estação Carandiru",
+  "Estação Santana",
+  "Estação Tucuruvi",
+  "Estação Vila Prudente",
+  "Correios / envio",
+  "Retirada",
+  "Shopee",
+] as const;
 
 export const LOSS_REASONS = [
   "Preço",
@@ -184,7 +209,6 @@ export const INTERACTION_LABELS: Record<string, string> = {
   visita: "Visita",
 };
 
-
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value || 0);
 }
@@ -215,14 +239,38 @@ export const ROLE_LABELS: Record<string, string> = {
   vendedor: "Vendedor",
 };
 
-
 /** Etapas que o usuário não pode selecionar manualmente (definidas pelo sistema). */
 export const SYSTEM_LEAD_STAGES = ["convertido"] as const;
 
 /** Unidades federativas do Brasil para os campos de localização. */
 export const BRAZIL_STATES = [
-  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR",
-  "PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO",
 ] as const;
 
 /* ------------------------------------------------------------------ */
@@ -317,7 +365,10 @@ export function automationName(eventType?: string | null, entityType?: string | 
 }
 
 /** Status de execução da automação a partir do status de entrega do evento. */
-export function automationStatus(status?: string | null): { label: string; variant: "default" | "destructive" | "secondary" } {
+export function automationStatus(status?: string | null): {
+  label: string;
+  variant: "default" | "destructive" | "secondary";
+} {
   if (status === "entregue") return { label: "Executada", variant: "default" };
   if (status === "erro") return { label: "Falha na execução", variant: "destructive" };
   return { label: "Aguardando execução", variant: "secondary" };

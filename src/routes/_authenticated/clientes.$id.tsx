@@ -1,7 +1,15 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ArrowLeft, CalendarClock, MessageSquarePlus, Pencil, Trash2, UserCog, Users } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarClock,
+  MessageSquarePlus,
+  Pencil,
+  Trash2,
+  UserCog,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +37,8 @@ import {
   updateCustomerNextActionStatus,
 } from "@/lib/customers.functions";
 import {
-  COMPANY_SIZES,
-  CUSTOMER_SEGMENTS,
+  CUSTOMER_SOURCES,
+  DELIVERY_PREFERENCES,
   INTERACTION_KINDS,
   LEAD_STAGES,
   ORDER_STATUS_LABELS,
@@ -38,6 +46,7 @@ import {
   formatCurrency,
   formatDate,
 } from "@/lib/commercial-constants";
+import { SIZES } from "@/lib/clothing";
 
 const customerQueryOptions = (id: string) =>
   queryOptions({
@@ -65,8 +74,7 @@ export const Route = createFileRoute("/_authenticated/clientes/$id")({
   }),
 });
 
-const stageLabel = (stage: string) =>
-  LEAD_STAGES.find((s) => s.value === stage)?.label ?? stage;
+const stageLabel = (stage: string) => LEAD_STAGES.find((s) => s.value === stage)?.label ?? stage;
 
 function CustomerDetailPage() {
   const { id } = useParams({ from: "/_authenticated/clientes/$id" });
@@ -197,18 +205,18 @@ function CustomerDetailPage() {
         </Button>
       </div>
 
-
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">{c.company_name || c.name}</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{c.name}</h1>
           <p className="text-muted-foreground">
-            Responsável: {data.ownerName}
-            {c.document ? ` · ${c.document}` : ""}
+            {[c.phone, c.company_name, c.document && `CPF ${c.document}`]
+              .filter(Boolean)
+              .join(" · ") || "Sem contato cadastrado"}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {c.segment ? <Badge variant="secondary">{c.segment}</Badge> : null}
-          {c.company_size ? <Badge variant="outline">{c.company_size}</Badge> : null}
+          {c.company_size ? <Badge variant="secondary">Veste {c.company_size}</Badge> : null}
+          {c.segment ? <Badge variant="outline">Conheceu por {c.segment}</Badge> : null}
           {c.region ? <Badge variant="outline">{c.region}</Badge> : null}
         </div>
       </div>
@@ -217,11 +225,8 @@ function CustomerDetailPage() {
         <TabsList className="flex-wrap">
           <TabsTrigger value="visao">Visão geral</TabsTrigger>
           <TabsTrigger value="cadastro">Cadastro</TabsTrigger>
-          <TabsTrigger value="contatos">Contatos</TabsTrigger>
-          <TabsTrigger value="oportunidades">Oportunidades</TabsTrigger>
           <TabsTrigger value="acoes">Próximas ações</TabsTrigger>
           <TabsTrigger value="historico">Histórico</TabsTrigger>
-          <TabsTrigger value="responsavel">Responsável</TabsTrigger>
         </TabsList>
 
         <TabsContent value="visao" className="space-y-4 pt-4">
@@ -343,14 +348,13 @@ function CustomerDetailPage() {
               >
                 {[
                   ["name", "Nome *"],
-                  ["company_name", "Razão social"],
-                  ["document", "CNPJ / CPF"],
+                  ["phone", "WhatsApp"],
+                  ["company_name", "Instagram"],
                   ["email", "E-mail"],
-                  ["phone", "Telefone"],
-                  ["address", "Endereço"],
+                  ["document", "CPF"],
+                  ["address", "Endereço (rua, número, complemento e bairro)"],
                   ["city", "Cidade"],
                   ["state", "Estado"],
-                  ["region", "Região"],
                 ].map(([key, label]) => (
                   <div key={key} className="space-y-2">
                     <Label htmlFor={key}>{label}</Label>
@@ -362,42 +366,32 @@ function CustomerDetailPage() {
                     />
                   </div>
                 ))}
-                <div className="space-y-2">
-                  <Label>Segmento</Label>
-                  <Select
-                    value={form.segment}
-                    onValueChange={(value) => setForm({ ...form, segment: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CUSTOMER_SEGMENTS.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Porte</Label>
-                  <Select
-                    value={form.company_size}
-                    onValueChange={(value) => setForm({ ...form, company_size: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPANY_SIZES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {(
+                  [
+                    ["company_size", "Tamanho que veste", SIZES],
+                    ["segment", "Como conheceu a loja", CUSTOMER_SOURCES],
+                    ["region", "Entrega preferida", DELIVERY_PREFERENCES],
+                  ] as const
+                ).map(([key, label, options]) => (
+                  <div key={key} className="space-y-2">
+                    <Label>{label}</Label>
+                    <Select
+                      value={form[key] || undefined}
+                      onValueChange={(value) => setForm({ ...form, [key]: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {options.map((o) => (
+                          <SelectItem key={o} value={o}>
+                            {o}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
                 <div className="space-y-2 sm:col-span-2">
                   <Label htmlFor="notes">Observações</Label>
                   <Textarea

@@ -58,8 +58,7 @@ function CustomersPage() {
       selection.clear();
       toast.success(bulkDeleteToastMessage(result));
     },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir clientes."),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao excluir clientes."),
   });
 
   const handleEdit = () => {
@@ -72,7 +71,6 @@ function CustomersPage() {
 
   return (
     <div className="space-y-6">
-
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
@@ -91,18 +89,18 @@ function CustomersPage() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Lista de clientes</CardTitle>
-          <OptionsMenu
-            total={visibleCustomers.length}
-            count={selection.selected.length}
-            onSelectAll={selection.selectAll}
-            onClearAll={selection.clear}
-            onEdit={handleEdit}
-            onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
-            isPending={removeMany.isPending}
-            entityLabel="cliente(s)"
-            description="Cadastros, contatos, interações e histórico dos clientes selecionados serão removidos permanentemente."
-          />
+            <CardTitle>Lista de clientes</CardTitle>
+            <OptionsMenu
+              total={visibleCustomers.length}
+              count={selection.selected.length}
+              onSelectAll={selection.selectAll}
+              onClearAll={selection.clear}
+              onEdit={handleEdit}
+              onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
+              isPending={removeMany.isPending}
+              entityLabel="cliente(s)"
+              description="Cadastros, contatos, interações e histórico dos clientes selecionados serão removidos permanentemente."
+            />
           </div>
           <RecordSearch
             placeholder="Pesquisar por nome, telefone, e-mail, cidade..."
@@ -110,7 +108,7 @@ function CustomersPage() {
             onQueryChange={search.setQuery}
             suggestions={visibleCustomers.map((c) => ({
               id: c.id,
-              label: c.company_name || c.name,
+              label: c.name,
               sublabel: [c.customer_code, c.document].filter(Boolean).join(" · "),
             }))}
             onSelect={(id) => navigate({ to: "/clientes/$id", params: { id } })}
@@ -119,7 +117,9 @@ function CustomersPage() {
         <CardContent>
           {visibleCustomers.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum cliente cadastrado."}
+              {search.isSearching
+                ? "Nenhum resultado para a pesquisa."
+                : "Nenhum cliente cadastrado."}
             </p>
           ) : (
             <div className="divide-y">
@@ -137,12 +137,20 @@ function CustomersPage() {
                   >
                     <p className="font-medium">{customer.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {customer.email || customer.phone || "Sem contato"}
+                      {[
+                        customer.phone,
+                        customer.company_name,
+                        customer.company_size && `Veste ${customer.company_size}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ") ||
+                        customer.email ||
+                        "Sem contato"}
                     </p>
                     {(customer.city || customer.state) && (
                       <p className="text-xs text-muted-foreground">
                         {[customer.city, customer.state].filter(Boolean).join(" / ")}
-                        {customer.postal_code ? ` · CEP ${customer.postal_code}` : ""}
+                        {customer.region ? ` · ${customer.region}` : ""}
                       </p>
                     )}
                   </button>

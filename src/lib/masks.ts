@@ -68,3 +68,25 @@ export function validateContactFields(values: {
   if (values.phone && !isValidPhone(values.phone)) return PHONE_ERROR;
   return null;
 }
+
+/** Máscara de CPF: 000.000.000-00 */
+export function maskCpf(value: string): string {
+  const d = value.replace(/\D/g, "").slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1-$2");
+}
+
+/** Valida CPF pelos dígitos verificadores. */
+export function isValidCpf(value: string): boolean {
+  const d = value.replace(/\D/g, "");
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  const check = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return check(9) === Number(d[9]) && check(10) === Number(d[10]);
+}
