@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { buildSku, calcMargin } from "@/lib/clothing";
 
 const specSchema = z.object({ label: z.string().max(120), value: z.string().max(300) });
 
@@ -19,10 +20,32 @@ const productSchema = z.object({
   price: z.coerce.number().min(0, "Preço deve ser maior ou igual a zero"),
   category: z.string().max(80).optional().or(z.literal("")),
   code: z.string().max(60).optional().or(z.literal("")),
-  margin_percent: z.coerce.number().min(0).max(100).default(0),
+  margin_percent: z.coerce.number().default(0),
   stock: z.coerce.number().int().min(0).default(0),
   active: z.boolean().default(true),
+  supplier: z.string().max(80).optional().or(z.literal("")),
+  style: z.string().max(80).optional().or(z.literal("")),
+  color: z.string().max(80).optional().or(z.literal("")),
+  pattern: z.string().max(80).optional().or(z.literal("")),
+  size: z.string().max(20).optional().or(z.literal("")),
+  model_number: z.coerce.number().int().min(0).max(99).optional().nullable(),
+  cost: z.coerce.number().min(0).default(0),
 });
+
+function clothingFields(d: z.infer<typeof productSchema>) {
+  const sku = buildSku(d);
+  return {
+    supplier: d.supplier || null,
+    style: d.style || null,
+    color: d.color || null,
+    pattern: d.pattern || null,
+    size: d.size || null,
+    model_number: d.model_number ?? null,
+    cost: d.cost,
+    margin_percent: calcMargin(d.price, d.cost),
+    sku: sku ?? (d.sku || null),
+  };
+}
 
 export const listProducts = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -51,7 +74,6 @@ export const createProduct = createServerFn({ method: "POST" })
       .from("products")
       .insert({
         name: data.name,
-        sku: data.sku || null,
         description: data.description || null,
         commercial_description: data.commercial_description || null,
         technical_description: data.technical_description || null,
@@ -64,9 +86,9 @@ export const createProduct = createServerFn({ method: "POST" })
         price: data.price,
         category: data.category || null,
         code: data.code || null,
-        margin_percent: data.margin_percent,
         stock: data.stock,
         active: data.active,
+        ...clothingFields(data),
       })
       .select()
       .single();
@@ -89,7 +111,6 @@ export const updateProduct = createServerFn({ method: "POST" })
       .from("products")
       .update({
         name: rest.name,
-        sku: rest.sku || null,
         description: rest.description || null,
         commercial_description: rest.commercial_description || null,
         technical_description: rest.technical_description || null,
@@ -102,9 +123,9 @@ export const updateProduct = createServerFn({ method: "POST" })
         price: rest.price,
         category: rest.category || null,
         code: rest.code || null,
-        margin_percent: rest.margin_percent,
         stock: rest.stock,
         active: rest.active,
+        ...clothingFields(rest),
       })
       .eq("id", id);
     if (error) throw new Error(error.message);

@@ -4,17 +4,7 @@ import { ArrowLeft, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,12 +17,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { deleteProduct, getProduct, updateProduct } from "@/lib/products.functions";
-import {
-  INTEGRATION_CATEGORIES,
-  INTEGRATION_CONNECTION_STATUSES,
-  INTEGRATION_SYSTEMS,
-  formatDateTime,
-} from "@/lib/commercial-constants";
+import { formatDateTime } from "@/lib/commercial-constants";
+import { ProductForm } from "@/components/products/product-form";
 
 const integrationQueryOptions = (id: string) =>
   queryOptions({
@@ -52,15 +38,15 @@ export const Route = createFileRoute("/_authenticated/produtos/$id")({
   notFoundComponent: () => <p>Produto não encontrado.</p>,
   head: () => ({
     meta: [
-      { title: "Editar integração - Nexus 360" },
+      { title: "Editar produto - Nexus 360" },
       {
         name: "description",
-        content: "Atualize sistema, categoria, status da conexão e registros sincronizados.",
+        content: "Atualize os dados, custo, preço e SKU da peça.",
       },
-      { property: "og:title", content: "Editar integração - Nexus 360" },
+      { property: "og:title", content: "Editar produto - Nexus 360" },
       {
         property: "og:description",
-        content: "Gerencie a conexão com sistemas corporativos no Nexus 360.",
+        content: "Edição de peças da loja.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -75,14 +61,6 @@ function EditIntegrationPage() {
   const { data } = useSuspenseQuery(integrationQueryOptions(id));
   const integration = data.product;
 
-  const [form, setForm] = useState({
-    name: integration.name ?? "",
-    description: integration.description ?? "",
-    category: integration.category ?? "",
-    code: integration.code ?? "pendente",
-    stock: String(integration.stock ?? 0),
-    active: integration.active ?? true,
-  });
   const [error, setError] = useState<string | null>(null);
 
   const update = useMutation({
@@ -94,7 +72,7 @@ function EditIntegrationPage() {
       navigate({ to: "/produtos" });
     },
     onError: (err) => {
-      const message = err instanceof Error ? err.message : "Erro ao atualizar integração.";
+      const message = err instanceof Error ? err.message : "Erro ao atualizar produto.";
       setError(message);
       toast.error(message);
     },
@@ -108,27 +86,8 @@ function EditIntegrationPage() {
       navigate({ to: "/produtos" });
     },
     onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir integração."),
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir produto."),
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    update.mutate({
-      data: {
-        id,
-        name: form.name,
-        description: form.description,
-        category: form.category,
-        code: form.code,
-        stock: Number(form.stock || 0),
-        active: form.active,
-        price: Number(integration.price ?? 0),
-        margin_percent: Number(integration.margin_percent ?? 0),
-        specifications: (integration.specifications as { label: string; value: string }[]) ?? [],
-      },
-    });
-  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -149,9 +108,9 @@ function EditIntegrationPage() {
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir integração?</AlertDialogTitle>
+              <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
               <AlertDialogDescription>
-                Esta ação remove a conexão com o sistema permanentemente.
+                Esta ação remove o produto permanentemente.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -166,109 +125,43 @@ function EditIntegrationPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Editar integração</CardTitle>
+          <CardTitle>Editar produto</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Última sincronização: {formatDateTime(integration.updated_at)}
+            Atualizado em: {formatDateTime(integration.updated_at)}
           </p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Sistema *</Label>
-              <Select
-                value={form.name || undefined}
-                onValueChange={(v) => setForm({ ...form, name: v })}
-              >
-                <SelectTrigger id="name">
-                  <SelectValue placeholder="Selecione o sistema" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from(new Set([...INTEGRATION_SYSTEMS, form.name].filter(Boolean))).map(
-                    (s) => (
-                      <SelectItem key={s} value={s as string}>
-                        {s}
-                      </SelectItem>
-                    ),
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="category">Categoria</Label>
-                <Select
-                  value={form.category || undefined}
-                  onValueChange={(v) => setForm({ ...form, category: v })}
-                >
-                  <SelectTrigger id="category">
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from(
-                      new Set([...INTEGRATION_CATEGORIES, form.category].filter(Boolean)),
-                    ).map((c) => (
-                      <SelectItem key={c} value={c as string}>
-                        {c}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="code">Status da conexão</Label>
-                <Select value={form.code} onValueChange={(v) => setForm({ ...form, code: v })}>
-                  <SelectTrigger id="code">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INTEGRATION_CONNECTION_STATUSES.map((s) => (
-                      <SelectItem key={s.value} value={s.value}>
-                        {s.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="stock">Registros sincronizados</Label>
-              <Input
-                id="stock"
-                type="number"
-                min="0"
-                value={form.stock}
-                onChange={(e) => setForm({ ...form, stock: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">Observações da integração</Label>
-              <Input
-                id="description"
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="active"
-                checked={form.active}
-                onCheckedChange={(checked) => setForm({ ...form, active: checked === true })}
-              />
-              <Label htmlFor="active" className="font-normal">
-                Produto ativo
-              </Label>
-            </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-
-            <Button type="submit" className="w-full" disabled={update.isPending}>
-              {update.isPending ? "Salvando..." : "Salvar alterações"}
-            </Button>
-          </form>
+          <ProductForm
+            initial={{
+              name: integration.name ?? "",
+              description: integration.description ?? "",
+              price: Number(integration.price ?? 0),
+              cost: Number(integration.cost ?? 0),
+              stock: Number(integration.stock ?? 0),
+              active: integration.active ?? true,
+              supplier: integration.supplier ?? "",
+              style: integration.style ?? "",
+              color: integration.color ?? "",
+              pattern: integration.pattern ?? "",
+              size: integration.size ?? "",
+              model_number: integration.model_number ?? null,
+            }}
+            submitLabel="Salvar alterações"
+            pending={update.isPending}
+            error={error}
+            onSubmit={(v) => {
+              setError(null);
+              update.mutate({
+                data: {
+                  ...v,
+                  id,
+                  category: integration.category ?? "",
+                  code: integration.code ?? "",
+                  specifications: (integration.specifications as { label: string; value: string }[]) ?? [],
+                },
+              });
+            }}
+          />
         </CardContent>
       </Card>
     </div>

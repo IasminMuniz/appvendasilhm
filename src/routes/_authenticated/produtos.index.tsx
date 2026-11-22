@@ -11,11 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/components/bulk-select";
 import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
-import {
-  INTEGRATION_STATUS_LABELS,
-  formatDateTime,
-  integrationStatusVariant,
-} from "@/lib/commercial-constants";
+import { formatCurrency } from "@/lib/commercial-constants";
 
 const integrationsQueryOptions = () =>
   queryOptions({
@@ -31,19 +27,19 @@ export const Route = createFileRoute("/_authenticated/produtos/")({
       {(error as Error).message}
     </p>
   ),
-  notFoundComponent: () => <p>Nenhuma integração encontrada.</p>,
+  notFoundComponent: () => <p>Nenhum produto encontrado.</p>,
   head: () => ({
     meta: [
       { title: "Produtos - Nexus 360" },
       {
         name: "description",
         content:
-          "Conexões com sistemas corporativos de CRM, ERP, marketing e atendimento no Nexus 360.",
+          "Peças da loja com SKU, custo, preço e margem.",
       },
       { property: "og:title", content: "Produtos - Nexus 360" },
       {
         property: "og:description",
-        content: "Status de conexão e sincronização dos sistemas integrados ao Nexus 360.",
+        content: "Catálogo de peças da loja com SKU automático.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -55,7 +51,7 @@ function IntegrationsPage() {
   const { data: integrations } = useSuspenseQuery(integrationsQueryOptions());
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const search = useRecordSearch(integrations, (i) => [i.name, i.category, i.code]);
+  const search = useRecordSearch(integrations, (i) => [i.name, i.sku, i.supplier, i.style, i.color]);
   const visible = search.results;
   const selection = useBulkSelection(visible.map((i) => i.id));
 
@@ -67,7 +63,7 @@ function IntegrationsPage() {
       toast.success(bulkDeleteToastMessage(result));
     },
     onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir integrações."),
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir produtos."),
   });
 
   const handleEdit = () => {
@@ -75,7 +71,7 @@ function IntegrationsPage() {
       navigate({ to: "/produtos/$id", params: { id: selection.selected[0]! } });
       return;
     }
-    toast.info("Selecione apenas uma integração para abrir o formulário de edição.");
+    toast.info("Selecione apenas um produto para abrir o formulário de edição.");
   };
 
   return (
@@ -84,13 +80,13 @@ function IntegrationsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
           <p className="text-muted-foreground">
-            Conexões com sistemas corporativos (CRM, ERP, Marketing e Atendimento).
+            Peças da loja com SKU, custo, preço e margem.
           </p>
         </div>
         <Button asChild>
           <Link to="/produtos/novo">
             <Plus className="mr-2 h-4 w-4" />
-            Nova integração
+            Novo produto
           </Link>
         </Button>
       </div>
@@ -98,7 +94,7 @@ function IntegrationsPage() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-row items-center justify-between gap-3">
-            <CardTitle>Sistemas integrados</CardTitle>
+            <CardTitle>Catálogo</CardTitle>
             <OptionsMenu
               total={visible.length}
               count={selection.selected.length}
@@ -107,8 +103,8 @@ function IntegrationsPage() {
               onEdit={handleEdit}
               onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
               isPending={removeMany.isPending}
-              entityLabel="integração(ões)"
-              description="As integrações selecionadas serão removidas permanentemente."
+              entityLabel="produto(s)"
+              description="Os produtos selecionados serão removidos permanentemente."
             />
           </div>
           <RecordSearch
@@ -117,7 +113,7 @@ function IntegrationsPage() {
             suggestions={visible.map((i) => ({
               id: i.id,
               label: i.name,
-              sublabel: [i.category, INTEGRATION_STATUS_LABELS[i.code ?? ""]]
+              sublabel: [i.sku, i.color, i.size]
                 .filter(Boolean)
                 .join(" · "),
             }))}
@@ -129,7 +125,7 @@ function IntegrationsPage() {
             <p className="text-sm text-muted-foreground">
               {search.isSearching
                 ? "Nenhum resultado para a pesquisa."
-                : "Nenhuma integração cadastrada."}
+                : "Nenhum produto cadastrado."}
             </p>
           ) : (
             <div className="divide-y">
@@ -148,22 +144,22 @@ function IntegrationsPage() {
                     }
                   >
                     <p className="font-medium">{integration.name}</p>
+                    <p className="font-mono text-xs text-muted-foreground">{integration.sku ?? "Sem SKU"}</p>
                     <p className="text-sm text-muted-foreground">
-                      {[
-                        integration.category,
-                        `Última sincronização: ${formatDateTime(integration.updated_at)}`,
-                        `${Number(integration.stock ?? 0)} registros sincronizados`,
-                      ]
+                      {[integration.style, integration.color, integration.pattern, integration.size && `Tam. ${integration.size}`, `${Number(integration.stock ?? 0)} em estoque`]
                         .filter(Boolean)
                         .join(" · ")}
                     </p>
                   </button>
                   <div className="flex items-center gap-3">
-                    <Badge variant={integrationStatusVariant(integration.code)}>
-                      {INTEGRATION_STATUS_LABELS[integration.code ?? ""] ?? "Desconectado"}
-                    </Badge>
+                    <div className="text-right text-sm">
+                      <p className="font-medium">{formatCurrency(Number(integration.price ?? 0))}</p>
+                      <p className="text-muted-foreground">
+                        Custo {formatCurrency(Number(integration.cost ?? 0))} · Margem {Number(integration.margin_percent ?? 0).toLocaleString("pt-BR")}%
+                      </p>
+                    </div>
                     <Badge variant={integration.active ? "default" : "secondary"}>
-                      {integration.active ? "Ativa" : "Inativa"}
+                      {integration.active ? "Ativo" : "Inativo"}
                     </Badge>
                   </div>
                 </div>

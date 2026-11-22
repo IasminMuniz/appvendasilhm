@@ -952,18 +952,25 @@ export type Database = {
           benefits: string | null
           category: string | null
           code: string | null
+          color: string | null
           commercial_description: string | null
+          cost: number
           created_at: string
           description: string | null
           dimensions: string | null
           id: string
           margin_percent: number
+          model_number: number | null
           name: string
+          pattern: string | null
           price: number
           purpose: string | null
+          size: string | null
           sku: string | null
           specifications: Json
           stock: number
+          style: string | null
+          supplier: string | null
           technical_description: string | null
           updated_at: string
           weight: string | null
@@ -974,18 +981,25 @@ export type Database = {
           benefits?: string | null
           category?: string | null
           code?: string | null
+          color?: string | null
           commercial_description?: string | null
+          cost?: number
           created_at?: string
           description?: string | null
           dimensions?: string | null
           id?: string
           margin_percent?: number
+          model_number?: number | null
           name: string
+          pattern?: string | null
           price: number
           purpose?: string | null
+          size?: string | null
           sku?: string | null
           specifications?: Json
           stock?: number
+          style?: string | null
+          supplier?: string | null
           technical_description?: string | null
           updated_at?: string
           weight?: string | null
@@ -996,18 +1010,25 @@ export type Database = {
           benefits?: string | null
           category?: string | null
           code?: string | null
+          color?: string | null
           commercial_description?: string | null
+          cost?: number
           created_at?: string
           description?: string | null
           dimensions?: string | null
           id?: string
           margin_percent?: number
+          model_number?: number | null
           name?: string
+          pattern?: string | null
           price?: number
           purpose?: string | null
+          size?: string | null
           sku?: string | null
           specifications?: Json
           stock?: number
+          style?: string | null
+          supplier?: string | null
           technical_description?: string | null
           updated_at?: string
           weight?: string | null
