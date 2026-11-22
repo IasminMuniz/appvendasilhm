@@ -12,6 +12,7 @@ import {
   Download,
   Truck,
   BookOpen,
+  Wallet,
 } from "lucide-react";
 
 import {
@@ -32,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Caixa", url: "/caixa", icon: Wallet },
   { title: "Clientes", url: "/clientes", icon: Users },
   { title: "Produtos", url: "/produtos", icon: Shirt },
   { title: "Vendas", url: "/pedidos", icon: ShoppingCart },

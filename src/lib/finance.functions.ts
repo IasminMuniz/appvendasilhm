@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { splitSales } from "@/lib/cash";
+import { fetchCashPlan } from "@/lib/store.functions";
 
 export const PURCHASE_STATUSES = ["Pedido", "Recebido", "Cancelado"] as const;
 
@@ -265,5 +267,97 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       expensesMonth: sum(expenses),
       fixedExpenses: sum(expenses.filter((e) => e.is_fixed)),
       channels: Object.values(byChannel).map((c) => ({ ...c, revenue: Math.round(c.revenue * 100) / 100, profit: Math.round(c.profit * 100) / 100 })),
+    };
+  });
+
+/**
+ * Caixa da loja: saldo, entradas e saídas do período e a divisão do dinheiro das vendas
+ * (reposição, reserva, outros fins, crescimento e seu lucro).
+ */
+export const getCashFlow = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((d: { month: string }) =>
+    z.object({ month: z.union([z.literal("all"), z.string().regex(/^\d{4}-\d{2}$/)]) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const sb = context.supabase;
+    const [ordersRes, purchasesRes, expensesRes, productsRes, plan] = await Promise.all([
+      sb
+        .from("orders")
+        .select("total, channel_fee, other_costs, product_cost, packaging_cost, created_at, status")
+        .in("status", ["pago", "entregue"]),
+      sb.from("purchases").select("*"),
+      sb.from("expenses").select("*"),
+      sb.from("products").select("id, name, sku, stock, active").eq("active", true).order("stock"),
+      fetchCashPlan(sb),
+    ]);
+    for (const r of [ordersRes, purchasesRes, expensesRes, productsRes]) if (r.error) throw new Error(r.error.message);
+
+    const inPeriod = (d: string | null | undefined) => !!d && (data.month === "all" || d.startsWith(data.month));
+    const today = new Date().toISOString().slice(0, 10);
+    const in30 = addMonths(today, 1);
+    const n = (v: unknown) => Number(v ?? 0) || 0;
+
+    const sales = (ordersRes.data ?? []).map((o) => ({
+      total: n(o.total), channel_fee: n(o.channel_fee), other_costs: n(o.other_costs),
+      product_cost: n(o.product_cost), packaging_cost: n(o.packaging_cost), date: String(o.created_at).slice(0, 10),
+    }));
+    const purchases = (purchasesRes.data ?? []).filter((p) => p.status !== "Cancelado");
+    const expenses = (expensesRes.data ?? []) as Array<{ amount: number; status?: string | null; paid_at?: string | null; expense_date: string; description: string }>;
+    // Sem a coluna de situação (banco antigo), toda despesa conta como paga.
+    const isPaid = (e: { status?: string | null }) => e.status === undefined || e.status === "Pago";
+    const paidExpenses = expenses.filter(isPaid);
+    const expenseDate = (e: { paid_at?: string | null; expense_date: string }) => e.paid_at || e.expense_date;
+
+    const received = (s: (typeof sales)[number]) => s.total - s.channel_fee;
+    const sumBy = <T,>(rows: T[], f: (r: T) => number) => Math.round(rows.reduce((t, r) => t + f(r), 0) * 100) / 100;
+
+    // Saldo atual (desde o início): aporte + o que entrou das vendas − tudo que saiu.
+    const totalIn = sumBy(sales, received);
+    const totalOut =
+      sumBy(purchases, (p) => n(p.amount)) + sumBy(paidExpenses, (e) => n(e.amount)) + sumBy(sales, (s) => s.other_costs);
+    const balance = Math.round((plan.initialCapital + totalIn - totalOut) * 100) / 100;
+
+    // Período escolhido
+    const pSales = sales.filter((s) => inPeriod(s.date));
+    const pPurchases = purchases.filter((p) => inPeriod(p.purchase_date));
+    const pExpenses = paidExpenses.filter((e) => inPeriod(expenseDate(e)));
+    const period = {
+      salesCount: pSales.length,
+      received: sumBy(pSales, received),
+      purchases: sumBy(pPurchases, (p) => n(p.amount)),
+      expenses: sumBy(pExpenses, (e) => n(e.amount)),
+      saleCosts: sumBy(pSales, (s) => s.other_costs),
+    };
+    const periodResult = Math.round((period.received - period.purchases - period.expenses - period.saleCosts) * 100) / 100;
+
+    // Potes: divisão do dinheiro das vendas do período e acumulado desde o início
+    const split = splitSales(pSales, plan);
+    const splitAll = splitSales(sales, plan);
+
+    // Dinheiro para nova compra: reposição + crescimento acumulados, menos compras feitas depois da 1ª venda.
+    const firstSale = sales.map((s) => s.date).sort()[0];
+    const rebuyPurchases = firstSale ? sumBy(purchases.filter((p) => p.purchase_date >= firstSale), (p) => n(p.amount)) : 0;
+    const availableToBuy = Math.round((splitAll.restock + splitAll.packaging + splitAll.growth - rebuyPurchases) * 100) / 100;
+
+    const upcoming = expenses
+      .filter((e) => !isPaid(e) && e.expense_date <= in30)
+      .sort((a, b) => a.expense_date.localeCompare(b.expense_date));
+
+    return {
+      plan,
+      balance,
+      totalIn,
+      totalOut,
+      period,
+      periodResult,
+      split,
+      splitAll,
+      availableToBuy,
+      rebuyPurchases,
+      upcoming: upcoming.map((e) => ({ description: e.description, date: e.expense_date, amount: n(e.amount), overdue: e.expense_date < today })),
+      upcomingTotal: sumBy(upcoming, (e) => n(e.amount)),
+      lowStock: (productsRes.data ?? []).filter((p) => n(p.stock) <= 1).map((p) => ({ id: p.id, name: p.name, sku: p.sku, stock: n(p.stock) })),
+      piecesInStock: sumBy(productsRes.data ?? [], (p) => n(p.stock)),
     };
   });

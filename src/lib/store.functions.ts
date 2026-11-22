@@ -3,6 +3,7 @@ import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { SUPPLIERS, nextModelNumber, nextSupplierCode } from "@/lib/clothing";
 import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
+import { type CashPlan, normalizePlan } from "@/lib/cash";
 
 export interface SupplierRow {
   id: string | null;
@@ -175,4 +176,31 @@ export const getNextModelNumber = createServerFn({ method: "GET" })
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
     return { next: nextModelNumber((rows ?? []).map((r) => r.model_number)) };
+  });
+
+/** Plano do caixa (aporte inicial e % de cada pote), guardado nas configurações da loja. */
+export async function fetchCashPlan(supabase: any): Promise<CashPlan> {
+  const { data, error } = await supabase.from("store_settings").select("value").eq("key", "cash_plan").maybeSingle();
+  return normalizePlan(error ? null : data?.value);
+}
+
+export const saveCashPlan = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        initialCapital: z.coerce.number().min(0).max(10_000_000),
+        otherPurposesPct: z.coerce.number().min(0).max(100),
+        reservePct: z.coerce.number().min(0).max(100),
+        growthPct: z.coerce.number().min(0).max(100),
+      })
+      .refine((p) => p.reservePct + p.growthPct <= 100, "Reserva + crescimento não podem passar de 100% do lucro.")
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("store_settings")
+      .upsert({ key: "cash_plan", value: data, updated_by: context.userId, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
