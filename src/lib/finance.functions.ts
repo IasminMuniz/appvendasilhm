@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { recalcOrders } from "@/lib/order-recalc";
 import { splitSales } from "@/lib/cash";
 import { fetchCashPlan } from "@/lib/store.functions";
 
@@ -27,13 +28,24 @@ const purchaseSchema = z.object({
 type PurchaseItemRow = { product_id: string | null; quantity: number; amount: number };
 
 /** Soma (sign 1) ou devolve (sign -1) ao estoque os itens com produto; ao somar, atualiza o custo. */
-async function applyPurchaseStock(supabase: any, items: PurchaseItemRow[], freight: number, sign: 1 | -1) {
+async function applyPurchaseStock(
+  supabase: any,
+  items: PurchaseItemRow[],
+  freight: number,
+  sign: 1 | -1,
+) {
   const itemsTotal = items.reduce((s, i) => s + Number(i.amount), 0);
   for (const it of items) {
     if (!it.product_id || it.quantity <= 0) continue;
-    const { data: prod } = await supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
+    const { data: prod } = await supabase
+      .from("products")
+      .select("stock")
+      .eq("id", it.product_id)
+      .maybeSingle();
     if (!prod) continue;
-    const patch: Record<string, number> = { stock: Math.max(0, Number(prod.stock ?? 0) + sign * it.quantity) };
+    const patch: Record<string, number> = {
+      stock: Math.max(0, Number(prod.stock ?? 0) + sign * it.quantity),
+    };
     if (sign === 1) {
       // Custo unitário = valor pago no item + parte proporcional do frete, dividido pela quantidade.
       const freightShare = itemsTotal > 0 ? (Number(it.amount) / itemsTotal) * freight : 0;
@@ -47,29 +59,15 @@ async function applyPurchaseStock(supabase: any, items: PurchaseItemRow[], freig
 async function recalcSalesForProducts(supabase: any, productIds: string[]) {
   const ids = [...new Set(productIds.filter(Boolean))];
   if (!ids.length) return;
-  const { data: rows } = await supabase.from("order_items").select("order_id").in("product_id", ids);
-  const orderIds = [...new Set((rows ?? []).map((r: { order_id: string }) => r.order_id))];
-  if (!orderIds.length) return;
-  const { data: orders } = await supabase
-    .from("orders")
-    .select("id, total, channel_fee, other_costs, packaging_cost, status, order_items(quantity, products(cost))")
-    .in("id", orderIds)
-    .neq("status", "cancelado");
-  for (const o of orders ?? []) {
-    const productCost =
-      Math.round(
-        (o.order_items ?? []).reduce(
-          (s: number, i: { quantity: number; products: { cost: number } | null }) =>
-            s + Number(i.quantity ?? 0) * Number(i.products?.cost ?? 0),
-          0,
-        ) * 100,
-      ) / 100;
-    const total = Number(o.total ?? 0);
-    const profit =
-      Math.round((total - Number(o.channel_fee ?? 0) - Number(o.other_costs ?? 0) - productCost - Number(o.packaging_cost ?? 0)) * 100) / 100;
-    const margin = total > 0 ? Math.round((profit / total) * 10000) / 100 : 0;
-    await supabase.from("orders").update({ product_cost: productCost, profit, margin_percent: margin }).eq("id", o.id);
-  }
+  const { data: rows } = await supabase
+    .from("order_items")
+    .select("order_id")
+    .in("product_id", ids);
+  const orderIds = [
+    ...new Set((rows ?? []).map((r: { order_id: string }) => r.order_id)),
+  ] as string[];
+  const plan = await fetchCashPlan(supabase);
+  await recalcOrders(supabase, orderIds, plan.otherPurposesPct);
 }
 
 const idSchema = z.object({ id: z.string().uuid() });
@@ -83,7 +81,10 @@ export const listPurchases = createServerFn({ method: "GET" })
       .select("*, purchase_items(*, products(name, sku))")
       .order("purchase_date", { ascending: false });
     if (!full.error) return { purchases: full.data ?? [], migrationPending: false };
-    const basic = await context.supabase.from("purchases").select("*").order("purchase_date", { ascending: false });
+    const basic = await context.supabase
+      .from("purchases")
+      .select("*")
+      .order("purchase_date", { ascending: false });
     if (basic.error) throw new Error(basic.error.message);
     return {
       purchases: (basic.data ?? []).map((p) => ({ ...p, purchase_items: [] as never[] })),
@@ -98,8 +99,14 @@ export const savePurchase = createServerFn({ method: "POST" })
     const sb = context.supabase;
     const { id, items, ...r } = data;
     const cleanItems = items.map((i) => ({ ...i, product_id: i.product_id || null }));
-    const amount = Math.round((cleanItems.reduce((s, i) => s + i.amount, 0) + r.freight) * 100) / 100;
-    const description = r.description || cleanItems.map((i) => `${i.quantity}× ${i.description}`).join(", ").slice(0, 300);
+    const amount =
+      Math.round((cleanItems.reduce((s, i) => s + i.amount, 0) + r.freight) * 100) / 100;
+    const description =
+      r.description ||
+      cleanItems
+        .map((i) => `${i.quantity}× ${i.description}`)
+        .join(", ")
+        .slice(0, 300);
     const row = {
       purchase_date: r.purchase_date,
       supplier: r.supplier || null,
@@ -119,8 +126,17 @@ export const savePurchase = createServerFn({ method: "POST" })
         .eq("id", id)
         .single();
       if (readError) throw new Error(readError.message);
-      if (current.stock_added) await applyPurchaseStock(sb, current.purchase_items ?? [], Number(current.freight ?? 0), -1);
-      const { error } = await sb.from("purchases").update({ ...row, stock_added: false }).eq("id", id);
+      if (current.stock_added)
+        await applyPurchaseStock(
+          sb,
+          current.purchase_items ?? [],
+          Number(current.freight ?? 0),
+          -1,
+        );
+      const { error } = await sb
+        .from("purchases")
+        .update({ ...row, stock_added: false })
+        .eq("id", id);
       if (error) throw new Error(error.message);
       const { error: delError } = await sb.from("purchase_items").delete().eq("purchase_id", id);
       if (delError) throw new Error(delError.message);
@@ -142,7 +158,10 @@ export const savePurchase = createServerFn({ method: "POST" })
     if (r.status === "Recebido") {
       await applyPurchaseStock(sb, cleanItems, r.freight, 1);
       await sb.from("purchases").update({ stock_added: true }).eq("id", purchaseId!);
-      await recalcSalesForProducts(sb, cleanItems.map((i) => i.product_id ?? ""));
+      await recalcSalesForProducts(
+        sb,
+        cleanItems.map((i) => i.product_id ?? ""),
+      );
     }
     return { ok: true };
   });
@@ -157,7 +176,12 @@ export const deletePurchase = createServerFn({ method: "POST" })
       .eq("id", data.id)
       .maybeSingle();
     if (current?.stock_added) {
-      await applyPurchaseStock(context.supabase, current.purchase_items ?? [], Number(current.freight ?? 0), -1);
+      await applyPurchaseStock(
+        context.supabase,
+        current.purchase_items ?? [],
+        Number(current.freight ?? 0),
+        -1,
+      );
     }
     const { error } = await context.supabase.from("purchases").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -182,7 +206,9 @@ const expenseSchema = z.object({
 export function addMonths(isoDate: string, n: number): string {
   const [y, m, d] = isoDate.slice(0, 10).split("-").map(Number) as [number, number, number];
   const target = new Date(Date.UTC(y, m - 1 + n, 1));
-  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  const last = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate();
   target.setUTCDate(Math.min(d, last));
   return target.toISOString().slice(0, 10);
 }
@@ -192,7 +218,10 @@ const isMissingColumn = (msg: string) => /status|paid_at|series_id|column|schema
 export const listExpenses = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
-    const { data, error } = await context.supabase.from("expenses").select("*").order("expense_date", { ascending: false });
+    const { data, error } = await context.supabase
+      .from("expenses")
+      .select("*")
+      .order("expense_date", { ascending: false });
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -207,9 +236,13 @@ export const saveExpense = createServerFn({ method: "POST" })
     const paid = status === "Pago" ? paid_at || new Date().toISOString().slice(0, 10) : null;
 
     if (id) {
-      let { error } = await sb.from("expenses").update({ ...base, status, paid_at: paid }).eq("id", id);
+      let { error } = await sb
+        .from("expenses")
+        .update({ ...base, status, paid_at: paid })
+        .eq("id", id);
       // Banco ainda sem as colunas de pagamento: salva sem elas.
-      if (error && isMissingColumn(error.message)) ({ error } = await sb.from("expenses").update(base).eq("id", id));
+      if (error && isMissingColumn(error.message))
+        ({ error } = await sb.from("expenses").update(base).eq("id", id));
       if (error) throw new Error(error.message);
       return { ok: true, created: 0 };
     }
@@ -227,7 +260,9 @@ export const saveExpense = createServerFn({ method: "POST" })
     }));
     let { error } = await sb.from("expenses").insert(rows);
     if (error && isMissingColumn(error.message)) {
-      ({ error } = await sb.from("expenses").insert(rows.map(({ status: _s, paid_at: _p, series_id: _id, ...rest }) => rest)));
+      ({ error } = await sb
+        .from("expenses")
+        .insert(rows.map(({ status: _s, paid_at: _p, series_id: _id, ...rest }) => rest)));
     }
     if (error) throw new Error(error.message);
     return { ok: true, created: rows.length };
@@ -242,15 +277,24 @@ export const deleteExpense = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
     if (data.scope === "future") {
-      const { data: cur, error: readError } = await sb.from("expenses").select("*").eq("id", data.id).single();
+      const { data: cur, error: readError } = await sb
+        .from("expenses")
+        .select("*")
+        .eq("id", data.id)
+        .single();
       if (readError) throw new Error(readError.message);
       const seriesId = (cur as { series_id?: string | null }).series_id;
-      let q = sb.from("expenses").delete().gt("expense_date", cur.expense_date).eq("status", "Pendente");
+      let q = sb
+        .from("expenses")
+        .delete()
+        .gt("expense_date", cur.expense_date)
+        .eq("status", "Pendente");
       q = seriesId
         ? q.eq("series_id", seriesId)
         : q.eq("description", cur.description).eq("is_fixed", true);
       const { error: futureError } = await q;
-      if (futureError && !isMissingColumn(futureError.message)) throw new Error(futureError.message);
+      if (futureError && !isMissingColumn(futureError.message))
+        throw new Error(futureError.message);
     }
     const { error } = await sb.from("expenses").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
@@ -260,43 +304,75 @@ export const deleteExpense = createServerFn({ method: "POST" })
 /** Indicadores do mês (YYYY-MM) para o dashboard da loja. */
 export const getStoreDashboard = createServerFn({ method: "GET" })
   .middleware([requireAuth])
-  .inputValidator((d: { month: string }) => z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }).parse(d))
+  .inputValidator((d: { month: string }) =>
+    z.object({ month: z.string().regex(/^\d{4}-\d{2}$/) }).parse(d),
+  )
   .handler(async ({ data, context }) => {
     const [y, m] = data.month.split("-").map(Number) as [number, number];
     const start = `${data.month}-01`;
     const end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
     const sb = context.supabase;
     const [ordersRes, productsRes, purchMonth, purchAll, expRes] = await Promise.all([
-      sb.from("orders").select("total, profit, channel, order_items(quantity)").in("status", ["pago", "entregue"]).gte("created_at", start).lt("created_at", end),
+      sb
+        .from("orders")
+        .select("total, profit, channel, order_items(quantity)")
+        .in("status", ["pago", "entregue"])
+        .gte("created_at", start)
+        .lt("created_at", end),
       sb.from("products").select("stock, active"),
       sb.from("purchases").select("*").gte("purchase_date", start).lt("purchase_date", end),
       sb.from("purchases").select("*"),
-      sb.from("expenses").select("amount, is_fixed").gte("expense_date", start).lt("expense_date", end),
+      sb
+        .from("expenses")
+        .select("amount, is_fixed")
+        .gte("expense_date", start)
+        .lt("expense_date", end),
     ]);
-    for (const r of [ordersRes, productsRes, purchMonth, purchAll, expRes]) if (r.error) throw new Error(r.error.message);
+    for (const r of [ordersRes, productsRes, purchMonth, purchAll, expRes])
+      if (r.error) throw new Error(r.error.message);
 
     const orders = ordersRes.data ?? [];
-    const byChannel: Record<string, { channel: string; revenue: number; profit: number; count: number }> = {};
-    let revenue = 0, profit = 0, pieces = 0;
+    const byChannel: Record<
+      string,
+      { channel: string; revenue: number; profit: number; count: number }
+    > = {};
+    let revenue = 0,
+      profit = 0,
+      pieces = 0;
     for (const o of orders) {
-      const t = Number(o.total ?? 0), p = Number(o.profit ?? 0);
-      revenue += t; profit += p;
+      const t = Number(o.total ?? 0),
+        p = Number(o.profit ?? 0);
+      revenue += t;
+      profit += p;
       pieces += (o.order_items ?? []).reduce((s, i) => s + Number(i.quantity ?? 0), 0);
       const ch = o.channel || "Sem canal";
       byChannel[ch] ??= { channel: ch, revenue: 0, profit: 0, count: 0 };
-      byChannel[ch].revenue += t; byChannel[ch].profit += p; byChannel[ch].count += 1;
+      byChannel[ch].revenue += t;
+      byChannel[ch].profit += p;
+      byChannel[ch].count += 1;
     }
     const sum = (rows: { amount: number; status?: string | null }[] | null) =>
-      (rows ?? []).filter((r) => r.status !== "Cancelado").reduce((s, r) => s + Number(r.amount ?? 0), 0);
+      (rows ?? [])
+        .filter((r) => r.status !== "Cancelado")
+        .reduce((s, r) => s + Number(r.amount ?? 0), 0);
     const expenses = expRes.data ?? [];
     return {
-      revenue, profit, pieces, salesCount: orders.length,
-      stock: (productsRes.data ?? []).filter((p) => p.active).reduce((s, p) => s + Number(p.stock ?? 0), 0),
+      revenue,
+      profit,
+      pieces,
+      salesCount: orders.length,
+      stock: (productsRes.data ?? [])
+        .filter((p) => p.active)
+        .reduce((s, p) => s + Number(p.stock ?? 0), 0),
       purchasesMonth: sum(purchMonth.data),
       purchasesTotal: sum(purchAll.data),
       expensesMonth: sum(expenses),
       fixedExpenses: sum(expenses.filter((e) => e.is_fixed)),
-      channels: Object.values(byChannel).map((c) => ({ ...c, revenue: Math.round(c.revenue * 100) / 100, profit: Math.round(c.profit * 100) / 100 })),
+      channels: Object.values(byChannel).map((c) => ({
+        ...c,
+        revenue: Math.round(c.revenue * 100) / 100,
+        profit: Math.round(c.profit * 100) / 100,
+      })),
     };
   });
 
@@ -311,21 +387,30 @@ export const getCashFlow = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
-    const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes] = await Promise.all([
-      sb
-        .from("orders")
-        .select("id, total, channel_fee, other_costs, product_cost, packaging_cost, created_at, status, customers(name)")
-        .neq("status", "cancelado"),
-      sb.from("purchases").select("*"),
-      sb.from("expenses").select("*"),
-      sb.from("products").select("id, name, sku, stock, active").eq("active", true).order("stock"),
-      fetchCashPlan(sb),
-      // Parcelas das clientes (se a migration ainda não foi aplicada, vem com erro e é ignorado).
-      sb.from("order_payments").select("order_id, number, due_date, amount, status, paid_at"),
-    ]);
-    for (const r of [ordersRes, purchasesRes, expensesRes, productsRes]) if (r.error) throw new Error(r.error.message);
+    const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes] =
+      await Promise.all([
+        sb
+          .from("orders")
+          .select(
+            "id, total, channel_fee, other_costs, product_cost, packaging_cost, created_at, status, customers(name)",
+          )
+          .neq("status", "cancelado"),
+        sb.from("purchases").select("*"),
+        sb.from("expenses").select("*"),
+        sb
+          .from("products")
+          .select("id, name, sku, stock, active")
+          .eq("active", true)
+          .order("stock"),
+        fetchCashPlan(sb),
+        // Parcelas das clientes (se a migration ainda não foi aplicada, vem com erro e é ignorado).
+        sb.from("order_payments").select("order_id, number, due_date, amount, status, paid_at"),
+      ]);
+    for (const r of [ordersRes, purchasesRes, expensesRes, productsRes])
+      if (r.error) throw new Error(r.error.message);
 
-    const inPeriod = (d: string | null | undefined) => !!d && (data.month === "all" || d.startsWith(data.month));
+    const inPeriod = (d: string | null | undefined) =>
+      !!d && (data.month === "all" || d.startsWith(data.month));
     const today = new Date().toISOString().slice(0, 10);
     const in30 = addMonths(today, 1);
     const n = (v: unknown) => Number(v ?? 0) || 0;
@@ -333,31 +418,55 @@ export const getCashFlow = createServerFn({ method: "GET" })
     const allOrders = ordersRes.data ?? [];
     const payments = paymentsRes.error ? [] : (paymentsRes.data ?? []);
     const paysByOrder = new Map<string, typeof payments>();
-    for (const p of payments) paysByOrder.set(p.order_id, [...(paysByOrder.get(p.order_id) ?? []), p]);
-    const sales = allOrders.filter((o) => o.status === "pago" || o.status === "entregue").map((o) => ({
-      total: n(o.total), channel_fee: n(o.channel_fee), other_costs: n(o.other_costs),
-      product_cost: n(o.product_cost), packaging_cost: n(o.packaging_cost), date: String(o.created_at).slice(0, 10),
-    }));
+    for (const p of payments)
+      paysByOrder.set(p.order_id, [...(paysByOrder.get(p.order_id) ?? []), p]);
+    const sales = allOrders
+      .filter((o) => o.status === "pago" || o.status === "entregue")
+      .map((o) => ({
+        total: n(o.total),
+        channel_fee: n(o.channel_fee),
+        other_costs: n(o.other_costs),
+        product_cost: n(o.product_cost),
+        packaging_cost: n(o.packaging_cost),
+        date: String(o.created_at).slice(0, 10),
+      }));
     const purchases = (purchasesRes.data ?? []).filter((p) => p.status !== "Cancelado");
-    const expenses = (expensesRes.data ?? []) as Array<{ amount: number; status?: string | null; paid_at?: string | null; expense_date: string; description: string }>;
+    const expenses = (expensesRes.data ?? []) as Array<{
+      amount: number;
+      status?: string | null;
+      paid_at?: string | null;
+      expense_date: string;
+      description: string;
+    }>;
     // Sem a coluna de situação (banco antigo), toda despesa conta como paga.
     const isPaid = (e: { status?: string | null }) => e.status === undefined || e.status === "Pago";
     const paidExpenses = expenses.filter(isPaid);
-    const expenseDate = (e: { paid_at?: string | null; expense_date: string }) => e.paid_at || e.expense_date;
+    const expenseDate = (e: { paid_at?: string | null; expense_date: string }) =>
+      e.paid_at || e.expense_date;
 
-    const sumBy = <T,>(rows: T[], f: (r: T) => number) => Math.round(rows.reduce((t, r) => t + f(r), 0) * 100) / 100;
+    const sumBy = <T>(rows: T[], f: (r: T) => number) =>
+      Math.round(rows.reduce((t, r) => t + f(r), 0) * 100) / 100;
 
     // Entradas de dinheiro: com parcelas lançadas, conta só o que a cliente já pagou (na data do recebimento);
     // sem parcelas, conta a venda paga/entregue inteira na data da venda. A taxa do canal é descontada.
     const inflows: { date: string; amount: number }[] = [];
-    const toReceive: { customer: string; orderId: string; number: number; count: number; date: string; amount: number; overdue: boolean }[] = [];
+    const toReceive: {
+      customer: string;
+      orderId: string;
+      number: number;
+      count: number;
+      date: string;
+      amount: number;
+      overdue: boolean;
+    }[] = [];
     for (const o of allOrders) {
       const total = n(o.total);
       const net = total > 0 ? (total - n(o.channel_fee)) / total : 1;
       const pays = paysByOrder.get(o.id);
       if (pays?.length) {
         for (const p of pays) {
-          if (p.status === "Pago") inflows.push({ date: p.paid_at || p.due_date, amount: n(p.amount) * net });
+          if (p.status === "Pago")
+            inflows.push({ date: p.paid_at || p.due_date, amount: n(p.amount) * net });
           else
             toReceive.push({
               customer: (o.customers as { name?: string } | null)?.name ?? "Cliente",
@@ -378,7 +487,9 @@ export const getCashFlow = createServerFn({ method: "GET" })
     // Saldo atual (desde o início): aporte + o que entrou das vendas − tudo que saiu.
     const totalIn = sumBy(inflows, (f) => f.amount);
     const totalOut =
-      sumBy(purchases, (p) => n(p.amount)) + sumBy(paidExpenses, (e) => n(e.amount)) + sumBy(sales, (s) => s.other_costs);
+      sumBy(purchases, (p) => n(p.amount)) +
+      sumBy(paidExpenses, (e) => n(e.amount)) +
+      sumBy(sales, (s) => s.other_costs);
     const balance = Math.round((plan.initialCapital + totalIn - totalOut) * 100) / 100;
 
     // Período escolhido
@@ -387,12 +498,17 @@ export const getCashFlow = createServerFn({ method: "GET" })
     const pExpenses = paidExpenses.filter((e) => inPeriod(expenseDate(e)));
     const period = {
       salesCount: pSales.length,
-      received: sumBy(inflows.filter((f) => inPeriod(f.date)), (f) => f.amount),
+      received: sumBy(
+        inflows.filter((f) => inPeriod(f.date)),
+        (f) => f.amount,
+      ),
       purchases: sumBy(pPurchases, (p) => n(p.amount)),
       expenses: sumBy(pExpenses, (e) => n(e.amount)),
       saleCosts: sumBy(pSales, (s) => s.other_costs),
     };
-    const periodResult = Math.round((period.received - period.purchases - period.expenses - period.saleCosts) * 100) / 100;
+    const periodResult =
+      Math.round((period.received - period.purchases - period.expenses - period.saleCosts) * 100) /
+      100;
 
     // Potes: divisão do dinheiro das vendas do período e acumulado desde o início
     const split = splitSales(pSales, plan);
@@ -400,8 +516,15 @@ export const getCashFlow = createServerFn({ method: "GET" })
 
     // Dinheiro para nova compra: reposição + crescimento acumulados, menos compras feitas depois da 1ª venda.
     const firstSale = sales.map((s) => s.date).sort()[0];
-    const rebuyPurchases = firstSale ? sumBy(purchases.filter((p) => p.purchase_date >= firstSale), (p) => n(p.amount)) : 0;
-    const availableToBuy = Math.round((splitAll.restock + splitAll.packaging + splitAll.growth - rebuyPurchases) * 100) / 100;
+    const rebuyPurchases = firstSale
+      ? sumBy(
+          purchases.filter((p) => p.purchase_date >= firstSale),
+          (p) => n(p.amount),
+        )
+      : 0;
+    const availableToBuy =
+      Math.round((splitAll.restock + splitAll.packaging + splitAll.growth - rebuyPurchases) * 100) /
+      100;
 
     const upcoming = expenses
       .filter((e) => !isPaid(e) && e.expense_date <= in30)
@@ -418,11 +541,18 @@ export const getCashFlow = createServerFn({ method: "GET" })
       splitAll,
       availableToBuy,
       rebuyPurchases,
-      upcoming: upcoming.map((e) => ({ description: e.description, date: e.expense_date, amount: n(e.amount), overdue: e.expense_date < today })),
+      upcoming: upcoming.map((e) => ({
+        description: e.description,
+        date: e.expense_date,
+        amount: n(e.amount),
+        overdue: e.expense_date < today,
+      })),
       upcomingTotal: sumBy(upcoming, (e) => n(e.amount)),
       toReceive,
       toReceiveTotal: sumBy(toReceive, (r) => r.amount),
-      lowStock: (productsRes.data ?? []).filter((p) => n(p.stock) <= 1).map((p) => ({ id: p.id, name: p.name, sku: p.sku, stock: n(p.stock) })),
+      lowStock: (productsRes.data ?? [])
+        .filter((p) => n(p.stock) <= 1)
+        .map((p) => ({ id: p.id, name: p.name, sku: p.sku, stock: n(p.stock) })),
       piecesInStock: sumBy(productsRes.data ?? [], (p) => n(p.stock)),
     };
   });

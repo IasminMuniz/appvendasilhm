@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
-import { fetchPackagingCost } from "@/lib/store.functions";
+import { fetchCashPlan, fetchPackagingCost } from "@/lib/store.functions";
 import { saleCode } from "@/lib/sales";
 import { insertOrderPayments, paymentPlanSchema } from "@/lib/payments.functions";
 
@@ -39,6 +39,7 @@ function saleColumns(
   items: SaleItem[],
   productCost: number,
   packagingPerPiece: number,
+  reservePct: number,
 ) {
   const r = calcSale({
     items,
@@ -46,6 +47,7 @@ function saleColumns(
     otherCosts: info.other_costs,
     productCost,
     packagingCost: packagingPerPiece,
+    reservePct,
   });
   return {
     channel: info.channel || null,
@@ -179,7 +181,13 @@ export const createOrder = createServerFn({ method: "POST" })
         notes: data.notes || null,
         status: "novo",
         total,
-        ...saleColumns(data, data.items, productCost, packagingPerPiece),
+        ...saleColumns(
+          data,
+          data.items,
+          productCost,
+          packagingPerPiece,
+          (await fetchCashPlan(context.supabase)).otherPurposesPct,
+        ),
       })
       .select()
       .single();
@@ -329,7 +337,15 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
         : await fetchPackagingCost(context.supabase);
     const { error } = await context.supabase
       .from("orders")
-      .update(saleColumns(data, items, productCost, packagingPerPiece))
+      .update(
+        saleColumns(
+          data,
+          items,
+          productCost,
+          packagingPerPiece,
+          (await fetchCashPlan(context.supabase)).otherPurposesPct,
+        ),
+      )
       .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

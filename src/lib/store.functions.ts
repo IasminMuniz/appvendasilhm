@@ -4,6 +4,7 @@ import { z } from "zod";
 import { SUPPLIERS, nextModelNumber, nextSupplierCode } from "@/lib/clothing";
 import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
 import { type CashPlan, normalizePlan } from "@/lib/cash";
+import { recalcOrders } from "@/lib/order-recalc";
 
 export interface SupplierRow {
   id: string | null;
@@ -219,14 +220,18 @@ export const saveCashPlan = createServerFn({ method: "POST" })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("store_settings")
-      .upsert({
-        key: "cash_plan",
-        value: data,
-        updated_by: context.userId,
-        updated_at: new Date().toISOString(),
-      });
+    const { error } = await context.supabase.from("store_settings").upsert({
+      key: "cash_plan",
+      value: data,
+      updated_by: context.userId,
+      updated_at: new Date().toISOString(),
+    });
     if (error) throw new Error(error.message);
+    // O % para outros fins entra no lucro de toda venda: atualiza as vendas já lançadas.
+    await recalcOrders(context.supabase, null, data.otherPurposesPct);
     return { ok: true };
   });
+
+export const getCashPlan = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => fetchCashPlan(context.supabase));

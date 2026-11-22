@@ -60,6 +60,8 @@ export interface SaleCalc {
   price: number;
   channelFee: number;
   packaging: number;
+  /** Valor separado para outros fins (% obrigatório de toda venda, definido no Caixa). */
+  reserve: number;
   profit: number;
   margin: number;
 }
@@ -71,14 +73,17 @@ export function calcSale(p: {
   otherCosts: number;
   productCost: number;
   packagingCost?: number;
+  /** % do valor da venda separado para outros fins (padrão 0). */
+  reservePct?: number;
 }): SaleCalc {
   const price = round2(p.items.reduce((s, i) => s + Number(i.unit_price) * Number(i.quantity), 0));
   const pieces = p.items.reduce((s, i) => s + Number(i.quantity), 0);
   const fee = channelFee(p.channel, p.items);
   const packaging = round2((p.packagingCost ?? DEFAULT_PACKAGING_COST) * pieces);
-  const profit = round2(price - fee - p.otherCosts - p.productCost - packaging);
+  const reserve = round2((price * (p.reservePct ?? 0)) / 100);
+  const profit = round2(price - fee - p.otherCosts - p.productCost - packaging - reserve);
   const margin = price > 0 ? round2((profit / price) * 100) : 0;
-  return { price, channelFee: fee, packaging, profit, margin };
+  return { price, channelFee: fee, packaging, reserve, profit, margin };
 }
 
 export const SALE_STATUSES = [
@@ -94,3 +99,19 @@ export const STOCK_OUT_STATUSES = ["pago", "entregue"];
 
 /** Código da venda exibido na tela: V-0001, V-0002... */
 export const saleCode = (n: number) => `V-${String(n).padStart(4, "0")}`;
+
+/** Lucro e margem a partir dos valores já gravados na venda. */
+export function profitOf(o: {
+  total: number;
+  channelFee: number;
+  otherCosts: number;
+  productCost: number;
+  packaging: number;
+  reservePct: number;
+}) {
+  const reserve = round2((o.total * o.reservePct) / 100);
+  const profit = round2(
+    o.total - o.channelFee - o.otherCosts - o.productCost - o.packaging - reserve,
+  );
+  return { profit, margin: o.total > 0 ? round2((profit / o.total) * 100) : 0 };
+}

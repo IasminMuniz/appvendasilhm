@@ -98,7 +98,8 @@ function CashPage() {
   const save = useMutation({
     mutationFn: saveCashPlan,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["cash-flow"] });
+      for (const k of ["cash-flow", "cash-plan", "orders", "order", "dashboard"])
+        qc.invalidateQueries({ queryKey: [k] });
       toast.success("Plano do caixa salvo.");
     },
     onError: (e: Error) => toast.error(e.message),

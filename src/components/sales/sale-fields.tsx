@@ -1,4 +1,6 @@
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
+import { getCashPlan } from "@/lib/store.functions";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -130,6 +132,11 @@ export function SaleFields({
   );
 }
 
+export const cashPlanQuery = queryOptions({
+  queryKey: ["cash-plan"],
+  queryFn: () => getCashPlan(),
+});
+
 export function SaleSummary({
   items,
   channel,
@@ -144,13 +151,16 @@ export function SaleSummary({
   /** Custo de embalagem por peça. */
   packagingCost: number;
 }) {
-  const r = calcSale({ items, channel, otherCosts, productCost, packagingCost });
+  const { data: plan } = useQuery(cashPlanQuery);
+  const reservePct = plan?.otherPurposesPct ?? 10;
+  const r = calcSale({ items, channel, otherCosts, productCost, packagingCost, reservePct });
   const rows: [string, number][] = [
     ["Valor da venda", r.price],
     ["Taxa do canal", -r.channelFee],
     ["Outros custos", -otherCosts],
     ["Custo dos produtos", -productCost],
     ["Embalagem", -r.packaging],
+    [`Outros fins (${reservePct.toLocaleString("pt-BR")}% da venda)`, -r.reserve],
   ];
   return (
     <div className="space-y-1 rounded-md border bg-muted/40 p-3 text-sm">

@@ -21,14 +21,40 @@ describe("channelFee", () => {
 
 describe("calcSale", () => {
   it("lucro Shopee desconta taxa, custos e embalagem 1,84", () => {
-    const r = calcSale({ items: [{ unit_price: 150, quantity: 1 }], channel: "Shopee", otherCosts: 10, productCost: 50 });
+    const r = calcSale({
+      items: [{ unit_price: 150, quantity: 1 }],
+      channel: "Shopee",
+      otherCosts: 10,
+      productCost: 50,
+    });
     expect(r.channelFee).toBe(41);
     expect(r.profit).toBe(47.16);
     expect(r.margin).toBe(31.44);
   });
   it("embalagem é por peça e usa o valor configurado", () => {
-    const r = calcSale({ items: [{ unit_price: 100, quantity: 2 }], channel: "Instagram", otherCosts: 0, productCost: 80, packagingCost: 2 });
+    const r = calcSale({
+      items: [{ unit_price: 100, quantity: 2 }],
+      channel: "Instagram",
+      otherCosts: 0,
+      productCost: 80,
+      packagingCost: 2,
+    });
     expect(r.packaging).toBe(4);
     expect(r.profit).toBe(116);
+  });
+});
+
+describe("calcSale com % para outros fins", () => {
+  it("desconta 10% do valor da venda", () => {
+    const r = calcSale({
+      items: [{ unit_price: 129.9, quantity: 1 }],
+      channel: "Venda direta (família e amigos)",
+      otherCosts: 0,
+      productCost: 73,
+      packagingCost: 0,
+      reservePct: 10,
+    });
+    expect(r.reserve).toBe(12.99);
+    expect(r.profit).toBe(43.91);
   });
 });
