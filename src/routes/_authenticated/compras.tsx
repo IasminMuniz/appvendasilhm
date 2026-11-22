@@ -33,6 +33,7 @@ import { listProducts } from "@/lib/products.functions";
 import { suppliersQueryOptions } from "@/components/products/product-form";
 import { PAYMENT_METHODS } from "@/lib/sales";
 import { formatCurrency, formatDate } from "@/lib/commercial-constants";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 
 const purchasesQuery = () =>
   queryOptions({ queryKey: ["purchases"], queryFn: () => listPurchases() });
@@ -113,6 +114,16 @@ function PurchasesPage() {
   });
 
   const purchases = data.purchases;
+  const search = useRecordSearch(purchases, (p) => [
+    p.supplier,
+    p.description,
+    p.status,
+    p.payment_method,
+    p.notes,
+    formatDate(p.purchase_date),
+    ...p.purchase_items.flatMap((i) => [i.description, i.products?.name, i.products?.sku]),
+  ]);
+  const visible = search.results;
   const total = purchases
     .filter((p) => p.status !== "Cancelado")
     .reduce((s, p) => s + Number(p.amount ?? 0), 0);
@@ -171,15 +182,21 @@ function PurchasesPage() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle>Compras registradas</CardTitle>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={[]}
+            placeholder="Pesquisar por fornecedor, peça, status, pagamento..."
+          />
         </CardHeader>
         <CardContent>
-          {purchases.length === 0 ? (
+          {visible.length === 0 ? (
             <p className="text-sm text-muted-foreground">Nenhuma compra registrada.</p>
           ) : (
             <div className="divide-y">
-              {purchases.map((p) => (
+              {visible.map((p) => (
                 <div key={p.id} className="flex items-start justify-between gap-3 py-3">
                   <div className="min-w-0 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">

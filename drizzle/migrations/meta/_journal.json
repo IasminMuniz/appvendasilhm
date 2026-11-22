@@ -50,6 +50,13 @@
       "when": 1795360346282,
       "tag": "0006_expense_payment_status",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795360807689,
+      "tag": "0007_expense_series",
+      "breakpoints": true
     }
   ]
 }

@@ -17,21 +17,30 @@ function normalizeAlnum(value: string) {
   return normalizeText(value).replace(/[^a-z0-9]/g, "");
 }
 
-function matches(fields: Array<string | null | undefined>, query: string) {
-  const text = normalizeText(query);
+function matchesTerm(fields: Array<string | null | undefined>, term: string) {
+  const text = normalizeText(term);
   if (!text) return true;
-  const alnum = normalizeAlnum(query);
+  const alnum = normalizeAlnum(term);
   return fields.some((field) => {
-    if (!field) return false;
+    if (field == null || field === "") return false;
     const value = String(field);
     if (normalizeText(value).includes(text)) return true;
     return alnum.length > 0 && normalizeAlnum(value).includes(alnum);
   });
 }
 
+/** Aceita várias palavras: "vestido vermelho" encontra registros que tenham as duas, em qualquer campo. */
+function matches(fields: Array<string | null | undefined>, query: string) {
+  const text = normalizeText(query);
+  if (!text) return true;
+  if (matchesTerm(fields, query)) return true;
+  const terms = query.trim().split(/\s+/).filter(Boolean);
+  return terms.length > 1 && terms.every((t) => matchesTerm(fields, t));
+}
+
 /**
  * Filtro de pesquisa em tempo real sobre registros já carregados.
- * Procura por nome/empresa, identificador único e CNPJ.
+ * Procura em todos os campos informados; várias palavras são combinadas.
  */
 export function useRecordSearch<T>(
   items: T[],

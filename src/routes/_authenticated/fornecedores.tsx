@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { suppliersQueryOptions } from "@/components/products/product-form";
 import { deleteSupplier, saveSupplier } from "@/lib/store.functions";
 
@@ -40,6 +41,14 @@ const empty = (): Form => ({ name: "", address: "", phone: "", instagram: "", no
 
 function SuppliersPage() {
   const { data } = useSuspenseQuery(suppliersQueryOptions);
+  const search = useRecordSearch(data, (s) => [
+    s.name,
+    s.code,
+    s.address,
+    s.phone,
+    s.instagram,
+    s.notes,
+  ]);
   const qc = useQueryClient();
   const [form, setForm] = useState<Form | null>(null);
   const pending = data.some((s) => s.id === null);
@@ -94,12 +103,18 @@ function SuppliersPage() {
       )}
 
       <Card>
-        <CardHeader>
+        <CardHeader className="space-y-3">
           <CardTitle>Fornecedores cadastrados</CardTitle>
+          <RecordSearch
+            query={search.query}
+            onQueryChange={search.setQuery}
+            suggestions={[]}
+            placeholder="Pesquisar por nome, código, endereço, Instagram..."
+          />
         </CardHeader>
         <CardContent>
           <div className="divide-y">
-            {data.map((s) => (
+            {search.results.map((s) => (
               <div key={s.code} className="flex items-start justify-between gap-3 py-3">
                 <div className="min-w-0 space-y-1">
                   <div className="flex items-center gap-2">

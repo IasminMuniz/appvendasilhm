@@ -44,6 +44,9 @@ function CustomersPage() {
     c.customer_code,
     c.document,
     c.email,
+    c.phone,
+    c.city,
+    c.notes,
   ]);
   const visibleCustomers = search.results;
   const selection = useBulkSelection(visibleCustomers.map((c) => c.id));
@@ -102,6 +105,7 @@ function CustomersPage() {
           />
           </div>
           <RecordSearch
+            placeholder="Pesquisar por nome, telefone, e-mail, cidade..."
             query={search.query}
             onQueryChange={search.setQuery}
             suggestions={visibleCustomers.map((c) => ({

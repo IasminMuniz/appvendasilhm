@@ -142,7 +142,20 @@ const expenseSchema = z.object({
   is_fixed: z.boolean().default(false),
   status: z.enum(EXPENSE_STATUSES).default("Pendente"),
   paid_at: z.string().optional().or(z.literal("")),
+  /** Só na criação de despesa fixa: quantos meses lançar (1 = só este). */
+  repeat_months: z.coerce.number().int().min(1).max(60).default(1),
 });
+
+/** Mesma data N meses depois, ajustando o dia para o fim do mês quando preciso (ex.: 31/01 → 28/02). */
+export function addMonths(isoDate: string, n: number): string {
+  const [y, m, d] = isoDate.slice(0, 10).split("-").map(Number) as [number, number, number];
+  const target = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate();
+  target.setUTCDate(Math.min(d, last));
+  return target.toISOString().slice(0, 10);
+}
+
+const isMissingColumn = (msg: string) => /status|paid_at|series_id|column|schema cache/i.test(msg);
 
 export const listExpenses = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -156,25 +169,58 @@ export const saveExpense = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d) => expenseSchema.extend({ id: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { id, status, paid_at, ...r } = data;
+    const sb = context.supabase;
+    const { id, status, paid_at, repeat_months, ...r } = data;
     const base = { ...r, category: r.category || null };
     const paid = status === "Pago" ? paid_at || new Date().toISOString().slice(0, 10) : null;
-    const write = (row: typeof base & { status?: string; paid_at?: string | null }) =>
-      id
-        ? context.supabase.from("expenses").update(row).eq("id", id)
-        : context.supabase.from("expenses").insert({ ...row, created_by: context.userId });
-    let { error } = await write({ ...base, status, paid_at: paid });
-    // Banco ainda sem as colunas de pagamento: salva sem elas.
-    if (error && /status|paid_at|column|schema cache/i.test(error.message)) ({ error } = await write(base));
+
+    if (id) {
+      let { error } = await sb.from("expenses").update({ ...base, status, paid_at: paid }).eq("id", id);
+      // Banco ainda sem as colunas de pagamento: salva sem elas.
+      if (error && isMissingColumn(error.message)) ({ error } = await sb.from("expenses").update(base).eq("id", id));
+      if (error) throw new Error(error.message);
+      return { ok: true, created: 0 };
+    }
+
+    // Despesa fixa: lança este mês e os próximos (os futuros ficam Pendentes).
+    const months = r.is_fixed ? repeat_months : 1;
+    const seriesId = months > 1 ? crypto.randomUUID() : null;
+    const rows = Array.from({ length: months }, (_, i) => ({
+      ...base,
+      expense_date: addMonths(r.expense_date, i),
+      status: i === 0 ? status : "Pendente",
+      paid_at: i === 0 ? paid : null,
+      series_id: seriesId,
+      created_by: context.userId,
+    }));
+    let { error } = await sb.from("expenses").insert(rows);
+    if (error && isMissingColumn(error.message)) {
+      ({ error } = await sb.from("expenses").insert(rows.map(({ status: _s, paid_at: _p, series_id: _id, ...rest }) => rest)));
+    }
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, created: rows.length };
   });
 
+/** Exclui uma despesa; com scope "future", também as próximas pendentes da mesma despesa fixa. */
 export const deleteExpense = createServerFn({ method: "POST" })
   .middleware([requireAuth])
-  .inputValidator((d) => idSchema.parse(d))
+  .inputValidator((d) =>
+    idSchema.extend({ scope: z.enum(["one", "future"]).default("one") }).parse(d),
+  )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("expenses").delete().eq("id", data.id);
+    const sb = context.supabase;
+    if (data.scope === "future") {
+      const { data: cur, error: readError } = await sb.from("expenses").select("*").eq("id", data.id).single();
+      if (readError) throw new Error(readError.message);
+      const seriesId = (cur as { series_id?: string | null }).series_id;
+      let q = sb.from("expenses").delete().gt("expense_date", cur.expense_date).eq("status", "Pendente");
+      q = seriesId
+        ? q.eq("series_id", seriesId)
+        : q.eq("description", cur.description).eq("is_fixed", true);
+      const { error: futureError } = await q;
+      if (futureError && !isMissingColumn(futureError.message)) throw new Error(futureError.message);
+    }
+    const { error } = await sb.from("expenses").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

@@ -52,7 +52,10 @@ function IntegrationsPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: photos } = useQuery({ queryKey: ["product-primary-images"], queryFn: () => listPrimaryImages() });
-  const search = useRecordSearch(integrations, (i) => [i.name, i.sku, i.supplier, i.style, i.color]);
+  const search = useRecordSearch(integrations, (i) => [
+    i.name, i.sku, i.supplier, i.style, i.color, i.pattern, i.size, i.description, i.code,
+    i.size && `Tam ${i.size}`,
+  ]);
   const visible = search.results;
   const selection = useBulkSelection(visible.map((i) => i.id));
 
@@ -119,6 +122,7 @@ function IntegrationsPage() {
                 .join(" · "),
             }))}
             onSelect={(id) => navigate({ to: "/produtos/$id", params: { id } })}
+            placeholder="Pesquisar por nome, cor, estilo, tamanho, SKU..."
           />
         </CardHeader>
         <CardContent>

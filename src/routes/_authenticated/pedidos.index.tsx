@@ -59,6 +59,12 @@ function OrdersPage() {
     (o.customers as { customer_code?: string | null } | null)?.customer_code,
     (o.customers as { document?: string | null } | null)?.document,
     o.id,
+    o.channel,
+    o.payment_method,
+    o.delivery_method,
+    o.status,
+    o.notes,
+    ...(o.order_items ?? []).map((i) => (i.products as { name?: string | null } | null)?.name),
   ]);
   const visibleOrders = search.results;
   const selection = useBulkSelection(visibleOrders.map((o) => o.id));
@@ -114,6 +120,7 @@ function OrdersPage() {
           />
           </div>
           <RecordSearch
+            placeholder="Pesquisar por cliente, peça, canal, status..."
             query={search.query}
             onQueryChange={search.setQuery}
             suggestions={visibleOrders.map((o) => ({
