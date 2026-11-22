@@ -95,7 +95,9 @@ export const SALE_STATUSES = [
 ] as const;
 
 /** Status em que o estoque deve estar baixado. */
-export const STOCK_OUT_STATUSES = ["pago", "entregue"];
+/** Toda venda tira a peça do estoque assim que é lançada; só a venda cancelada devolve. */
+export const STOCK_OUT_STATUSES = ["novo", "reservado", "pago", "entregue"];
+export const takesStock = (status: string | null | undefined) => status !== "cancelado";
 
 /** Código da venda exibido na tela: V-0001, V-0002... */
 export const saleCode = (n: number) => `V-${String(n).padStart(4, "0")}`;

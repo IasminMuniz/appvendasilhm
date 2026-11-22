@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { adjustStock } from "@/lib/orders.functions";
 
 const idsSchema = z.object({
   ids: z.array(z.string().uuid()).min(1, "Selecione ao menos um registro").max(500),
@@ -45,7 +46,15 @@ export const bulkDeleteCustomers = createServerFn({ method: "POST" })
 export const bulkDeleteOrders = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data: { ids: string[] }) => idsSchema.parse(data))
-  .handler(async ({ data, context }) => deleteMany(context, "orders", data.ids));
+  .handler(async ({ data, context }) => {
+    // Excluir vendas devolve as peças ao estoque.
+    const { data: rows } = await context.supabase
+      .from("orders")
+      .select("id, stock_deducted")
+      .in("id", data.ids);
+    for (const o of rows ?? []) if (o.stock_deducted) await adjustStock(context.supabase, o.id, 1);
+    return deleteMany(context, "orders", data.ids);
+  });
 
 export const bulkDeleteQuotes = createServerFn({ method: "POST" })
   .middleware([requireAuth])

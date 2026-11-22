@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
-import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
+import { calcSale, takesStock, type SaleItem } from "@/lib/sales";
 import { fetchCashPlan, fetchPackagingCost } from "@/lib/store.functions";
 import { effectivePackaging, profitOf, saleCode } from "@/lib/sales";
 import { reservePctOf } from "@/lib/order-recalc";
@@ -108,7 +108,7 @@ async function productCostOf(supabase: any, items: { product_id: string; quantit
 }
 
 /** Ajusta estoque dos itens da venda: sign -1 baixa, +1 devolve. */
-async function adjustStock(supabase: any, orderId: string, sign: 1 | -1) {
+export async function adjustStock(supabase: any, orderId: string, sign: 1 | -1) {
   const { data: items } = await supabase
     .from("order_items")
     .select("product_id, quantity")
@@ -148,6 +148,14 @@ export const listOrders = createServerFn({ method: "GET" })
       .order("created_at", { ascending: false });
 
     if (error) throw new Error(error.message);
+    // Vendas lançadas antes desta regra ainda não tiraram a peça do estoque: tira agora (uma vez só).
+    for (const o of data ?? []) {
+      if (takesStock(o.status) && !o.stock_deducted) {
+        await adjustStock(context.supabase, o.id, -1);
+        await context.supabase.from("orders").update({ stock_deducted: true }).eq("id", o.id);
+        o.stock_deducted = true;
+      }
+    }
     // Lucro sempre calculado na hora, com o custo atual dos produtos e o % para outros fins.
     const reservePct = await reservePctOf(context.supabase);
     return (data ?? []).map((o) => ({
@@ -263,6 +271,10 @@ export const createOrder = createServerFn({ method: "POST" })
       note: "Venda criada",
     });
 
+    // A peça vendida sai do estoque na hora.
+    await adjustStock(context.supabase, order.id, -1);
+    await context.supabase.from("orders").update({ stock_deducted: true }).eq("id", order.id);
+
     await insertOrderPayments(
       context.supabase,
       order.id,
@@ -294,8 +306,8 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
       .single();
     if (readError) throw new Error(readError.message);
 
-    // Baixa de estoque ao marcar como Pago (uma única vez); devolve ao cancelar/voltar.
-    const shouldDeduct = STOCK_OUT_STATUSES.includes(data.status);
+    // Baixa de estoque uma única vez; devolve ao cancelar.
+    const shouldDeduct = takesStock(data.status);
     let stockDeducted = current.stock_deducted;
     if (shouldDeduct && !stockDeducted) {
       await adjustStock(context.supabase, data.id, -1);
@@ -352,6 +364,13 @@ export const deleteOrder = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
+    // Excluir a venda devolve as peças ao estoque.
+    const { data: current } = await context.supabase
+      .from("orders")
+      .select("stock_deducted")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (current?.stock_deducted) await adjustStock(context.supabase, data.id, 1);
     const { error } = await context.supabase.from("orders").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
