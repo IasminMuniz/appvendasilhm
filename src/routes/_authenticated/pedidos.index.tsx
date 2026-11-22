@@ -16,6 +16,8 @@ import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants"
 
 const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   novo: "secondary",
+  reservado: "secondary",
+  pago: "default",
   criado: "secondary",
   aguardando_aprovacao: "secondary",
   aprovado: "default",
@@ -36,7 +38,14 @@ export const Route = createFileRoute("/_authenticated/pedidos/")({
   loader: ({ context }) => context.queryClient.ensureQueryData(ordersQueryOptions()),
   component: OrdersPage,
   head: () => ({
-    meta: [{ title: "Pedidos - Vendas Comercial" }],
+    meta: [
+      { title: "Vendas - Nexus 360" },
+      { name: "description", content: "Vendas da loja com canal, taxa, lucro e margem." },
+      { property: "og:title", content: "Vendas - Nexus 360" },
+      { property: "og:description", content: "Acompanhe as vendas da loja e o lucro de cada uma." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
   }),
 });
 
@@ -62,7 +71,7 @@ function OrdersPage() {
       toast.success(bulkDeleteToastMessage(result));
     },
     onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir pedidos."),
+      toast.error(err instanceof Error ? err.message : "Erro ao excluir vendas."),
   });
 
   const handleEdit = () => {
@@ -70,20 +79,20 @@ function OrdersPage() {
       navigate({ to: "/pedidos/$id", params: { id: selection.selected[0]! } });
       return;
     }
-    toast.info("Selecione apenas um pedido para abrir o formulário de edição.");
+    toast.info("Selecione apenas uma venda para abrir o formulário de edição.");
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pedidos</h1>
-          <p className="text-muted-foreground">Acompanhe todos os pedidos da equipe comercial.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Vendas</h1>
+          <p className="text-muted-foreground">Todas as vendas da loja, com lucro e margem.</p>
         </div>
         <Button asChild>
           <Link to="/pedidos/novo">
             <Plus className="mr-2 h-4 w-4" />
-            Novo pedido
+            Nova venda
           </Link>
         </Button>
       </div>
@@ -91,7 +100,7 @@ function OrdersPage() {
       <Card>
         <CardHeader className="space-y-3">
           <div className="flex flex-row items-center justify-between gap-3">
-          <CardTitle>Lista de pedidos</CardTitle>
+          <CardTitle>Lista de vendas</CardTitle>
           <OptionsMenu
             total={visibleOrders.length}
             count={selection.selected.length}
@@ -100,8 +109,8 @@ function OrdersPage() {
             onEdit={handleEdit}
             onDelete={() => removeMany.mutate({ data: { ids: selection.selected } })}
             isPending={removeMany.isPending}
-            entityLabel="pedido(s)"
-            description="Os pedidos selecionados, seus itens e histórico serão removidos permanentemente."
+            entityLabel="venda(s)"
+            description="As vendas selecionadas, seus itens e histórico serão removidos permanentemente."
           />
           </div>
           <RecordSearch
@@ -122,7 +131,7 @@ function OrdersPage() {
 
           {visibleOrders.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhum pedido registrado."}
+              {search.isSearching ? "Nenhum resultado para a pesquisa." : "Nenhuma venda registrada."}
             </p>
           ) : (
             <div className="divide-y">
@@ -131,7 +140,7 @@ function OrdersPage() {
                   <Checkbox
                     checked={selection.isSelected(order.id)}
                     onCheckedChange={() => selection.toggle(order.id)}
-                    aria-label="Selecionar pedido"
+                    aria-label="Selecionar venda"
                   />
                   <Link
                     to="/pedidos/$id"
@@ -141,16 +150,21 @@ function OrdersPage() {
                     <div>
                       <p className="font-medium">{order.customers?.name ?? "Cliente"}</p>
                       <p className="text-sm text-muted-foreground">
-                        {new Date(order.created_at ?? "").toLocaleDateString("pt-BR")}
+                        {[new Date(order.created_at ?? "").toLocaleDateString("pt-BR"), order.channel, order.payment_method]
+                          .filter(Boolean)
+                          .join(" · ")}
                       </p>
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant={statusVariants[order.status ?? "novo"] ?? "outline"}>
                         {ORDER_STATUS_LABELS[order.status ?? "novo"] ?? order.status}
                       </Badge>
-                      <span className="font-semibold">
-                        {formatCurrency(Number(order.total ?? 0))}
-                      </span>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatCurrency(Number(order.total ?? 0))}</p>
+                        <p className={`text-xs ${Number(order.profit ?? 0) < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                          Lucro {formatCurrency(Number(order.profit ?? 0))} · {Number(order.margin_percent ?? 0).toLocaleString("pt-BR")}%
+                        </p>
+                      </div>
                     </div>
                   </Link>
                 </div>

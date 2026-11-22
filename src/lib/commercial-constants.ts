@@ -85,8 +85,8 @@ export type LeadStage = (typeof LEAD_STAGES)[number]["value"];
 
 export const ORDER_STATUSES = [
   { value: "novo", label: "Novo" },
-  { value: "processamento", label: "Processando" },
-  { value: "faturado", label: "Faturado" },
+  { value: "reservado", label: "Reservado" },
+  { value: "pago", label: "Pago" },
   { value: "entregue", label: "Entregue" },
   { value: "cancelado", label: "Cancelado" },
 ] as const;
@@ -99,6 +99,8 @@ export const LEGACY_ORDER_LABELS: Record<string, string> = {
   aguardando_aprovacao: "Aguardando aprovação",
   aprovado: "Aprovado",
   finalizado: "Finalizado",
+  processamento: "Processando",
+  faturado: "Faturado",
 };
 
 export const ORDER_STATUS_LABELS: Record<string, string> = {
@@ -107,10 +109,10 @@ export const ORDER_STATUS_LABELS: Record<string, string> = {
 };
 
 /** Fluxo linear de avanço do pedido. */
-export const ORDER_FLOW = ["novo", "processamento", "faturado", "entregue"] as const;
+export const ORDER_FLOW = ["novo", "reservado", "pago", "entregue"] as const;
 
 /** Status que representam venda concluída (contam como receita realizada). */
-export const ORDER_DONE_STATUSES = ["entregue", "faturado", "finalizado", "concluido"];
+export const ORDER_DONE_STATUSES = ["pago", "entregue", "faturado", "finalizado", "concluido"];
 
 export const QUOTE_STATUSES = [
   { value: "rascunho", label: "Criado" },

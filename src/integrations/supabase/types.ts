@@ -804,32 +804,65 @@ export type Database = {
       }
       orders: {
         Row: {
+          channel: string | null
+          channel_fee: number
           created_at: string
           customer_id: string
+          delivery_method: string | null
           id: string
+          margin_percent: number
           notes: string | null
+          other_cost_type: string | null
+          other_costs: number
+          packaging_cost: number
+          payment_method: string | null
+          product_cost: number
+          profit: number
           seller_id: string
           status: Database["public"]["Enums"]["order_status"]
+          stock_deducted: boolean
           total: number
           updated_at: string
         }
         Insert: {
+          channel?: string | null
+          channel_fee?: number
           created_at?: string
           customer_id: string
+          delivery_method?: string | null
           id?: string
+          margin_percent?: number
           notes?: string | null
+          other_cost_type?: string | null
+          other_costs?: number
+          packaging_cost?: number
+          payment_method?: string | null
+          product_cost?: number
+          profit?: number
           seller_id: string
           status?: Database["public"]["Enums"]["order_status"]
+          stock_deducted?: boolean
           total?: number
           updated_at?: string
         }
         Update: {
+          channel?: string | null
+          channel_fee?: number
           created_at?: string
           customer_id?: string
+          delivery_method?: string | null
           id?: string
+          margin_percent?: number
           notes?: string | null
+          other_cost_type?: string | null
+          other_costs?: number
+          packaging_cost?: number
+          payment_method?: string | null
+          product_cost?: number
+          profit?: number
           seller_id?: string
           status?: Database["public"]["Enums"]["order_status"]
+          stock_deducted?: boolean
           total?: number
           updated_at?: string
         }
@@ -1398,6 +1431,8 @@ export type Database = {
         | "finalizado"
         | "novo"
         | "entregue"
+        | "reservado"
+        | "pago"
       quote_status:
         | "rascunho"
         | "aguardando_aprovacao"
@@ -1559,6 +1594,8 @@ export const Constants = {
         "finalizado",
         "novo",
         "entregue",
+        "reservado",
+        "pago",
       ],
       quote_status: [
         "rascunho",

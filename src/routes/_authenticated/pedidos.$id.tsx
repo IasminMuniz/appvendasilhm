@@ -24,7 +24,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { deleteOrder, getOrder, updateOrderStatus } from "@/lib/orders.functions";
+import { deleteOrder, getOrder, updateOrderSaleInfo, updateOrderStatus } from "@/lib/orders.functions";
+import { SaleFields, SaleSummary, toSaleInput } from "@/components/sales/sale-fields";
+import { useState } from "react";
 
 import {
   ORDER_STATUSES,
@@ -44,10 +46,10 @@ export const Route = createFileRoute("/_authenticated/pedidos/$id")({
   component: OrderDetailPage,
   head: () => ({
     meta: [
-      { title: "Detalhes do Pedido - Vendas Comercial" },
+      { title: "Detalhes da venda - Nexus 360" },
       {
         name: "description",
-        content: "Acompanhe itens, status e histórico completo do pedido comercial.",
+        content: "Itens, canal, lucro, status e histórico da venda.",
       },
     ],
   }),
@@ -64,8 +66,27 @@ function OrderDetailPage() {
     mutationFn: updateOrderStatus,
     onSuccess: () => {
       toast.success("Status atualizado");
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const [sale, setSale] = useState({
+    channel: order.channel ?? "",
+    payment_method: order.payment_method ?? "",
+    delivery_method: order.delivery_method ?? "",
+    other_costs: String(order.other_costs ?? 0),
+    other_cost_type: order.other_cost_type ?? "",
+  });
+  const saveSale = useMutation({
+    mutationFn: updateOrderSaleInfo,
+    onSuccess: () => {
+      toast.success("Dados da venda atualizados");
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -73,7 +94,7 @@ function OrderDetailPage() {
   const remove = useMutation({
     mutationFn: deleteOrder,
     onSuccess: () => {
-      toast.success("Pedido excluído");
+      toast.success("Venda excluída");
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       navigate({ to: "/pedidos" });
@@ -95,12 +116,12 @@ function OrderDetailPage() {
           <AlertDialogTrigger asChild>
             <Button variant="destructive" disabled={remove.isPending}>
               <Trash2 className="mr-2 h-4 w-4" />
-              Excluir pedido
+              Excluir venda
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>Excluir pedido?</AlertDialogTitle>
+              <AlertDialogTitle>Excluir venda?</AlertDialogTitle>
               <AlertDialogDescription>
                 Os itens e o histórico de status serão removidos permanentemente.
               </AlertDialogDescription>
@@ -118,7 +139,7 @@ function OrderDetailPage() {
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Pedido</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Venda</h1>
           <p className="text-muted-foreground">
             {new Date(order.created_at).toLocaleDateString("pt-BR")}
           </p>
@@ -170,7 +191,26 @@ function OrderDetailPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Canal, pagamento e lucro</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SaleFields value={sale} onChange={setSale} />
+          <SaleSummary
+            price={Number(order.total ?? 0)}
+            channel={sale.channel}
+            otherCosts={Number(sale.other_costs || 0)}
+            productCost={Number(order.product_cost ?? 0)}
+          />
+          <Button disabled={saveSale.isPending} onClick={() => saveSale.mutate({ data: { id: order.id, ...toSaleInput(sale) } })}>
+            {saveSale.isPending ? "Salvando..." : "Salvar dados da venda"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Atualizar status</CardTitle>
+          <p className="text-sm text-muted-foreground">Ao marcar como Pago, o estoque dos produtos é baixado.</p>
         </CardHeader>
         <CardContent>
           <Select

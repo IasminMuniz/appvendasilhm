@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { PACKAGING_COST, STOCK_OUT_STATUSES, calcSale } from "@/lib/sales";
 
 const orderStatusSchema = z.enum([
   "pendente",
@@ -15,7 +16,56 @@ const orderStatusSchema = z.enum([
   "finalizado",
   "novo",
   "entregue",
+  "reservado",
+  "pago",
 ]);
+
+const saleInfoSchema = z.object({
+  channel: z.string().max(60).optional().or(z.literal("")),
+  payment_method: z.string().max(60).optional().or(z.literal("")),
+  delivery_method: z.string().max(80).optional().or(z.literal("")),
+  other_costs: z.coerce.number().min(0).default(0),
+  other_cost_type: z.string().max(80).optional().or(z.literal("")),
+});
+
+type SaleInfo = z.infer<typeof saleInfoSchema>;
+
+function saleColumns(info: SaleInfo, total: number, productCost: number) {
+  const r = calcSale({ price: total, channel: info.channel, otherCosts: info.other_costs, productCost });
+  return {
+    channel: info.channel || null,
+    payment_method: info.payment_method || null,
+    delivery_method: info.delivery_method || null,
+    other_costs: info.other_costs,
+    other_cost_type: info.other_cost_type || null,
+    channel_fee: r.channelFee,
+    product_cost: productCost,
+    packaging_cost: PACKAGING_COST,
+    profit: r.profit,
+    margin_percent: r.margin,
+  };
+}
+
+async function productCostOf(supabase: any, items: { product_id: string; quantity: number }[]) {
+  const ids = [...new Set(items.map((i) => i.product_id))];
+  if (ids.length === 0) return 0;
+  const { data } = await supabase.from("products").select("id, cost").in("id", ids);
+  const cost = Object.fromEntries((data ?? []).map((p: { id: string; cost: number }) => [p.id, Number(p.cost ?? 0)]));
+  return Math.round(items.reduce((s, i) => s + (cost[i.product_id] ?? 0) * i.quantity, 0) * 100) / 100;
+}
+
+/** Ajusta estoque dos itens da venda: sign -1 baixa, +1 devolve. */
+async function adjustStock(supabase: any, orderId: string, sign: 1 | -1) {
+  const { data: items } = await supabase.from("order_items").select("product_id, quantity").eq("order_id", orderId);
+  for (const it of items ?? []) {
+    const { data: prod } = await supabase.from("products").select("stock").eq("id", it.product_id).single();
+    if (!prod) continue;
+    await supabase
+      .from("products")
+      .update({ stock: Math.max(0, Number(prod.stock ?? 0) + sign * Number(it.quantity)) })
+      .eq("id", it.product_id);
+  }
+}
 
 const orderItemSchema = z.object({
   product_id: z.string().uuid(),
@@ -23,7 +73,7 @@ const orderItemSchema = z.object({
   unit_price: z.coerce.number().min(0),
 });
 
-const createOrderSchema = z.object({
+const createOrderSchema = saleInfoSchema.extend({
   customer_id: z.string().uuid(),
   notes: z.string().max(2000).optional().or(z.literal("")),
   items: z.array(orderItemSchema).min(1, "Adicione pelo menos um item"),
@@ -79,6 +129,7 @@ export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((data) => createOrderSchema.parse(data))
   .handler(async ({ data, context }) => {
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+    const productCost = await productCostOf(context.supabase, data.items);
 
     const { data: order, error: orderError } = await context.supabase
       .from("orders")
@@ -88,6 +139,7 @@ export const createOrder = createServerFn({ method: "POST" })
         notes: data.notes || null,
         status: "novo",
         total,
+        ...saleColumns(data, total, productCost),
       })
       .select()
       .single();
@@ -114,7 +166,7 @@ export const createOrder = createServerFn({ method: "POST" })
       from_status: null,
       to_status: "novo",
       changed_by: context.userId,
-      note: "Pedido criado",
+      note: "Venda criada",
     });
 
     return order;
@@ -134,14 +186,25 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: current, error: readError } = await context.supabase
       .from("orders")
-      .select("status")
+      .select("status, stock_deducted")
       .eq("id", data.id)
       .single();
     if (readError) throw new Error(readError.message);
 
+    // Baixa de estoque ao marcar como Pago (uma única vez); devolve ao cancelar/voltar.
+    const shouldDeduct = STOCK_OUT_STATUSES.includes(data.status);
+    let stockDeducted = current.stock_deducted;
+    if (shouldDeduct && !stockDeducted) {
+      await adjustStock(context.supabase, data.id, -1);
+      stockDeducted = true;
+    } else if (!shouldDeduct && stockDeducted) {
+      await adjustStock(context.supabase, data.id, 1);
+      stockDeducted = false;
+    }
+
     const { data: order, error } = await context.supabase
       .from("orders")
-      .update({ status: data.status })
+      .update({ status: data.status, stock_deducted: stockDeducted })
       .eq("id", data.id)
       .select()
       .single();
@@ -160,7 +223,7 @@ export const updateOrderStatus = createServerFn({ method: "POST" })
     await touchCustomerActivity(context.supabase, order.customer_id, context.userId);
 
     const { recordEvent } = await import("@/lib/events.server");
-    const done = ["entregue", "faturado", "finalizado", "concluido"];
+    const done = ["pago", "entregue", "faturado", "finalizado", "concluido"];
     await recordEvent(context.supabase, {
       eventType: done.includes(data.status) ? "VENDA_FECHADA" : "PEDIDO_STATUS_ALTERADO",
       entityType: "order",
@@ -187,6 +250,27 @@ export const deleteOrder = createServerFn({ method: "POST" })
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("orders").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+/** Atualiza canal, pagamento, entrega e outros custos, recalculando taxa, lucro e margem. */
+export const updateOrderSaleInfo = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) => saleInfoSchema.extend({ id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { data: order, error: readError } = await context.supabase
+      .from("orders")
+      .select("total, order_items(product_id, quantity)")
+      .eq("id", data.id)
+      .single();
+    if (readError) throw new Error(readError.message);
+    const productCost = await productCostOf(context.supabase, order.order_items ?? []);
+    const { error } = await context.supabase
+      .from("orders")
+      .update(saleColumns(data, Number(order.total ?? 0), productCost))
+      .eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });

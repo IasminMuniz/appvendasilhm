@@ -17,6 +17,7 @@ import {
 import { listCustomers } from "@/lib/customers.functions";
 import { listProducts } from "@/lib/products.functions";
 import { createOrder } from "@/lib/orders.functions";
+import { SaleFields, SaleSummary, emptySaleInfo, toSaleInput } from "@/components/sales/sale-fields";
 
 const customersQueryOptions = () =>
   queryOptions({
@@ -38,7 +39,14 @@ export const Route = createFileRoute("/_authenticated/pedidos/novo")({
     ]),
   component: NewOrderPage,
   head: () => ({
-    meta: [{ title: "Novo Pedido - Vendas Comercial" }],
+    meta: [
+      { title: "Nova venda - Nexus 360" },
+      { name: "description", content: "Registre uma venda com canal, pagamento, entrega, taxa e lucro calculados." },
+      { property: "og:title", content: "Nova venda - Nexus 360" },
+      { property: "og:description", content: "Registro de vendas da loja com lucro automático." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
   }),
 });
 
@@ -57,6 +65,7 @@ function NewOrderPage() {
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<OrderItem[]>([{ product_id: "", quantity: 1, unit_price: 0 }]);
   const [error, setError] = useState<string | null>(null);
+  const [sale, setSale] = useState(emptySaleInfo);
 
   const activeProducts = products.filter((p) => p.active);
 
@@ -80,6 +89,10 @@ function NewOrderPage() {
   };
 
   const total = items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
+  const productCost = items.reduce((sum, item) => {
+    const p = products.find((x) => x.id === item.product_id);
+    return sum + Number(p?.cost ?? 0) * item.quantity;
+  }, 0);
 
   const mutation = useMutation({
     mutationFn: createOrder,
@@ -89,7 +102,7 @@ function NewOrderPage() {
       navigate({ to: "/pedidos" });
     },
     onError: (err) => {
-      setError(err instanceof Error ? err.message : "Erro ao criar pedido.");
+      setError(err instanceof Error ? err.message : "Erro ao criar venda.");
     },
   });
 
@@ -110,6 +123,7 @@ function NewOrderPage() {
         customer_id: customerId,
         notes,
         items: validItems,
+        ...toSaleInput(sale),
       },
     });
   };
@@ -125,7 +139,7 @@ function NewOrderPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Novo pedido</CardTitle>
+          <CardTitle>Nova venda</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -146,7 +160,7 @@ function NewOrderPage() {
             </div>
 
             <div className="space-y-4">
-              <Label>Itens do pedido</Label>
+              <Label>Itens da venda</Label>
               {items.map((item, index) => (
                 <div key={index} className="grid gap-3 rounded-lg border p-3 sm:grid-cols-12">
                   <div className="sm:col-span-6">
@@ -195,6 +209,8 @@ function NewOrderPage() {
               </Button>
             </div>
 
+            <SaleFields value={sale} onChange={setSale} />
+
             <div className="space-y-2">
               <Label htmlFor="notes">Observações</Label>
               <Input id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -205,10 +221,12 @@ function NewOrderPage() {
               <span className="text-2xl font-bold">R$ {total.toFixed(2)}</span>
             </div>
 
+            <SaleSummary price={total} channel={sale.channel} otherCosts={Number(sale.other_costs || 0)} productCost={productCost} />
+
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={mutation.isPending}>
-              {mutation.isPending ? "Salvando..." : "Criar pedido"}
+              {mutation.isPending ? "Salvando..." : "Registrar venda"}
             </Button>
           </form>
         </CardContent>

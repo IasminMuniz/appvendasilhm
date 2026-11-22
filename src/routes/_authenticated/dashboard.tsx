@@ -64,7 +64,7 @@ function DashboardPage() {
 
   const kpis = [
     { label: "Receita no período", value: formatCurrency(data.totals.revenue) },
-    { label: "Pedidos", value: String(data.totals.orders) },
+    { label: "Vendas", value: String(data.totals.orders) },
     { label: "Ticket médio", value: formatCurrency(data.totals.averageTicket) },
     { label: "Previsão ponderada", value: formatCurrency(data.forecast) },
     { label: "Pipeline aberto", value: formatCurrency(data.pipelineValue) },
