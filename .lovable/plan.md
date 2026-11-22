@@ -14,7 +14,7 @@
   - R$ 80 a 99,99: 14% + R$ 16
   - R$ 100 a 199,99: 14% + R$ 20
   - R$ 200 a 499,99: 14% + R$ 26
-  - R$ 500 ou mais: 14% + R$ 26 (a confirmar com você)
+  - R$ 500 ou mais: 14% + R$ 26
   - outros canais: R$ 0
 - **Custo dos produtos**: soma de custo × quantidade dos itens.
 - **Lucro** = valor − taxa do canal − outros custos − custo dos produtos − R$ 1,84 de embalagem.
