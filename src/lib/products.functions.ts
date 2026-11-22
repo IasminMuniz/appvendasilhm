@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { recalcSalesForProducts } from "@/lib/order-recalc";
+import { recountStock } from "@/lib/stock.server";
 import { buildSku, calcMargin } from "@/lib/clothing";
 import { fetchSuppliers } from "@/lib/store.functions";
 
@@ -55,6 +56,8 @@ function clothingFields(
 export const listProducts = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .handler(async ({ context }) => {
+    // Estoque sempre conferido: entradas (compras recebidas) − saídas (vendas).
+    await recountStock(context.supabase);
     const { data, error } = await context.supabase.from("products").select("*").order("name");
     if (error) throw new Error(error.message);
     return data ?? [];
@@ -188,6 +191,8 @@ export const getProduct = createServerFn({ method: "GET" })
   .middleware([requireAuth])
   .inputValidator((data: { id: string }) => z.object({ id: z.string().uuid() }).parse(data))
   .handler(async ({ data, context }) => {
+    const counts = await recountStock(context.supabase);
+    const movement = counts.get(data.id) ?? null;
     const [productRes, imagesRes, docsRes] = await Promise.all([
       context.supabase.from("products").select("*").eq("id", data.id).single(),
       context.supabase
@@ -215,7 +220,7 @@ export const getProduct = createServerFn({ method: "GET" })
       (docsRes.data ?? []).map(async (d) => ({ ...d, signedUrl: await resolve(d.url) })),
     );
 
-    return { product: productRes.data, images, documents };
+    return { product: productRes.data, images, documents, movement };
   });
 
 export const addProductAsset = createServerFn({ method: "POST" })
@@ -237,14 +242,12 @@ export const addProductAsset = createServerFn({ method: "POST" })
         .from("product_images")
         .select("id", { count: "exact", head: true })
         .eq("product_id", data.product_id);
-      const { error } = await context.supabase
-        .from("product_images")
-        .insert({
-          product_id: data.product_id,
-          url: data.url,
-          caption: data.name || null,
-          position: count ?? 0,
-        });
+      const { error } = await context.supabase.from("product_images").insert({
+        product_id: data.product_id,
+        url: data.url,
+        caption: data.name || null,
+        position: count ?? 0,
+      });
       if (error) throw new Error(error.message);
     } else {
       const { error } = await context.supabase

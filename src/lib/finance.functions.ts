@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { recountStock } from "@/lib/stock.server";
 import { recalcOrders, recalcSalesForProducts, reservePctOf } from "@/lib/order-recalc";
 import { effectivePackaging, profitOf } from "@/lib/sales";
 import { splitSales } from "@/lib/cash";
@@ -387,6 +388,7 @@ export const getCashFlow = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
+    await recountStock(sb);
     const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes] =
       await Promise.all([
         sb

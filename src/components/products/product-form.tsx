@@ -50,11 +50,13 @@ const withCode = (l: readonly { value: string; code: string }[]) =>
 
 export const suppliersQueryOptions = { queryKey: ["suppliers"], queryFn: () => listSuppliers() };
 
-export function ProductForm({ initial, submitLabel, pending, error, onSubmit, productId }: {
+export function ProductForm({ initial, submitLabel, pending, error, onSubmit, productId, stockLocked = false }: {
   initial: ProductFormValues; submitLabel: string; pending: boolean; error: string | null;
   onSubmit: (v: ProductFormValues) => void;
   /** Id do produto em edição (para não contar ele mesmo no próximo Modelo nº). */
   productId?: string;
+  /** Estoque calculado pelas entradas e saídas (campo bloqueado). */
+  stockLocked?: boolean;
 }) {
   const { data: supplierRows } = useQuery(suppliersQueryOptions);
   const suppliers = (supplierRows ?? []).map((x) => ({ value: x.name, code: x.code }));
@@ -134,7 +136,19 @@ export function ProductForm({ initial, submitLabel, pending, error, onSubmit, pr
 
       <div className="space-y-2">
         <Label htmlFor="stock">Estoque</Label>
-        <Input id="stock" type="number" min="0" value={f.stock} onChange={(e) => set({ stock: e.target.value })} />
+        <Input
+          id="stock"
+          type="number"
+          min="0"
+          value={f.stock}
+          disabled={stockLocked}
+          onChange={(e) => set({ stock: e.target.value })}
+        />
+        {stockLocked && (
+          <p className="text-xs text-muted-foreground">
+            Calculado sozinho: compras recebidas − vendas. Para mudar, ajuste a compra ou a venda.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

@@ -86,8 +86,7 @@ function EditIntegrationPage() {
       toast.success("Produto excluído.");
       navigate({ to: "/produtos" });
     },
-    onError: (err) =>
-      toast.error(err instanceof Error ? err.message : "Erro ao excluir produto."),
+    onError: (err) => toast.error(err instanceof Error ? err.message : "Erro ao excluir produto."),
   });
 
   return (
@@ -126,6 +125,39 @@ function EditIntegrationPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Estoque: entradas e saídas</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {data.movement && data.movement.entradas > 0 ? (
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="rounded-md border p-3">
+                <p className="text-muted-foreground">Entradas (compras recebidas)</p>
+                <p className="text-2xl font-semibold">{data.movement.entradas}</p>
+              </div>
+              <div className="rounded-md border p-3">
+                <p className="text-muted-foreground">Saídas (vendas)</p>
+                <p className="text-2xl font-semibold">{data.movement.saidas}</p>
+              </div>
+              <div className="rounded-md border bg-muted/40 p-3">
+                <p className="text-muted-foreground">Em estoque</p>
+                <p className="text-2xl font-bold">{data.movement.estoque}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-muted-foreground">
+              Nenhuma compra recebida lançada para este produto. O estoque é o número digitado no
+              cadastro
+              {data.movement?.saidas
+                ? `, já descontadas ${data.movement.saidas} peça(s) vendida(s)`
+                : ""}
+              . Lance a compra em Compras (status Recebido) para o estoque ser calculado sozinho.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Editar produto</CardTitle>
           <p className="text-sm text-muted-foreground">
             Atualizado em: {formatDateTime(integration.updated_at)}
@@ -148,6 +180,7 @@ function EditIntegrationPage() {
               model_number: integration.model_number ?? null,
             }}
             productId={id}
+            stockLocked={!!data.movement && data.movement.entradas > 0}
             submitLabel="Salvar alterações"
             pending={update.isPending}
             error={error}
@@ -159,7 +192,8 @@ function EditIntegrationPage() {
                   id,
                   category: integration.category ?? "",
                   code: integration.code ?? "",
-                  specifications: (integration.specifications as { label: string; value: string }[]) ?? [],
+                  specifications:
+                    (integration.specifications as { label: string; value: string }[]) ?? [],
                 },
               });
             }}
