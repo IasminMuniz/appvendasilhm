@@ -24,7 +24,7 @@ export const Route = createFileRoute("/_authenticated/clientes/")({
   component: CustomersPage,
   errorComponent: ({ error }) => (
     <p role="alert" className="text-sm text-destructive">
-      {error.message}
+      {(error as Error).message}
     </p>
   ),
   notFoundComponent: () => <p>Nenhum cliente encontrado.</p>,

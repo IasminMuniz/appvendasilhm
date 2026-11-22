@@ -46,7 +46,7 @@ export const Route = createFileRoute("/_authenticated/produtos/$id")({
   component: EditIntegrationPage,
   errorComponent: ({ error }) => (
     <p role="alert" className="text-sm text-destructive">
-      {error.message}
+      {(error as Error).message}
     </p>
   ),
   notFoundComponent: () => <p>Integração não encontrada.</p>,

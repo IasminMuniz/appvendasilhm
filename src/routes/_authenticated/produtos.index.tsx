@@ -28,7 +28,7 @@ export const Route = createFileRoute("/_authenticated/produtos/")({
   component: IntegrationsPage,
   errorComponent: ({ error }) => (
     <p role="alert" className="text-sm text-destructive">
-      {error.message}
+      {(error as Error).message}
     </p>
   ),
   notFoundComponent: () => <p>Nenhuma integração encontrada.</p>,

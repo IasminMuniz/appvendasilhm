@@ -31,7 +31,7 @@ export const Route = createFileRoute("/_authenticated/eventos")({
   component: AutomationsPage,
   errorComponent: ({ error }) => (
     <p className="text-sm text-destructive">
-      Não foi possível carregar as automações: {error.message}
+      Não foi possível carregar as automações: {(error as Error).message}
     </p>
   ),
   notFoundComponent: () => <p className="text-sm text-muted-foreground">Página não encontrada.</p>,

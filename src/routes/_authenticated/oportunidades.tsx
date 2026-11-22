@@ -59,7 +59,7 @@ export const Route = createFileRoute("/_authenticated/oportunidades")({
   component: OpportunitiesPage,
   errorComponent: ({ error }) => (
     <p role="alert" className="text-sm text-destructive">
-      {error.message}
+      {(error as Error).message}
     </p>
   ),
   head: () => ({

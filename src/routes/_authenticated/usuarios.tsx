@@ -50,7 +50,7 @@ export const Route = createFileRoute("/_authenticated/usuarios")({
   loader: ({ context }) => context.queryClient.ensureQueryData(usersQueryOptions()),
   component: UsersPage,
   errorComponent: ({ error }) => (
-    <p className="text-sm text-destructive">Não foi possível carregar os usuários: {error.message}</p>
+    <p className="text-sm text-destructive">Não foi possível carregar os usuários: {(error as Error).message}</p>
   ),
   notFoundComponent: () => <p className="text-sm text-muted-foreground">Página não encontrada.</p>,
   head: () => ({
