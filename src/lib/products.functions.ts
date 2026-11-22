@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { recalcSalesForProducts } from "@/lib/order-recalc";
 import { buildSku, calcMargin } from "@/lib/clothing";
 import { fetchSuppliers } from "@/lib/store.functions";
 
@@ -33,7 +34,10 @@ const productSchema = z.object({
   cost: z.coerce.number().min(0).default(0),
 });
 
-function clothingFields(d: z.infer<typeof productSchema>, suppliers: { value: string; code: string }[]) {
+function clothingFields(
+  d: z.infer<typeof productSchema>,
+  suppliers: { value: string; code: string }[],
+) {
   const sku = buildSku(d, suppliers);
   return {
     supplier: d.supplier || null,
@@ -71,7 +75,10 @@ export const createProduct = createServerFn({ method: "POST" })
   .inputValidator((data) => productSchema.parse(data))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const suppliers = (await fetchSuppliers(context.supabase)).map((x) => ({ value: x.name, code: x.code }));
+    const suppliers = (await fetchSuppliers(context.supabase)).map((x) => ({
+      value: x.name,
+      code: x.code,
+    }));
     const { data: inserted, error } = await context.supabase
       .from("products")
       .insert({
@@ -104,7 +111,10 @@ export const updateProduct = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { id, ...rest } = data;
-    const suppliers = (await fetchSuppliers(context.supabase)).map((x) => ({ value: x.name, code: x.code }));
+    const suppliers = (await fetchSuppliers(context.supabase)).map((x) => ({
+      value: x.name,
+      code: x.code,
+    }));
     const { data: current } = await context.supabase
       .from("products")
       .select("price")
@@ -132,6 +142,9 @@ export const updateProduct = createServerFn({ method: "POST" })
       })
       .eq("id", id);
     if (error) throw new Error(error.message);
+
+    // Custo pode ter mudado: atualiza lucro das vendas com este produto.
+    await recalcSalesForProducts(context.supabase, [id]);
 
     // Registra alteração de preço
     if (current && Number(current.price) !== Number(rest.price)) {
@@ -226,7 +239,12 @@ export const addProductAsset = createServerFn({ method: "POST" })
         .eq("product_id", data.product_id);
       const { error } = await context.supabase
         .from("product_images")
-        .insert({ product_id: data.product_id, url: data.url, caption: data.name || null, position: count ?? 0 });
+        .insert({
+          product_id: data.product_id,
+          url: data.url,
+          caption: data.name || null,
+          position: count ?? 0,
+        });
       if (error) throw new Error(error.message);
     } else {
       const { error } = await context.supabase
@@ -245,7 +263,11 @@ export const removeProductAsset = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const table = data.kind === "image" ? "product_images" : "product_documents";
-    const { data: row } = await context.supabase.from(table).select("url").eq("id", data.id).maybeSingle();
+    const { data: row } = await context.supabase
+      .from(table)
+      .select("url")
+      .eq("id", data.id)
+      .maybeSingle();
     const { error } = await context.supabase.from(table).delete().eq("id", data.id);
     if (!error && row?.url && !row.url.startsWith("http")) {
       await context.supabase.storage.from("product-assets").remove([row.url]);
@@ -307,8 +329,13 @@ export const listPrimaryImages = createServerFn({ method: "GET" })
     const out: Record<string, string> = {};
     await Promise.all(
       Object.entries(first).map(async ([pid, url]) => {
-        if (url.startsWith("http")) { out[pid] = url; return; }
-        const { data: signed } = await context.supabase.storage.from("product-assets").createSignedUrl(url, 60 * 60);
+        if (url.startsWith("http")) {
+          out[pid] = url;
+          return;
+        }
+        const { data: signed } = await context.supabase.storage
+          .from("product-assets")
+          .createSignedUrl(url, 60 * 60);
         if (signed?.signedUrl) out[pid] = signed.signedUrl;
       }),
     );

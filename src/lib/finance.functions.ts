@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
-import { recalcOrders } from "@/lib/order-recalc";
+import { recalcOrders, recalcSalesForProducts, reservePctOf } from "@/lib/order-recalc";
+import { profitOf } from "@/lib/sales";
 import { splitSales } from "@/lib/cash";
 import { fetchCashPlan } from "@/lib/store.functions";
 
@@ -53,21 +54,6 @@ async function applyPurchaseStock(
     }
     await supabase.from("products").update(patch).eq("id", it.product_id);
   }
-}
-
-/** Recalcula custo, lucro e margem das vendas que têm estes produtos (custo do produto mudou). */
-async function recalcSalesForProducts(supabase: any, productIds: string[]) {
-  const ids = [...new Set(productIds.filter(Boolean))];
-  if (!ids.length) return;
-  const { data: rows } = await supabase
-    .from("order_items")
-    .select("order_id")
-    .in("product_id", ids);
-  const orderIds = [
-    ...new Set((rows ?? []).map((r: { order_id: string }) => r.order_id)),
-  ] as string[];
-  const plan = await fetchCashPlan(supabase);
-  await recalcOrders(supabase, orderIds, plan.otherPurposesPct);
 }
 
 const idSchema = z.object({ id: z.string().uuid() });
@@ -315,7 +301,9 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
     const [ordersRes, productsRes, purchMonth, purchAll, expRes] = await Promise.all([
       sb
         .from("orders")
-        .select("total, profit, channel, order_items(quantity)")
+        .select(
+          "total, channel, channel_fee, other_costs, packaging_cost, order_items(quantity, products(cost))",
+        )
         .in("status", ["pago", "entregue"])
         .gte("created_at", start)
         .lt("created_at", end),
@@ -332,6 +320,8 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       if (r.error) throw new Error(r.error.message);
 
     const orders = ordersRes.data ?? [];
+    // Lucro calculado na hora com o custo atual dos produtos e o % para outros fins.
+    const reservePct = await reservePctOf(sb);
     const byChannel: Record<
       string,
       { channel: string; revenue: number; profit: number; count: number }
@@ -341,7 +331,17 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       pieces = 0;
     for (const o of orders) {
       const t = Number(o.total ?? 0),
-        p = Number(o.profit ?? 0);
+        p = profitOf({
+          total: t,
+          channelFee: Number(o.channel_fee ?? 0),
+          otherCosts: Number(o.other_costs ?? 0),
+          productCost: (o.order_items ?? []).reduce(
+            (s, i) => s + Number(i.quantity ?? 0) * Number(i.products?.cost ?? 0),
+            0,
+          ),
+          packaging: Number(o.packaging_cost ?? 0),
+          reservePct,
+        }).profit;
       revenue += t;
       profit += p;
       pieces += (o.order_items ?? []).reduce((s, i) => s + Number(i.quantity ?? 0), 0);

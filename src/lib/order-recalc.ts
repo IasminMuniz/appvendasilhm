@@ -1,4 +1,5 @@
 import { profitOf } from "@/lib/sales";
+import { normalizePlan } from "@/lib/cash";
 
 /**
  * Recalcula custo dos produtos, lucro e margem das vendas (não canceladas).
@@ -36,4 +37,28 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
       .update({ product_cost: productCost, profit, margin_percent: margin })
       .eq("id", o.id);
   }
+}
+
+/** % para outros fins salvo no plano do caixa (padrão 10). */
+export async function reservePctOf(supabase: any): Promise<number> {
+  const { data, error } = await supabase
+    .from("store_settings")
+    .select("value")
+    .eq("key", "cash_plan")
+    .maybeSingle();
+  return normalizePlan(error ? null : data?.value).otherPurposesPct;
+}
+
+/** Recalcula as vendas que têm estes produtos (o custo do produto mudou). */
+export async function recalcSalesForProducts(supabase: any, productIds: string[]) {
+  const ids = [...new Set(productIds.filter(Boolean))];
+  if (!ids.length) return;
+  const { data: rows } = await supabase
+    .from("order_items")
+    .select("order_id")
+    .in("product_id", ids);
+  const orderIds = [
+    ...new Set((rows ?? []).map((r: { order_id: string }) => r.order_id)),
+  ] as string[];
+  await recalcOrders(supabase, orderIds, await reservePctOf(supabase));
 }
