@@ -115,3 +115,16 @@ export function profitOf(o: {
   );
   return { profit, margin: o.total > 0 ? round2((profit / o.total) * 100) : 0 };
 }
+
+/**
+ * Vendas lançadas antes de a embalagem virar opcional receberam a embalagem automaticamente,
+ * sem a dona marcar. Essas são tratadas como "sem embalagem" (a migration 0011 zera no banco).
+ */
+export const AUTO_PACKAGING_UNTIL = "2026-11-22T22:20:00Z";
+export function effectivePackaging(o: {
+  packaging_cost?: number | null;
+  created_at?: string | null;
+}): number {
+  if (o.created_at && new Date(o.created_at).getTime() < Date.parse(AUTO_PACKAGING_UNTIL)) return 0;
+  return Number(o.packaging_cost ?? 0);
+}

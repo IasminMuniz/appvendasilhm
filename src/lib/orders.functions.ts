@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { STOCK_OUT_STATUSES, calcSale, type SaleItem } from "@/lib/sales";
 import { fetchCashPlan, fetchPackagingCost } from "@/lib/store.functions";
-import { profitOf, saleCode } from "@/lib/sales";
+import { effectivePackaging, profitOf, saleCode } from "@/lib/sales";
 import { reservePctOf } from "@/lib/order-recalc";
 import { insertOrderPayments, paymentPlanSchema } from "@/lib/payments.functions";
 
@@ -12,6 +12,7 @@ type LiveOrder = {
   channel_fee: number | null;
   other_costs: number | null;
   packaging_cost: number | null;
+  created_at?: string | null;
   order_items?: { quantity: number | null; products: { cost: number | null } | null }[] | null;
 };
 
@@ -31,7 +32,7 @@ function liveProfit(o: LiveOrder, reservePct: number) {
       channelFee: Number(o.channel_fee ?? 0),
       otherCosts: Number(o.other_costs ?? 0),
       productCost,
-      packaging: Number(o.packaging_cost ?? 0),
+      packaging: effectivePackaging(o),
       reservePct,
     }),
   };
@@ -149,7 +150,11 @@ export const listOrders = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     // Lucro sempre calculado na hora, com o custo atual dos produtos e o % para outros fins.
     const reservePct = await reservePctOf(context.supabase);
-    return (data ?? []).map((o) => ({ ...o, profit: liveProfit(o, reservePct).profit }));
+    return (data ?? []).map((o) => ({
+      ...o,
+      packaging_cost: effectivePackaging(o),
+      profit: liveProfit(o, reservePct).profit,
+    }));
   });
 
 export const getOrder = createServerFn({ method: "GET" })
@@ -190,7 +195,12 @@ export const getOrder = createServerFn({ method: "GET" })
     const live = liveProfit(orderRes.data, reservePct);
 
     return {
-      order: { ...orderRes.data, product_cost: live.productCost, profit: live.profit },
+      order: {
+        ...orderRes.data,
+        packaging_cost: effectivePackaging(orderRes.data),
+        product_cost: live.productCost,
+        profit: live.profit,
+      },
       orderCode: orderNumber ? saleCode(orderNumber) : "",
       history: (historyRes.data ?? []).map((h) => ({
         ...h,
@@ -354,7 +364,7 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: order, error: readError } = await context.supabase
       .from("orders")
-      .select("total, packaging_cost, order_items(product_id, quantity, unit_price)")
+      .select("total, packaging_cost, created_at, order_items(product_id, quantity, unit_price)")
       .eq("id", data.id)
       .single();
     if (readError) throw new Error(readError.message);
@@ -365,7 +375,7 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
     const productCost = await productCostOf(context.supabase, order.order_items ?? []);
     // Mantém a embalagem registrada na venda (histórico); sem registro, usa a configuração atual.
     const pieces = items.reduce((s, i) => s + i.quantity, 0);
-    const stored = Number(order.packaging_cost ?? 0);
+    const stored = effectivePackaging(order);
     const packagingPerPiece = !data.include_packaging
       ? 0
       : stored > 0 && pieces > 0

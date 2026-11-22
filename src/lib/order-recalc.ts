@@ -1,4 +1,4 @@
-import { profitOf } from "@/lib/sales";
+import { effectivePackaging, profitOf } from "@/lib/sales";
 import { normalizePlan } from "@/lib/cash";
 
 /**
@@ -10,7 +10,7 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
   let q = supabase
     .from("orders")
     .select(
-      "id, total, channel_fee, other_costs, packaging_cost, status, order_items(quantity, products(cost))",
+      "id, total, channel_fee, other_costs, packaging_cost, created_at, status, order_items(quantity, products(cost))",
     )
     .neq("status", "cancelado");
   if (orderIds) q = q.in("id", orderIds);
@@ -29,7 +29,7 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
       channelFee: Number(o.channel_fee ?? 0),
       otherCosts: Number(o.other_costs ?? 0),
       productCost,
-      packaging: Number(o.packaging_cost ?? 0),
+      packaging: effectivePackaging(o),
       reservePct,
     });
     const { error } = await supabase

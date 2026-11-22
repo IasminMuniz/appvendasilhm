@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { recalcOrders, recalcSalesForProducts, reservePctOf } from "@/lib/order-recalc";
-import { profitOf } from "@/lib/sales";
+import { effectivePackaging, profitOf } from "@/lib/sales";
 import { splitSales } from "@/lib/cash";
 import { fetchCashPlan } from "@/lib/store.functions";
 
@@ -302,7 +302,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       sb
         .from("orders")
         .select(
-          "total, channel, channel_fee, other_costs, packaging_cost, order_items(quantity, products(cost))",
+          "total, channel, channel_fee, other_costs, packaging_cost, created_at, order_items(quantity, products(cost))",
         )
         .in("status", ["pago", "entregue"])
         .gte("created_at", start)
@@ -339,7 +339,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
             (s, i) => s + Number(i.quantity ?? 0) * Number(i.products?.cost ?? 0),
             0,
           ),
-          packaging: Number(o.packaging_cost ?? 0),
+          packaging: effectivePackaging(o),
           reservePct,
         }).profit;
       revenue += t;
@@ -427,7 +427,7 @@ export const getCashFlow = createServerFn({ method: "GET" })
         channel_fee: n(o.channel_fee),
         other_costs: n(o.other_costs),
         product_cost: n(o.product_cost),
-        packaging_cost: n(o.packaging_cost),
+        packaging_cost: effectivePackaging(o),
         date: String(o.created_at).slice(0, 10),
       }));
     const purchases = (purchasesRes.data ?? []).filter((p) => p.status !== "Cancelado");

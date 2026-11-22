@@ -78,6 +78,13 @@
       "when": 1795382156208,
       "tag": "0010_order_number",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1795385591281,
+      "tag": "0011_clear_auto_packaging",
+      "breakpoints": true
     }
   ]
 }
