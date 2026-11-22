@@ -166,6 +166,10 @@ function PurchasesPage() {
         : [{ product_id: "", description: p.description, quantity: "1", unit: String(p.amount) }],
     });
 
+  // Mesmo nome pode existir em mais de um fornecedor: mostra só os produtos do fornecedor da compra.
+  const ofSupplier = (products ?? []).filter((p) => form?.supplier && p.supplier === form.supplier);
+  const supplierProducts = ofSupplier.length ? ofSupplier : (products ?? []);
+
   const setItem = (idx: number, patch: Partial<ItemForm>) =>
     form &&
     setForm({ ...form, items: form.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) });
@@ -403,10 +407,11 @@ function PurchasesPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value={NO_PRODUCT}>Sem produto (ex.: embalagem)</SelectItem>
-                            {(products ?? []).map((p) => (
+                            {supplierProducts.map((p) => (
                               <SelectItem key={p.id} value={p.id}>
-                                {p.name}
-                                {p.sku ? ` · ${p.sku}` : ""}
+                                {[p.name, p.supplier, p.size && `Tam. ${p.size}`, p.sku]
+                                  .filter(Boolean)
+                                  .join(" · ")}
                               </SelectItem>
                             ))}
                           </SelectContent>

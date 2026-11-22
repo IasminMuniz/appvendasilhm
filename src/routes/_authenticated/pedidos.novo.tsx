@@ -196,7 +196,15 @@ function NewOrderPage() {
                       <SelectContent>
                         {activeProducts.map((product) => (
                           <SelectItem key={product.id} value={product.id}>
-                            {product.name} - R$ {(product.price ?? 0).toFixed(2)}
+                            {[
+                              product.name,
+                              product.supplier,
+                              product.size && `Tam. ${product.size}`,
+                              `estoque ${product.stock ?? 0}`,
+                              `R$ ${(product.price ?? 0).toFixed(2)}`,
+                            ]
+                              .filter(Boolean)
+                              .join(" · ")}
                           </SelectItem>
                         ))}
                       </SelectContent>
