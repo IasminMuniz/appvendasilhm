@@ -1,3 +1,4 @@
+import { friendlyError } from "@/lib/error-message";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { useState } from "react";
@@ -65,7 +66,7 @@ function SuppliersPage() {
         "code" in r && r.code ? `Fornecedor salvo com o código ${r.code}.` : "Fornecedor salvo.",
       );
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
   const remove = useMutation({
     mutationFn: deleteSupplier,
@@ -73,7 +74,7 @@ function SuppliersPage() {
       done();
       toast.success("Fornecedor excluído.");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   return (

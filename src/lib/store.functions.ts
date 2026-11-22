@@ -50,10 +50,26 @@ export const listSuppliers = createServerFn({ method: "GET" })
 const supplierSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().trim().min(1, "Nome é obrigatório").max(80),
-  address: z.string().max(300).optional().or(z.literal("")),
-  phone: z.string().max(40).optional().or(z.literal("")),
-  instagram: z.string().max(80).optional().or(z.literal("")),
-  notes: z.string().max(1000).optional().or(z.literal("")),
+  address: z
+    .string()
+    .max(500, "Endereço muito longo (máx. 500 caracteres).")
+    .optional()
+    .or(z.literal("")),
+  phone: z
+    .string()
+    .max(300, "Contato muito longo (máx. 300 caracteres). Use Observações para detalhes.")
+    .optional()
+    .or(z.literal("")),
+  instagram: z
+    .string()
+    .max(200, "Instagram/site muito longo (máx. 200 caracteres).")
+    .optional()
+    .or(z.literal("")),
+  notes: z
+    .string()
+    .max(3000, "Observações muito longas (máx. 3000 caracteres).")
+    .optional()
+    .or(z.literal("")),
 });
 
 export const saveSupplier = createServerFn({ method: "POST" })
@@ -138,14 +154,12 @@ export const savePackagingCost = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d) => z.object({ value: z.coerce.number().min(0).max(1000) }).parse(d))
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
-      .from("store_settings")
-      .upsert({
-        key: "packaging_cost",
-        value: data.value,
-        updated_by: context.userId,
-        updated_at: new Date().toISOString(),
-      });
+    const { error } = await context.supabase.from("store_settings").upsert({
+      key: "packaging_cost",
+      value: data.value,
+      updated_by: context.userId,
+      updated_at: new Date().toISOString(),
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -180,7 +194,11 @@ export const getNextModelNumber = createServerFn({ method: "GET" })
 
 /** Plano do caixa (aporte inicial e % de cada pote), guardado nas configurações da loja. */
 export async function fetchCashPlan(supabase: any): Promise<CashPlan> {
-  const { data, error } = await supabase.from("store_settings").select("value").eq("key", "cash_plan").maybeSingle();
+  const { data, error } = await supabase
+    .from("store_settings")
+    .select("value")
+    .eq("key", "cash_plan")
+    .maybeSingle();
   return normalizePlan(error ? null : data?.value);
 }
 
@@ -194,13 +212,21 @@ export const saveCashPlan = createServerFn({ method: "POST" })
         reservePct: z.coerce.number().min(0).max(100),
         growthPct: z.coerce.number().min(0).max(100),
       })
-      .refine((p) => p.reservePct + p.growthPct <= 100, "Reserva + crescimento não podem passar de 100% do lucro.")
+      .refine(
+        (p) => p.reservePct + p.growthPct <= 100,
+        "Reserva + crescimento não podem passar de 100% do lucro.",
+      )
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("store_settings")
-      .upsert({ key: "cash_plan", value: data, updated_by: context.userId, updated_at: new Date().toISOString() });
+      .upsert({
+        key: "cash_plan",
+        value: data,
+        updated_by: context.userId,
+        updated_at: new Date().toISOString(),
+      });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
