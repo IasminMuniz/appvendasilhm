@@ -43,6 +43,35 @@ async function applyPurchaseStock(supabase: any, items: PurchaseItemRow[], freig
   }
 }
 
+/** Recalcula custo, lucro e margem das vendas que têm estes produtos (custo do produto mudou). */
+async function recalcSalesForProducts(supabase: any, productIds: string[]) {
+  const ids = [...new Set(productIds.filter(Boolean))];
+  if (!ids.length) return;
+  const { data: rows } = await supabase.from("order_items").select("order_id").in("product_id", ids);
+  const orderIds = [...new Set((rows ?? []).map((r: { order_id: string }) => r.order_id))];
+  if (!orderIds.length) return;
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("id, total, channel_fee, other_costs, packaging_cost, status, order_items(quantity, products(cost))")
+    .in("id", orderIds)
+    .neq("status", "cancelado");
+  for (const o of orders ?? []) {
+    const productCost =
+      Math.round(
+        (o.order_items ?? []).reduce(
+          (s: number, i: { quantity: number; products: { cost: number } | null }) =>
+            s + Number(i.quantity ?? 0) * Number(i.products?.cost ?? 0),
+          0,
+        ) * 100,
+      ) / 100;
+    const total = Number(o.total ?? 0);
+    const profit =
+      Math.round((total - Number(o.channel_fee ?? 0) - Number(o.other_costs ?? 0) - productCost - Number(o.packaging_cost ?? 0)) * 100) / 100;
+    const margin = total > 0 ? Math.round((profit / total) * 10000) / 100 : 0;
+    await supabase.from("orders").update({ product_cost: productCost, profit, margin_percent: margin }).eq("id", o.id);
+  }
+}
+
 const idSchema = z.object({ id: z.string().uuid() });
 
 /** Compras com itens. Se a migração ainda não foi aplicada, devolve as compras sem itens e avisa. */
@@ -113,6 +142,7 @@ export const savePurchase = createServerFn({ method: "POST" })
     if (r.status === "Recebido") {
       await applyPurchaseStock(sb, cleanItems, r.freight, 1);
       await sb.from("purchases").update({ stock_added: true }).eq("id", purchaseId!);
+      await recalcSalesForProducts(sb, cleanItems.map((i) => i.product_id ?? ""));
     }
     return { ok: true };
   });

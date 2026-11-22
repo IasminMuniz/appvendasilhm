@@ -54,7 +54,8 @@ export const Route = createFileRoute("/_authenticated/compras")({
   }),
 });
 
-type ItemForm = { product_id: string; description: string; quantity: string; amount: string };
+/** unit = preço de UMA peça; o total do item é calculado (unit × quantidade). */
+type ItemForm = { product_id: string; description: string; quantity: string; unit: string };
 type Form = {
   id?: string;
   purchase_date: string;
@@ -68,7 +69,11 @@ type Form = {
 
 const NO_PRODUCT = "__none__";
 const today = () => new Date().toISOString().slice(0, 10);
-const emptyItem = (): ItemForm => ({ product_id: "", description: "", quantity: "1", amount: "" });
+const emptyItem = (): ItemForm => ({ product_id: "", description: "", quantity: "1", unit: "" });
+const itemTotal = (i: ItemForm) =>
+  Math.round(Number(i.unit || 0) * Number(i.quantity || 1) * 100) / 100;
+const unitOf = (amount: number, qty: number) =>
+  String(Math.round((amount / Math.max(1, qty)) * 100) / 100);
 const empty = (): Form => ({
   purchase_date: today(),
   supplier: "PML Fashion",
@@ -92,7 +97,7 @@ function PurchasesPage() {
   const qc = useQueryClient();
   const [form, setForm] = useState<Form | null>(null);
   const done = () => {
-    for (const k of ["purchases", "store-dashboard", "products"])
+    for (const k of ["purchases", "store-dashboard", "products", "orders", "order", "cash-flow"])
       qc.invalidateQueries({ queryKey: [k] });
   };
   const save = useMutation({
@@ -156,9 +161,9 @@ function PurchasesPage() {
             product_id: i.product_id ?? "",
             description: i.description,
             quantity: String(i.quantity),
-            amount: String(i.amount),
+            unit: unitOf(Number(i.amount), Number(i.quantity)),
           }))
-        : [{ product_id: "", description: p.description, quantity: "1", amount: String(p.amount) }],
+        : [{ product_id: "", description: p.description, quantity: "1", unit: String(p.amount) }],
     });
 
   const setItem = (idx: number, patch: Partial<ItemForm>) =>
@@ -166,7 +171,7 @@ function PurchasesPage() {
     setForm({ ...form, items: form.items.map((it, i) => (i === idx ? { ...it, ...patch } : it)) });
 
   const formTotal = form
-    ? form.items.reduce((s, i) => s + Number(i.amount || 0), 0) + Number(form.freight || 0)
+    ? form.items.reduce((s, i) => s + itemTotal(i), 0) + Number(form.freight || 0)
     : 0;
 
   return (
@@ -301,7 +306,7 @@ function PurchasesPage() {
                         product_id: i.product_id || null,
                         description: i.description.trim(),
                         quantity: Number(i.quantity || 1),
-                        amount: Number(i.amount || 0),
+                        amount: itemTotal(i),
                       })),
                   },
                 });
@@ -440,20 +445,20 @@ function PurchasesPage() {
                         />
                       </label>
                       <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Valor total pago (R$)</span>
+                        <span className="text-xs text-muted-foreground">Preço de 1 peça (R$)</span>
                         <Input
                           type="number"
                           min="0"
                           step="0.01"
                           placeholder="0,00"
-                          value={it.amount}
-                          onChange={(e) => setItem(idx, { amount: e.target.value })}
+                          value={it.unit}
+                          onChange={(e) => setItem(idx, { unit: e.target.value })}
                         />
                       </label>
                     </div>
-                    {Number(it.quantity) > 1 && Number(it.amount) > 0 && (
+                    {itemTotal(it) > 0 && (
                       <p className="text-xs text-muted-foreground">
-                        Custo por peça: {formatCurrency(Number(it.amount) / Number(it.quantity))}
+                        Total do item: {formatCurrency(itemTotal(it))}
                       </p>
                     )}
                   </div>
@@ -468,8 +473,8 @@ function PurchasesPage() {
                   Adicionar item
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  Valor pago = total do item (ex.: 5 vestidos de R$ 73 = R$ 365). Ao marcar como
-                  Recebido, a quantidade entra no estoque e o custo do produto é atualizado.
+                  Coloque o preço de UMA peça; o total é calculado sozinho. Ao marcar como Recebido,
+                  o estoque e o custo do produto são atualizados — e o lucro das vendas também.
                 </p>
               </div>
 
