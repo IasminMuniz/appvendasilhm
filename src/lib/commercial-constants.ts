@@ -157,7 +157,8 @@ export const CUSTOMER_SOURCES = [
   "Instagram",
   "WhatsApp",
   "Shopee",
-  "Indicação",
+  "Indicação (boca a boca)",
+  "Família e amigos",
   "Outro",
 ] as const;
 

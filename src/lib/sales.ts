@@ -1,5 +1,12 @@
 /** Regras de venda da loja: canais, taxas, lucro e margem. */
-export const CHANNELS = ["Shopee", "Facebook", "Instagram", "WhatsApp Business"] as const;
+export const CHANNELS = [
+  "Shopee",
+  "Facebook",
+  "Instagram",
+  "WhatsApp Business",
+  "Indicação (boca a boca)",
+  "Venda direta (família e amigos)",
+] as const;
 export const PAYMENT_METHODS = ["Pix", "Cartão"] as const;
 export const DELIVERY_METHODS = ["Shopee", "Correios/plataforma de frete", "Estação do metrô", "Retirada"] as const;
 export const OTHER_COST_TYPES = [
