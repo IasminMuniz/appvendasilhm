@@ -36,6 +36,13 @@
       "when": 1795358258756,
       "tag": "0004_suppliers_purchase_items_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795359007585,
+      "tag": "0005_suppliers_purchase_items_settings",
+      "breakpoints": true
     }
   ]
 }
