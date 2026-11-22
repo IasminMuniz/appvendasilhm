@@ -49,7 +49,7 @@ export const Route = createFileRoute("/_authenticated/produtos/$id")({
       {(error as Error).message}
     </p>
   ),
-  notFoundComponent: () => <p>Integração não encontrada.</p>,
+  notFoundComponent: () => <p>Produto não encontrado.</p>,
   head: () => ({
     meta: [
       { title: "Editar integração - Nexus 360" },
@@ -90,7 +90,7 @@ function EditIntegrationPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
       queryClient.invalidateQueries({ queryKey: ["product", id] });
-      toast.success("Integração atualizada.");
+      toast.success("Produto atualizado.");
       navigate({ to: "/produtos" });
     },
     onError: (err) => {
@@ -104,7 +104,7 @@ function EditIntegrationPage() {
     mutationFn: deleteProduct,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Integração excluída.");
+      toast.success("Produto excluído.");
       navigate({ to: "/produtos" });
     },
     onError: (err) =>
@@ -259,7 +259,7 @@ function EditIntegrationPage() {
                 onCheckedChange={(checked) => setForm({ ...form, active: checked === true })}
               />
               <Label htmlFor="active" className="font-normal">
-                Integração ativa
+                Produto ativo
               </Label>
             </div>
 

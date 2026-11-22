@@ -34,13 +34,13 @@ export const Route = createFileRoute("/_authenticated/produtos/")({
   notFoundComponent: () => <p>Nenhuma integração encontrada.</p>,
   head: () => ({
     meta: [
-      { title: "Integrações - Nexus 360" },
+      { title: "Produtos - Nexus 360" },
       {
         name: "description",
         content:
           "Conexões com sistemas corporativos de CRM, ERP, marketing e atendimento no Nexus 360.",
       },
-      { property: "og:title", content: "Integrações - Nexus 360" },
+      { property: "og:title", content: "Produtos - Nexus 360" },
       {
         property: "og:description",
         content: "Status de conexão e sincronização dos sistemas integrados ao Nexus 360.",
@@ -82,7 +82,7 @@ function IntegrationsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Integrações</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Produtos</h1>
           <p className="text-muted-foreground">
             Conexões com sistemas corporativos (CRM, ERP, Marketing e Atendimento).
           </p>

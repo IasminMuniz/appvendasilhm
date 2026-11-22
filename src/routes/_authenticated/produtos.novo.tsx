@@ -179,7 +179,7 @@ function NewIntegrationPage() {
                 onCheckedChange={(checked) => setForm({ ...form, active: checked === true })}
               />
               <Label htmlFor="active" className="font-normal">
-                Integração ativa
+                Produto ativo
               </Label>
             </div>
 

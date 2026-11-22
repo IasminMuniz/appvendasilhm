@@ -6,14 +6,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  KanbanSquare,
-  Briefcase,
-  FileText,
-  Target,
-  Plug,
+  Shirt,
+  PackagePlus,
+  Receipt,
   Download,
-  ShieldCheck,
-  Workflow,
 } from "lucide-react";
 
 import {
@@ -34,16 +30,12 @@ import { supabase } from "@/integrations/supabase/client";
 
 const items = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Leads", url: "/leads", icon: KanbanSquare },
-  { title: "Oportunidades", url: "/oportunidades", icon: Briefcase },
   { title: "Clientes", url: "/clientes", icon: Users },
-  { title: "Integrações", url: "/produtos", icon: Plug },
-  { title: "Automações", url: "/eventos", icon: Workflow },
-  { title: "Orçamentos", url: "/orcamentos", icon: FileText },
-  { title: "Pedidos", url: "/pedidos", icon: ShoppingCart },
-  { title: "Metas", url: "/metas", icon: Target },
+  { title: "Produtos", url: "/produtos", icon: Shirt },
+  { title: "Vendas", url: "/pedidos", icon: ShoppingCart },
+  { title: "Compras", url: "/compras", icon: PackagePlus },
+  { title: "Despesas", url: "/despesas", icon: Receipt },
   { title: "Exportação", url: "/exportacao", icon: Download },
-  { title: "Usuários", url: "/usuarios", icon: ShieldCheck },
 ];
 
 export function AppSidebar() {
