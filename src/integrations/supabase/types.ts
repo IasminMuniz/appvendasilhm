@@ -1131,51 +1131,6 @@ export type Database = {
         }
         Relationships: []
       }
-      purchase_items: {
-        Row: {
-          amount: number
-          created_at: string
-          description: string
-          id: string
-          product_id: string | null
-          purchase_id: string
-          quantity: number
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          description: string
-          id?: string
-          product_id?: string | null
-          purchase_id: string
-          quantity?: number
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          description?: string
-          id?: string
-          product_id?: string | null
-          purchase_id?: string
-          quantity?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "purchase_items_purchase_id_fkey"
-            columns: ["purchase_id"]
-            isOneToOne: false
-            referencedRelation: "purchases"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "purchase_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       purchases: {
         Row: {
           amount: number
@@ -1184,11 +1139,7 @@ export type Database = {
           description: string
           id: string
           notes: string | null
-          payment_method: string | null
           purchase_date: string
-          status: string
-          stock_added: boolean
-          freight: number
           supplier: string | null
           updated_at: string
         }
@@ -1199,11 +1150,7 @@ export type Database = {
           description: string
           id?: string
           notes?: string | null
-          payment_method?: string | null
           purchase_date?: string
-          status?: string
-          stock_added?: boolean
-          freight?: number
           supplier?: string | null
           updated_at?: string
         }
@@ -1214,72 +1161,8 @@ export type Database = {
           description?: string
           id?: string
           notes?: string | null
-          payment_method?: string | null
           purchase_date?: string
-          status?: string
-          stock_added?: boolean
-          freight?: number
           supplier?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      store_settings: {
-        Row: {
-          key: string
-          updated_at: string
-          updated_by: string | null
-          value: Json
-        }
-        Insert: {
-          key: string
-          updated_at?: string
-          updated_by?: string | null
-          value: Json
-        }
-        Update: {
-          key?: string
-          updated_at?: string
-          updated_by?: string | null
-          value?: Json
-        }
-        Relationships: []
-      }
-      suppliers: {
-        Row: {
-          address: string | null
-          code: string
-          created_at: string
-          created_by: string | null
-          id: string
-          instagram: string | null
-          name: string
-          notes: string | null
-          phone: string | null
-          updated_at: string
-        }
-        Insert: {
-          address?: string | null
-          code: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          instagram?: string | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          address?: string | null
-          code?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          instagram?: string | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
           updated_at?: string
         }
         Relationships: []
