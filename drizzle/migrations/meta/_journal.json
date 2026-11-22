@@ -22,6 +22,13 @@
       "when": 1795354882101,
       "tag": "0002_sales_status_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795355103917,
+      "tag": "0003_purchases_expenses",
+      "breakpoints": true
     }
   ]
 }
