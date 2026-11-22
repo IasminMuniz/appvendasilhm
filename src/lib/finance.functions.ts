@@ -132,12 +132,16 @@ export const deletePurchase = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const EXPENSE_STATUSES = ["Pendente", "Pago"] as const;
+
 const expenseSchema = z.object({
   expense_date: z.string().min(8),
   description: z.string().min(1, "Descrição é obrigatória").max(300),
   category: z.string().max(80).optional().or(z.literal("")),
   amount: z.coerce.number().min(0),
   is_fixed: z.boolean().default(false),
+  status: z.enum(EXPENSE_STATUSES).default("Pendente"),
+  paid_at: z.string().optional().or(z.literal("")),
 });
 
 export const listExpenses = createServerFn({ method: "GET" })
@@ -152,11 +156,16 @@ export const saveExpense = createServerFn({ method: "POST" })
   .middleware([requireAuth])
   .inputValidator((d) => expenseSchema.extend({ id: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { id, ...r } = data;
-    const row = { ...r, category: r.category || null };
-    const { error } = id
-      ? await context.supabase.from("expenses").update(row).eq("id", id)
-      : await context.supabase.from("expenses").insert({ ...row, created_by: context.userId });
+    const { id, status, paid_at, ...r } = data;
+    const base = { ...r, category: r.category || null };
+    const paid = status === "Pago" ? paid_at || new Date().toISOString().slice(0, 10) : null;
+    const write = (row: typeof base & { status?: string; paid_at?: string | null }) =>
+      id
+        ? context.supabase.from("expenses").update(row).eq("id", id)
+        : context.supabase.from("expenses").insert({ ...row, created_by: context.userId });
+    let { error } = await write({ ...base, status, paid_at: paid });
+    // Banco ainda sem as colunas de pagamento: salva sem elas.
+    if (error && /status|paid_at|column|schema cache/i.test(error.message)) ({ error } = await write(base));
     if (error) throw new Error(error.message);
     return { ok: true };
   });

@@ -43,6 +43,13 @@
       "when": 1795359007585,
       "tag": "0005_suppliers_purchase_items_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1795360346282,
+      "tag": "0006_expense_payment_status",
+      "breakpoints": true
     }
   ]
 }
