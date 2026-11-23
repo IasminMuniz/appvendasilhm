@@ -27,9 +27,11 @@ function NewProductPage() {
   const [error, setError] = useState<string | null>(null);
   const mutation = useMutation({
     mutationFn: createProduct,
-    onSuccess: () => {
+    onSuccess: (created) => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      navigate({ to: "/produtos" });
+      // Vai direto para a página do produto, onde ficam as fotos.
+      if (created?.id) navigate({ to: "/produtos/$id", params: { id: created.id } });
+      else navigate({ to: "/produtos" });
     },
     onError: (err) => setError(err instanceof Error ? err.message : "Erro ao criar produto."),
   });
@@ -44,7 +46,7 @@ function NewProductPage() {
         <CardContent>
           <ProductForm
             initial={emptyProduct}
-            submitLabel="Salvar produto"
+            submitLabel="Salvar e adicionar fotos"
             pending={mutation.isPending}
             error={error}
             onSubmit={(v) => {
