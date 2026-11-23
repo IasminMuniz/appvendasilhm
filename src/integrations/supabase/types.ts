@@ -401,9 +401,6 @@ export type Database = {
           expense_date: string
           id: string
           is_fixed: boolean
-          paid_at: string | null
-          series_id: string | null
-          status: string
           updated_at: string
         }
         Insert: {
@@ -415,9 +412,6 @@ export type Database = {
           expense_date?: string
           id?: string
           is_fixed?: boolean
-          paid_at?: string | null
-          series_id?: string | null
-          status?: string
           updated_at?: string
         }
         Update: {
@@ -429,9 +423,6 @@ export type Database = {
           expense_date?: string
           id?: string
           is_fixed?: boolean
-          paid_at?: string | null
-          series_id?: string | null
-          status?: string
           updated_at?: string
         }
         Relationships: []
@@ -847,56 +838,6 @@ export type Database = {
           },
         ]
       }
-      order_payments: {
-        Row: {
-          amount: number
-          created_at: string
-          created_by: string | null
-          due_date: string
-          id: string
-          method: string | null
-          notes: string | null
-          number: number
-          order_id: string
-          paid_at: string | null
-          status: string
-        }
-        Insert: {
-          amount?: number
-          created_at?: string
-          created_by?: string | null
-          due_date?: string
-          id?: string
-          method?: string | null
-          notes?: string | null
-          number?: number
-          order_id: string
-          paid_at?: string | null
-          status?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          created_by?: string | null
-          due_date?: string
-          id?: string
-          method?: string | null
-          notes?: string | null
-          number?: number
-          order_id?: string
-          paid_at?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "order_payments_order_id_fkey"
-            columns: ["order_id"]
-            isOneToOne: false
-            referencedRelation: "orders"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       orders: {
         Row: {
           channel: string | null
@@ -907,7 +848,6 @@ export type Database = {
           id: string
           margin_percent: number
           notes: string | null
-          order_number: number | null
           other_cost_type: string | null
           other_costs: number
           packaging_cost: number
@@ -919,7 +859,6 @@ export type Database = {
           stock_deducted: boolean
           total: number
           updated_at: string
-          uses_packaging: boolean
         }
         Insert: {
           channel?: string | null
@@ -930,7 +869,6 @@ export type Database = {
           id?: string
           margin_percent?: number
           notes?: string | null
-          order_number?: number | null
           other_cost_type?: string | null
           other_costs?: number
           packaging_cost?: number
@@ -942,7 +880,6 @@ export type Database = {
           stock_deducted?: boolean
           total?: number
           updated_at?: string
-          uses_packaging?: boolean
         }
         Update: {
           channel?: string | null
@@ -953,7 +890,6 @@ export type Database = {
           id?: string
           margin_percent?: number
           notes?: string | null
-          order_number?: number | null
           other_cost_type?: string | null
           other_costs?: number
           packaging_cost?: number
@@ -965,7 +901,6 @@ export type Database = {
           stock_deducted?: boolean
           total?: number
           updated_at?: string
-          uses_packaging?: boolean
         }
         Relationships: [
           {
@@ -1252,7 +1187,6 @@ export type Database = {
           notes: string | null
           payment_method: string | null
           purchase_date: string
-          purchase_number: number | null
           status: string
           stock_added: boolean
           supplier: string | null
@@ -1268,7 +1202,6 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           purchase_date?: string
-          purchase_number?: number | null
           status?: string
           stock_added?: boolean
           supplier?: string | null
@@ -1284,7 +1217,6 @@ export type Database = {
           notes?: string | null
           payment_method?: string | null
           purchase_date?: string
-          purchase_number?: number | null
           status?: string
           stock_added?: boolean
           supplier?: string | null
