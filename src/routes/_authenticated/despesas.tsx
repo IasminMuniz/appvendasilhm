@@ -25,7 +25,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
-import { PackagingCostCard } from "@/components/store/packaging-cost-card";
 import {
   EXPENSE_STATUSES,
   deleteExpense,
@@ -353,8 +352,6 @@ function ExpensesPage() {
           )}
         </CardContent>
       </Card>
-
-      <PackagingCostCard />
 
       <Dialog open={!!toDelete} onOpenChange={(o) => !o && setToDelete(null)}>
         <DialogContent>

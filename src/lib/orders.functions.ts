@@ -63,6 +63,8 @@ const saleInfoSchema = z.object({
   other_costs: z.coerce.number().min(0).default(0),
   other_cost_type: z.string().max(80).optional().or(z.literal("")),
   include_packaging: z.boolean().default(false),
+  /** Valor total da embalagem nesta venda (R$). */
+  packaging_value: z.coerce.number().min(0).max(10000).default(0),
 });
 
 type SaleInfo = z.infer<typeof saleInfoSchema>;
@@ -225,9 +227,8 @@ export const createOrder = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const total = data.items.reduce((sum, item) => sum + item.quantity * item.unit_price, 0);
     const productCost = await productCostOf(context.supabase, data.items);
-    const packagingPerPiece = data.include_packaging
-      ? await fetchPackagingCost(context.supabase)
-      : 0;
+    const createPieces = data.items.reduce((t, i) => t + i.quantity, 0) || 1;
+    const packagingPerPiece = data.include_packaging ? data.packaging_value / createPieces : 0;
 
     const insertRow = {
       customer_id: data.customer_id,
@@ -400,11 +401,8 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
     // Mantém a embalagem registrada na venda (histórico); sem registro, usa a configuração atual.
     const pieces = items.reduce((s, i) => s + i.quantity, 0);
     const stored = effectivePackaging(order);
-    const packagingPerPiece = !data.include_packaging
-      ? 0
-      : stored > 0 && pieces > 0
-        ? stored / pieces
-        : await fetchPackagingCost(context.supabase);
+    void stored;
+    const packagingPerPiece = !data.include_packaging ? 0 : data.packaging_value / (pieces || 1);
     const cols = saleColumns(
       data,
       items,

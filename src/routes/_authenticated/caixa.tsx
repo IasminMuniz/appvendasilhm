@@ -167,11 +167,26 @@ function CashPage() {
         </Select>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Stat
-          title="Saldo em caixa agora"
-          value={data.balance}
-          hint="Aporte + o que entrou das vendas − compras, despesas pagas e custos. Deve bater com o dinheiro da loja na conta."
+          title="Você já investiu"
+          value={data.totalOut}
+          hint="Tudo que saiu do seu bolso para a loja: compras, despesas pagas e custos das vendas."
+        />
+        <Stat
+          title="Já entrou das vendas"
+          value={data.totalIn}
+          hint="Dinheiro que as clientes já pagaram (descontadas as taxas)."
+        />
+        <Stat
+          title={data.balance < 0 ? "Falta recuperar" : "Resultado até agora"}
+          value={data.balance < 0 ? -data.balance : data.balance}
+          tone={data.balance < 0 ? "bad" : undefined}
+          hint={
+            data.balance < 0
+              ? "Quanto ainda falta entrar de vendas para pagar tudo que você investiu."
+              : "Você já recuperou o que investiu. Este é o dinheiro que sobrou."
+          }
         />
         <Stat
           title="Disponível para nova compra"
@@ -332,13 +347,11 @@ function CashPage() {
       <Card>
         <CardHeader>
           <CardTitle>Plano do caixa</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Defina quanto você colocou para começar e quanto de cada venda vai para cada pote.
-          </p>
+          <p className="text-sm text-muted-foreground">Quanto de cada venda vai para cada pote.</p>
         </CardHeader>
         <CardContent>
           <form
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+            className="grid gap-4 sm:grid-cols-3"
             onSubmit={(e) => {
               e.preventDefault();
               save.mutate({
@@ -353,11 +366,6 @@ function CashPage() {
           >
             {(
               [
-                [
-                  "initialCapital",
-                  "Aporte inicial (R$)",
-                  "Dinheiro seu que entrou na loja para começar.",
-                ],
                 [
                   "otherPurposesPct",
                   "Outros fins (% da venda)",
@@ -381,14 +389,14 @@ function CashPage() {
                   id={key}
                   type="number"
                   min="0"
-                  step={key === "initialCapital" ? "0.01" : "1"}
+                  step="1"
                   value={plan[key]}
                   onChange={(e) => setPlan({ ...plan, [key]: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">{hint}</p>
               </div>
             ))}
-            <div className="sm:col-span-2 lg:col-span-4">
+            <div className="sm:col-span-3">
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Salvando..." : "Salvar plano"}
               </Button>

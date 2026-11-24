@@ -486,13 +486,14 @@ export const getCashFlow = createServerFn({ method: "GET" })
     }
     toReceive.sort((a, b) => a.date.localeCompare(b.date));
 
-    // Saldo atual (desde o início): aporte + o que entrou das vendas − tudo que saiu.
+    // Desde o início: o que entrou das vendas e tudo que saiu.
     const totalIn = sumBy(inflows, (f) => f.amount);
     const totalOut =
       sumBy(purchases, (p) => n(p.amount)) +
       sumBy(paidExpenses, (e) => n(e.amount)) +
       sumBy(sales, (s) => s.other_costs);
-    const balance = Math.round((plan.initialCapital + totalIn - totalOut) * 100) / 100;
+    // Resultado acumulado: o que entrou das vendas − tudo que você gastou (sem precisar de aporte).
+    const balance = Math.round((totalIn - totalOut) * 100) / 100;
 
     // Período escolhido
     const pSales = sales.filter((s) => inPeriod(s.date));

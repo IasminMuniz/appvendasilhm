@@ -28,6 +28,8 @@ export interface SaleInfoValues {
   other_cost_type: string;
   /** Usar embalagem nesta venda? Desligado por padrão. */
   include_packaging: boolean;
+  /** Valor gasto com embalagem nesta venda (R$), só quando marcado. */
+  packaging_value: string;
 }
 
 export const emptySaleInfo: SaleInfoValues = {
@@ -37,6 +39,7 @@ export const emptySaleInfo: SaleInfoValues = {
   other_costs: "0",
   other_cost_type: "",
   include_packaging: false,
+  packaging_value: "",
 };
 
 function Pick({
@@ -121,13 +124,29 @@ export function SaleFields({
         options={OTHER_COST_TYPES}
         onChange={(v) => set({ other_cost_type: v })}
       />
-      <label className="flex items-center gap-2 text-sm sm:col-span-2">
-        <Checkbox
-          checked={value.include_packaging}
-          onCheckedChange={(c) => set({ include_packaging: c === true })}
-        />
-        Usei embalagem nesta venda (envelope, sacola, tag)
-      </label>
+      <div className="space-y-2 sm:col-span-2">
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox
+            checked={value.include_packaging}
+            onCheckedChange={(c) => set({ include_packaging: c === true })}
+          />
+          Usei embalagem nesta venda (envelope, sacola, tag)
+        </label>
+        {value.include_packaging && (
+          <div className="max-w-xs space-y-1">
+            <Label htmlFor="packaging_value">Quanto gastou de embalagem nesta venda (R$)</Label>
+            <Input
+              id="packaging_value"
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="Ex.: 1,84"
+              value={value.packaging_value}
+              onChange={(e) => set({ packaging_value: e.target.value })}
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -183,4 +202,5 @@ export function SaleSummary({
 export const toSaleInput = (v: SaleInfoValues) => ({
   ...v,
   other_costs: Number(v.other_costs || 0),
+  packaging_value: v.include_packaging ? Number(v.packaging_value || 0) : 0,
 });

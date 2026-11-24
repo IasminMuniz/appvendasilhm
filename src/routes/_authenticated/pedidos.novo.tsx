@@ -4,7 +4,7 @@ import {
   toPaymentPlanInput,
 } from "@/components/sales/payment-plan";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -28,8 +28,6 @@ import {
   emptySaleInfo,
   toSaleInput,
 } from "@/components/sales/sale-fields";
-import { packagingCostQuery } from "@/components/store/packaging-cost-card";
-import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
 
 const customersQueryOptions = () =>
   queryOptions({
@@ -82,7 +80,6 @@ function NewOrderPage() {
   const [error, setError] = useState<string | null>(null);
   const [sale, setSale] = useState(emptySaleInfo);
   const [payPlan, setPayPlan] = useState(emptyPaymentPlan);
-  const { data: packaging } = useQuery(packagingCostQuery);
 
   const activeProducts = products.filter((p) => p.active);
 
@@ -272,7 +269,13 @@ function NewOrderPage() {
               otherCosts={Number(sale.other_costs || 0)}
               productCost={productCost}
               packagingCost={
-                sale.include_packaging ? (packaging?.value ?? DEFAULT_PACKAGING_COST) : 0
+                sale.include_packaging
+                  ? Number(sale.packaging_value || 0) /
+                    Math.max(
+                      1,
+                      items.reduce((t, i) => t + Number(i.quantity || 0), 0),
+                    )
+                  : 0
               }
             />
 
