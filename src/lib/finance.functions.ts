@@ -481,6 +481,31 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
     for (const r of [ordersRes, productsRes, purchMonth, purchAll, expRes])
       if (r.error) throw new Error(r.error.message);
 
+    // Trocas e devoluções do mês (sem a migração 0019, vem com erro e fica vazio).
+    const retRes = await sb
+      .from("orders")
+      .select("return_type, return_reason, order_items(quantity, products(name, size))")
+      .not("return_type", "is", null)
+      .gte("returned_at", start)
+      .lt("returned_at", end);
+    const returnsRows = retRes.error ? [] : (retRes.data ?? []);
+    const reasonCount: Record<string, number> = {};
+    const pieceCount: Record<string, number> = {};
+    for (const r of returnsRows) {
+      const reason = r.return_reason || "Sem motivo";
+      reasonCount[reason] = (reasonCount[reason] ?? 0) + 1;
+      for (const i of r.order_items ?? []) {
+        const pr = i.products as { name?: string; size?: string | null } | null;
+        const key = `${pr?.name ?? "Peça"}${pr?.size ? ` (${pr.size})` : ""}`;
+        pieceCount[key] = (pieceCount[key] ?? 0) + Number(i.quantity ?? 0);
+      }
+    }
+    const top = (m: Record<string, number>) =>
+      Object.entries(m)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([label, count]) => ({ label, count }));
+
     const orders = ordersRes.data ?? [];
     // Lucro calculado na hora com o custo atual dos produtos e o % para outros fins.
     const reservePct = await reservePctOf(sb);
@@ -558,6 +583,12 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       purchasesTotal: sum(purchAll.data),
       expensesMonth: sum(expenses),
       fixedExpenses: sum(expenses.filter((e) => e.is_fixed)),
+      returns: {
+        trocas: returnsRows.filter((r) => r.return_type === "troca").length,
+        devolucoes: returnsRows.filter((r) => r.return_type === "devolucao").length,
+        reasons: top(reasonCount),
+        pieces: top(pieceCount),
+      },
       seminovoProducts: (productsRes.data ?? []).filter(
         (p) => (p as { condition?: string }).condition === "seminovo",
       ).length,

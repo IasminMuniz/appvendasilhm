@@ -32,6 +32,8 @@ import {
 } from "@/lib/orders.functions";
 import { SaleFields, SaleSummary, toSaleInput } from "@/components/sales/sale-fields";
 import { OrderPaymentsCard } from "@/components/sales/payment-plan";
+import { OrderReturnCard } from "@/components/sales/return-card";
+import { returnTypeLabel } from "@/lib/returns";
 import { useState } from "react";
 
 import { ORDER_STATUSES, ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
@@ -165,7 +167,11 @@ function OrderDetailPage() {
               Cotar frete
             </Link>
           </Button>
-          <Badge variant="outline">{ORDER_STATUS_LABELS[order.status] ?? order.status}</Badge>
+          <Badge variant="outline">
+            {returnTypeLabel(order.return_type) ??
+              ORDER_STATUS_LABELS[order.status] ??
+              order.status}
+          </Badge>
         </div>
       </div>
 
@@ -266,6 +272,8 @@ function OrderDetailPage() {
           </Select>
         </CardContent>
       </Card>
+
+      <OrderReturnCard order={order} />
 
       <Card>
         <CardHeader>

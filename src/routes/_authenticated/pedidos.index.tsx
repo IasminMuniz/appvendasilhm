@@ -13,6 +13,7 @@ import { bulkDeleteOrders } from "@/lib/bulk-delete.functions";
 import { listOrders } from "@/lib/orders.functions";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { ORDER_STATUS_LABELS, formatCurrency } from "@/lib/commercial-constants";
+import { returnTypeLabel } from "@/lib/returns";
 
 const statusVariants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   novo: "secondary",
@@ -182,7 +183,9 @@ function OrdersPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant={statusVariants[order.status ?? "novo"] ?? "outline"}>
-                        {ORDER_STATUS_LABELS[order.status ?? "novo"] ?? order.status}
+                        {returnTypeLabel(order.return_type) ??
+                          ORDER_STATUS_LABELS[order.status ?? "novo"] ??
+                          order.status}
                       </Badge>
                       <div className="text-right">
                         <p className="font-semibold">{formatCurrency(Number(order.total ?? 0))}</p>

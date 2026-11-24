@@ -947,6 +947,10 @@ export type Database = {
           payment_method: string | null
           product_cost: number
           profit: number
+          return_notes: string | null
+          return_reason: string | null
+          return_type: string | null
+          returned_at: string | null
           seller_id: string
           status: Database["public"]["Enums"]["order_status"]
           stock_deducted: boolean
@@ -970,6 +974,10 @@ export type Database = {
           payment_method?: string | null
           product_cost?: number
           profit?: number
+          return_notes?: string | null
+          return_reason?: string | null
+          return_type?: string | null
+          returned_at?: string | null
           seller_id: string
           status?: Database["public"]["Enums"]["order_status"]
           stock_deducted?: boolean
@@ -993,6 +1001,10 @@ export type Database = {
           payment_method?: string | null
           product_cost?: number
           profit?: number
+          return_notes?: string | null
+          return_reason?: string | null
+          return_type?: string | null
+          returned_at?: string | null
           seller_id?: string
           status?: Database["public"]["Enums"]["order_status"]
           stock_deducted?: boolean

@@ -418,3 +418,64 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Registra troca ou devolução: guarda tipo e motivo, cancela a venda
+ * (o estoque volta e a venda sai do faturamento, do lucro e do caixa).
+ * Na troca, a peça nova é lançada como uma venda nova.
+ */
+export const registerOrderReturn = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((data) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        return_type: z.enum(["devolucao", "troca"]),
+        return_reason: z.string().min(1, "Escolha o motivo").max(80),
+        return_notes: z.string().max(500).optional().or(z.literal("")),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: current, error: readError } = await context.supabase
+      .from("orders")
+      .select("status, stock_deducted")
+      .eq("id", data.id)
+      .single();
+    if (readError) throw new Error(readError.message);
+
+    // Grava o motivo primeiro: se o banco ainda não tem as colunas, nada é alterado.
+    const { error: retError } = await context.supabase
+      .from("orders")
+      .update({
+        return_type: data.return_type,
+        return_reason: data.return_reason,
+        return_notes: data.return_notes || null,
+        returned_at: new Date().toISOString(),
+      })
+      .eq("id", data.id);
+    if (retError) {
+      if (/return_/.test(retError.message))
+        throw new Error(
+          "Trocas e devoluções ainda não estão ativas no banco. Peça ao Lovable para aplicar a migração 0019_order_returns.",
+        );
+      throw new Error(retError.message);
+    }
+
+    if (current.stock_deducted) await adjustStock(context.supabase, data.id, 1);
+    const { error } = await context.supabase
+      .from("orders")
+      .update({ status: "cancelado", stock_deducted: false })
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+
+    const label = data.return_type === "troca" ? "Troca" : "Devolução";
+    await context.supabase.from("order_status_history").insert({
+      order_id: data.id,
+      from_status: current.status,
+      to_status: "cancelado",
+      changed_by: context.userId,
+      note: `${label}: ${data.return_reason}${data.return_notes ? ` – ${data.return_notes}` : ""}`,
+    });
+    return { ok: true };
+  });

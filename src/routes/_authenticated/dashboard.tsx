@@ -127,6 +127,30 @@ function DashboardPage() {
         </Card>
       )}
 
+      {data.returns.trocas + data.returns.devolucoes > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Trocas e devoluções do mês</CardTitle></CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-2xl font-bold">{data.returns.trocas + data.returns.devolucoes}</p>
+              <p className="text-xs text-muted-foreground">{data.returns.trocas} troca(s) · {data.returns.devolucoes} devolução(ões)</p>
+            </div>
+            <div>
+              <p className="text-sm font-medium">Motivos</p>
+              {data.returns.reasons.map((r) => (
+                <p key={r.label} className="text-sm text-muted-foreground">{r.label}: {r.count}</p>
+              ))}
+            </div>
+            <div>
+              <p className="text-sm font-medium">Peças que mais voltaram</p>
+              {data.returns.pieces.map((r) => (
+                <p key={r.label} className="text-sm text-muted-foreground">{r.label}: {r.count}</p>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChannelChart title="Vendas por canal" data={data.channels} dataKey="revenue" />
         <ChannelChart title="Lucro por canal" data={data.channels} dataKey="profit" />
