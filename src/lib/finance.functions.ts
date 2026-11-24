@@ -299,6 +299,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
     const start = `${data.month}-01`;
     const end = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
     const sb = context.supabase;
+    await recountStock(sb);
     const [ordersRes, productsRes, purchMonth, purchAll, expRes] = await Promise.all([
       sb
         .from("orders")
@@ -306,7 +307,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
         .in("status", ["pago", "entregue"])
         .gte("created_at", start)
         .lt("created_at", end),
-      sb.from("products").select("stock, active"),
+      sb.from("products").select("stock, active, cost"),
       sb.from("purchases").select("*").gte("purchase_date", start).lt("purchase_date", end),
       sb.from("purchases").select("*"),
       sb
@@ -363,6 +364,12 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       stock: (productsRes.data ?? [])
         .filter((p) => p.active)
         .reduce((s, p) => s + Number(p.stock ?? 0), 0),
+      stockValue:
+        Math.round(
+          (productsRes.data ?? [])
+            .filter((p) => p.active)
+            .reduce((s, p) => s + Number(p.stock ?? 0) * Number(p.cost ?? 0), 0) * 100,
+        ) / 100,
       purchasesMonth: sum(purchMonth.data),
       purchasesTotal: sum(purchAll.data),
       expensesMonth: sum(expenses),

@@ -82,7 +82,7 @@ function DashboardPage() {
         <Kpi label="Faturamento do mês" value={formatCurrency(data.revenue)} hint={`${data.salesCount} vendas`} />
         <Kpi label="Lucro do mês" value={formatCurrency(data.profit)} hint={`Margem média ${margin.toFixed(1)}%`} />
         <Kpi label="Peças vendidas" value={String(data.pieces)} />
-        <Kpi label="Peças em estoque" value={String(data.stock)} />
+        <Kpi label="Peças em estoque" value={String(data.stock)} hint={`Valor em estoque (custo) ${formatCurrency(data.stockValue)}`} />
         <Kpi label="Investido em compras (mês)" value={formatCurrency(data.purchasesMonth)} hint={`Total geral ${formatCurrency(data.purchasesTotal)}`} />
         <Kpi label="Despesas do mês" value={formatCurrency(data.expensesMonth)} hint={`Fixas ${formatCurrency(data.fixedExpenses)}`} />
       </div>
