@@ -33,7 +33,32 @@ const productSchema = z.object({
   size: z.string().max(20).optional().or(z.literal("")),
   model_number: z.coerce.number().int().min(0).max(99).optional().nullable(),
   cost: z.coerce.number().min(0).default(0),
+  condition: z.enum(["novo", "seminovo"]).default("novo"),
+  condition_notes: z.string().max(300).optional().or(z.literal("")),
 });
+
+/**
+ * Grava o produto. Se o banco ainda não tem as colunas de condição (migração 0018 não aplicada),
+ * peça nova salva normalmente sem elas; peça seminova avisa que falta aplicar a migração.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Row = any;
+async function writeProduct(
+  run: (row: Row) => PromiseLike<{ data?: Row; error: { message: string } | null }>,
+  row: Row,
+): Promise<Row> {
+  let res = await run(row);
+  if (res.error && /condition/.test(res.error.message)) {
+    if (row.condition === "seminovo")
+      throw new Error(
+        "A opção Seminovo ainda não está ativa no banco. Peça ao Lovable para aplicar a migração 0018_product_condition.",
+      );
+    const { condition: _c, condition_notes: _n, ...rest } = row;
+    res = await run(rest);
+  }
+  if (res.error) throw new Error(res.error.message);
+  return res.data;
+}
 
 function clothingFields(
   d: z.infer<typeof productSchema>,
@@ -50,6 +75,8 @@ function clothingFields(
     cost: d.cost,
     margin_percent: calcMargin(d.price, d.cost),
     sku: sku ?? (d.sku || null),
+    condition: d.condition,
+    condition_notes: d.condition === "seminovo" ? d.condition_notes || null : null,
   };
 }
 
@@ -82,9 +109,9 @@ export const createProduct = createServerFn({ method: "POST" })
       value: x.name,
       code: x.code,
     }));
-    const { data: inserted, error } = await context.supabase
-      .from("products")
-      .insert({
+    const inserted = await writeProduct(
+      (row) => context.supabase.from("products").insert(row).select().single(),
+      {
         name: data.name,
         description: data.description || null,
         commercial_description: data.commercial_description || null,
@@ -101,11 +128,9 @@ export const createProduct = createServerFn({ method: "POST" })
         stock: data.stock,
         active: data.active,
         ...clothingFields(data, suppliers),
-      })
-      .select()
-      .single();
-    if (error) throw new Error(error.message);
-    return inserted;
+      },
+    );
+    return inserted as { id: string; name: string };
   });
 
 export const updateProduct = createServerFn({ method: "POST" })
@@ -123,9 +148,9 @@ export const updateProduct = createServerFn({ method: "POST" })
       .select("price")
       .eq("id", id)
       .single();
-    const { error } = await context.supabase
-      .from("products")
-      .update({
+    await writeProduct(
+      (row) => context.supabase.from("products").update(row).eq("id", id),
+      {
         name: rest.name,
         description: rest.description || null,
         commercial_description: rest.commercial_description || null,
@@ -142,9 +167,8 @@ export const updateProduct = createServerFn({ method: "POST" })
         stock: rest.stock,
         active: rest.active,
         ...clothingFields(rest, suppliers),
-      })
-      .eq("id", id);
-    if (error) throw new Error(error.message);
+      },
+    );
 
     // Custo pode ter mudado: atualiza lucro das vendas com este produto.
     await recalcSalesForProducts(context.supabase, [id]);

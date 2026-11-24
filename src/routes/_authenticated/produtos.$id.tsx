@@ -178,6 +178,8 @@ function EditIntegrationPage() {
               pattern: integration.pattern ?? "",
               size: integration.size ?? "",
               model_number: integration.model_number ?? null,
+              condition: integration.condition === "seminovo" ? "seminovo" : "novo",
+              condition_notes: integration.condition_notes ?? "",
             }}
             productId={id}
             stockLocked={!!data.movement && data.movement.entradas > 0}

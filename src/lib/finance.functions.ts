@@ -465,11 +465,11 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
     const [ordersRes, productsRes, purchMonth, purchAll, expRes] = await Promise.all([
       sb
         .from("orders")
-        .select("*, order_items(quantity, products(cost))")
+        .select("*, order_items(quantity, unit_price, products(*))")
         .in("status", ["pago", "entregue"])
         .gte("created_at", start)
         .lt("created_at", end),
-      sb.from("products").select("stock, active, cost"),
+      sb.from("products").select("*"),
       sb.from("purchases").select("*").gte("purchase_date", start).lt("purchase_date", end),
       sb.from("purchases").select("*"),
       sb
@@ -491,6 +491,11 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
     let revenue = 0,
       profit = 0,
       pieces = 0;
+    // Novos x seminovos: receita e lucro da venda divididos pelo valor de cada peça.
+    const byCondition = {
+      novo: { revenue: 0, profit: 0, pieces: 0 },
+      seminovo: { revenue: 0, profit: 0, pieces: 0 },
+    };
     for (const o of orders) {
       const t = Number(o.total ?? 0),
         p = profitOf({
@@ -506,6 +511,23 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
         }).profit;
       revenue += t;
       profit += p;
+      const its = o.order_items ?? [];
+      const itemsTotal = its.reduce(
+        (s, i) => s + Number(i.quantity ?? 0) * Number(i.unit_price ?? 0),
+        0,
+      );
+      for (const i of its) {
+        const share =
+          itemsTotal > 0
+            ? (Number(i.quantity ?? 0) * Number(i.unit_price ?? 0)) / itemsTotal
+            : 1 / its.length;
+        const c = (i.products as { condition?: string } | null)?.condition === "seminovo"
+          ? "seminovo"
+          : "novo";
+        byCondition[c].revenue += t * share;
+        byCondition[c].profit += p * share;
+        byCondition[c].pieces += Number(i.quantity ?? 0);
+      }
       pieces += (o.order_items ?? []).reduce((s, i) => s + Number(i.quantity ?? 0), 0);
       const ch = o.channel || "Sem canal";
       byChannel[ch] ??= { channel: ch, revenue: 0, profit: 0, count: 0 };
@@ -536,6 +558,15 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
       purchasesTotal: sum(purchAll.data),
       expensesMonth: sum(expenses),
       fixedExpenses: sum(expenses.filter((e) => e.is_fixed)),
+      seminovoProducts: (productsRes.data ?? []).filter(
+        (p) => (p as { condition?: string }).condition === "seminovo",
+      ).length,
+      conditions: (["novo", "seminovo"] as const).map((k) => ({
+        condition: k,
+        revenue: Math.round(byCondition[k].revenue * 100) / 100,
+        profit: Math.round(byCondition[k].profit * 100) / 100,
+        pieces: byCondition[k].pieces,
+      })),
       channels: Object.values(byChannel).map((c) => ({
         ...c,
         revenue: Math.round(c.revenue * 100) / 100,

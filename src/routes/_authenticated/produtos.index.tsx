@@ -12,6 +12,7 @@ import { OptionsMenu, bulkDeleteToastMessage, useBulkSelection } from "@/compone
 import { bulkDeleteProducts } from "@/lib/bulk-delete.functions";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import { formatCurrency } from "@/lib/commercial-constants";
+import { useState } from "react";
 
 const integrationsQueryOptions = () =>
   queryOptions({
@@ -56,7 +57,10 @@ function IntegrationsPage() {
     i.name, i.sku, i.supplier, i.style, i.color, i.pattern, i.size, i.description, i.code,
     i.size && `Tam ${i.size}`,
   ]);
-  const visible = search.results;
+  const [condicao, setCondicao] = useState<"todos" | "novo" | "seminovo">("todos");
+  const visible = search.results.filter(
+    (i) => condicao === "todos" || (i.condition === "seminovo" ? "seminovo" : "novo") === condicao,
+  );
   const selection = useBulkSelection(visible.map((i) => i.id));
 
   const removeMany = useMutation({
@@ -124,11 +128,29 @@ function IntegrationsPage() {
             onSelect={(id) => navigate({ to: "/produtos/$id", params: { id } })}
             placeholder="Pesquisar por nome, cor, estilo, tamanho, SKU..."
           />
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrar por condição">
+            {(
+              [
+                ["todos", "Todos"],
+                ["novo", "Novos"],
+                ["seminovo", "Seminovos"],
+              ] as const
+            ).map(([v, label]) => (
+              <Button
+                key={v}
+                size="sm"
+                variant={condicao === v ? "default" : "outline"}
+                onClick={() => setCondicao(v)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
         </CardHeader>
         <CardContent>
           {visible.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              {search.isSearching
+              {search.isSearching || condicao !== "todos"
                 ? "Nenhum resultado para a pesquisa."
                 : "Nenhum produto cadastrado."}
             </p>
@@ -155,7 +177,17 @@ function IntegrationsPage() {
                       navigate({ to: "/produtos/$id", params: { id: integration.id } })
                     }
                   >
-                    <p className="font-medium">{integration.name}</p>
+                    <p className="font-medium">
+                      {integration.name}
+                      {integration.condition === "seminovo" && (
+                        <Badge variant="outline" className="ml-2 align-middle">
+                          Seminovo
+                        </Badge>
+                      )}
+                    </p>
+                    {integration.condition === "seminovo" && integration.condition_notes && (
+                      <p className="text-xs text-muted-foreground">{integration.condition_notes}</p>
+                    )}
                     <p className="font-mono text-xs text-muted-foreground">{integration.sku ?? "Sem SKU"}</p>
                     <p className="text-sm text-muted-foreground">
                       {[integration.style, integration.color, integration.pattern, integration.size && `Tam. ${integration.size}`, `${Number(integration.stock ?? 0)} em estoque`]

@@ -111,6 +111,22 @@ function DashboardPage() {
         </CardContent>
       </Card>
 
+      {(data.seminovoProducts > 0 || data.conditions[1]!.pieces > 0) && (
+        <Card>
+          <CardHeader><CardTitle>Novos x Seminovos</CardTitle></CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            {data.conditions.map((c) => (
+              <div key={c.condition} className="space-y-1 rounded-md border p-3">
+                <p className="font-medium">{c.condition === "novo" ? "Novos (revenda)" : "Seminovos (peças próprias)"}</p>
+                <p className="text-sm text-muted-foreground">Faturamento <span className="font-semibold text-foreground">{formatCurrency(c.revenue)}</span></p>
+                <p className="text-sm text-muted-foreground">Lucro <span className="font-semibold text-foreground">{formatCurrency(c.profit)}</span>{c.revenue > 0 && ` · margem ${((c.profit / c.revenue) * 100).toFixed(1)}%`}</p>
+                <p className="text-sm text-muted-foreground">{c.pieces} peça(s) vendida(s)</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChannelChart title="Vendas por canal" data={data.channels} dataKey="revenue" />
         <ChannelChart title="Lucro por canal" data={data.channels} dataKey="profit" />

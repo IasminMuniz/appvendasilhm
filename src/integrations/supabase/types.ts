@@ -1121,6 +1121,8 @@ export type Database = {
           code: string | null
           color: string | null
           commercial_description: string | null
+          condition: string
+          condition_notes: string | null
           cost: number
           created_at: string
           description: string | null
@@ -1150,6 +1152,8 @@ export type Database = {
           code?: string | null
           color?: string | null
           commercial_description?: string | null
+          condition?: string
+          condition_notes?: string | null
           cost?: number
           created_at?: string
           description?: string | null
@@ -1179,6 +1183,8 @@ export type Database = {
           code?: string | null
           color?: string | null
           commercial_description?: string | null
+          condition?: string
+          condition_notes?: string | null
           cost?: number
           created_at?: string
           description?: string | null

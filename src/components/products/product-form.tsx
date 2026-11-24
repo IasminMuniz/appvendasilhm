@@ -21,11 +21,16 @@ export interface ProductFormValues {
   pattern: string;
   size: string;
   model_number: number | null;
+  /** Novo (revenda) ou seminovo (peça própria). */
+  condition: "novo" | "seminovo";
+  /** Estado da peça seminova: uso, marcas, defeitos. */
+  condition_notes: string;
 }
 
 export const emptyProduct: ProductFormValues = {
   name: "", description: "", price: 0, cost: 0, stock: 0, active: true,
   supplier: "PML Fashion", style: "", color: "", pattern: "", size: "", model_number: null,
+  condition: "novo", condition_notes: "",
 };
 
 function Pick({ id, label, value, options, onChange }: {
@@ -98,6 +103,36 @@ export function ProductForm({ initial, submitLabel, pending, error, onSubmit, pr
         <Label htmlFor="name">Nome do produto *</Label>
         <Input id="name" required value={f.name} onChange={(e) => set({ name: e.target.value })} />
       </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Pick
+          id="condition"
+          label="Condição"
+          value={f.condition}
+          options={[
+            { value: "novo", label: "Novo" },
+            { value: "seminovo", label: "Seminovo" },
+          ]}
+          onChange={(v) => set({ condition: v as "novo" | "seminovo" })}
+        />
+        {f.condition === "seminovo" && (
+          <div className="space-y-2">
+            <Label htmlFor="condition_notes">Estado da peça</Label>
+            <Input
+              id="condition_notes"
+              maxLength={300}
+              placeholder="Ex.: usada 2 vezes, sem defeitos"
+              value={f.condition_notes}
+              onChange={(e) => set({ condition_notes: e.target.value })}
+            />
+          </div>
+        )}
+      </div>
+      {f.condition === "seminovo" && (
+        <p className="text-xs text-muted-foreground">
+          Peça própria: deixe o custo em R$ 0 (ou o valor que você pagou) e o estoque em 1.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Pick id="supplier" label="Fornecedor" value={f.supplier} options={withCode(suppliers)} onChange={(v) => setCombo({ supplier: v })} />
