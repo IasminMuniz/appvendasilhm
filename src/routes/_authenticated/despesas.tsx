@@ -27,6 +27,7 @@ import {
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
 import {
   EXPENSE_STATUSES,
+  PAYMENT_METHODS,
   deleteExpense,
   listExpenses,
   saveExpense,
@@ -56,8 +57,10 @@ type Expense = Awaited<ReturnType<typeof listExpenses>>[number];
 type Form = {
   id?: string;
   expense_date: string;
+  purchase_date: string;
   description: string;
   category: string;
+  payment_method: string;
   amount: string;
   is_fixed: boolean;
   status: Status;
@@ -70,8 +73,10 @@ const ALL_MONTHS = "todos";
 const today = () => new Date().toISOString().slice(0, 10);
 const empty = (): Form => ({
   expense_date: today(),
+  purchase_date: today(),
   description: "",
   category: "",
+  payment_method: "",
   amount: "",
   is_fixed: false,
   status: "Pendente",
@@ -166,8 +171,10 @@ function ExpensesPage() {
     setForm({
       id: x.id,
       expense_date: x.expense_date,
+      purchase_date: x.purchase_date ?? x.expense_date,
       description: x.description,
       category: x.category ?? "",
+      payment_method: x.payment_method ?? "",
       amount: String(x.amount),
       is_fixed: x.is_fixed,
       status: statusOf(x),
@@ -281,8 +288,12 @@ function ExpensesPage() {
                       <p className="font-medium">{x.description}</p>
                       <p className="text-sm text-muted-foreground">
                         {[
-                          `${st === "Pago" ? "Data" : "Vence"} ${formatDate(x.expense_date)}`,
+                          x.purchase_date &&
+                            x.purchase_date !== x.expense_date &&
+                            `Compra ${formatDate(x.purchase_date)}`,
+                          `${st === "Pago" ? "Venceu" : "Vence"} ${formatDate(x.expense_date)}`,
                           x.category,
+                          x.payment_method,
                           x.paid_at && `Pago em ${formatDate(x.paid_at)}`,
                         ]
                           .filter(Boolean)
@@ -314,8 +325,10 @@ function ExpensesPage() {
                               data: {
                                 id: x.id,
                                 expense_date: x.expense_date,
+                                purchase_date: x.purchase_date ?? "",
                                 description: x.description,
                                 category: x.category ?? "",
+                                payment_method: x.payment_method ?? "",
                                 amount: Number(x.amount),
                                 is_fixed: x.is_fixed,
                                 status: "Pago",
@@ -411,7 +424,26 @@ function ExpensesPage() {
             >
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="ed">Data (vencimento ou cobrança)</Label>
+                  <Label htmlFor="pd">Data da compra</Label>
+                  <Input
+                    id="pd"
+                    type="date"
+                    required
+                    value={form.purchase_date}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      // Enquanto o vencimento acompanha a compra, ele segue junto.
+                      const follow = !form.id && form.expense_date === form.purchase_date;
+                      setForm({
+                        ...form,
+                        purchase_date: v,
+                        ...(follow ? { expense_date: v } : {}),
+                      });
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ed">Data de vencimento</Label>
                   <Input
                     id="ed"
                     type="date"
@@ -419,6 +451,9 @@ function ExpensesPage() {
                     value={form.expense_date}
                     onChange={(e) => setForm({ ...form, expense_date: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    No cartão de crédito, use o vencimento da fatura.
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="cat">Categoria</Label>
@@ -433,6 +468,24 @@ function ExpensesPage() {
                       {EXPENSE_CATEGORIES.map((c) => (
                         <SelectItem key={c} value={c}>
                           {c}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="pm">Forma de pagamento</Label>
+                  <Select
+                    value={form.payment_method || undefined}
+                    onValueChange={(v) => setForm({ ...form, payment_method: v })}
+                  >
+                    <SelectTrigger id="pm">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((m) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
                         </SelectItem>
                       ))}
                     </SelectContent>

@@ -275,10 +275,23 @@ export const deletePurchase = createServerFn({ method: "POST" })
 
 export const EXPENSE_STATUSES = ["Pendente", "Pago"] as const;
 
+export const PAYMENT_METHODS = [
+  "Pix",
+  "Cartão de crédito pessoal",
+  "Cartão de débito",
+  "Boleto",
+  "Dinheiro",
+  "Outro",
+] as const;
+
 const expenseSchema = z.object({
+  /** Vencimento: decide o mês da despesa e quando ela fica vencida. */
   expense_date: z.string().min(8),
+  /** Data da compra (opcional). Ex.: compra no cartão em 22/11, fatura vence 10/12. */
+  purchase_date: z.string().optional().or(z.literal("")),
   description: z.string().min(1, "Descrição é obrigatória").max(300),
   category: z.string().max(80).optional().or(z.literal("")),
+  payment_method: z.string().max(60).optional().or(z.literal("")),
   amount: z.coerce.number().min(0),
   is_fixed: z.boolean().default(false),
   status: z.enum(EXPENSE_STATUSES).default("Pendente"),
@@ -298,7 +311,8 @@ export function addMonths(isoDate: string, n: number): string {
   return target.toISOString().slice(0, 10);
 }
 
-const isMissingColumn = (msg: string) => /status|paid_at|series_id|column|schema cache/i.test(msg);
+const isMissingColumn = (msg: string) =>
+  /status|paid_at|series_id|purchase_date|payment_method|column|schema cache/i.test(msg);
 
 export const listExpenses = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -316,18 +330,22 @@ export const saveExpense = createServerFn({ method: "POST" })
   .inputValidator((d) => expenseSchema.extend({ id: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
-    const { id, status, paid_at, repeat_months, ...r } = data;
-    const base = { ...r, category: r.category || null };
+    const { id, status, paid_at, repeat_months, purchase_date, ...r } = data;
+    const base = { ...r, category: r.category || null, payment_method: r.payment_method || null };
+    const bought = purchase_date || r.expense_date;
     const paid = status === "Pago" ? paid_at || new Date().toISOString().slice(0, 10) : null;
 
     if (id) {
       let { error } = await sb
         .from("expenses")
-        .update({ ...base, status, paid_at: paid })
+        .update({ ...base, status, paid_at: paid, purchase_date: bought })
         .eq("id", id);
       // Banco ainda sem as colunas de pagamento: salva sem elas.
       if (error && isMissingColumn(error.message))
-        ({ error } = await sb.from("expenses").update(base).eq("id", id));
+        ({ error } = await sb
+          .from("expenses")
+          .update({ ...base, payment_method: undefined })
+          .eq("id", id));
       if (error) throw new Error(error.message);
       return { ok: true, created: 0 };
     }
@@ -338,6 +356,7 @@ export const saveExpense = createServerFn({ method: "POST" })
     const rows = Array.from({ length: months }, (_, i) => ({
       ...base,
       expense_date: addMonths(r.expense_date, i),
+      purchase_date: addMonths(bought, i),
       status: i === 0 ? status : "Pendente",
       paid_at: i === 0 ? paid : null,
       series_id: seriesId,
@@ -347,7 +366,18 @@ export const saveExpense = createServerFn({ method: "POST" })
     if (error && isMissingColumn(error.message)) {
       ({ error } = await sb
         .from("expenses")
-        .insert(rows.map(({ status: _s, paid_at: _p, series_id: _id, ...rest }) => rest)));
+        .insert(
+          rows.map(
+            ({
+              status: _s,
+              paid_at: _p,
+              series_id: _id,
+              purchase_date: _b,
+              payment_method: _m,
+              ...rest
+            }) => rest,
+          ),
+        ));
     }
     if (error) throw new Error(error.message);
     return { ok: true, created: rows.length };
