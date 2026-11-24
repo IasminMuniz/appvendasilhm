@@ -25,6 +25,15 @@ import {
 } from "@/lib/freight.functions";
 import { freightSummary, type FreightQuote } from "@/lib/freight";
 import { formatCurrency } from "@/lib/commercial-constants";
+import { listOrders } from "@/lib/orders.functions";
+import { saleCode } from "@/lib/sales";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export const Route = createFileRoute("/_authenticated/frete")({
   validateSearch: z.object({
@@ -57,6 +66,15 @@ function FretePage() {
   const [valor, setValor] = useState(search.valor ? String(search.valor).replace(".", ",") : "");
   const [quotes, setQuotes] = useState<FreightQuote[]>([]);
   const [escolhido, setEscolhido] = useState<FreightQuote | null>(null);
+  // Venda que recebe o frete: a de origem (botão na venda) ou escolhida aqui.
+  const [vendaEscolhida, setVendaEscolhida] = useState("");
+  const pedidoId = search.pedido ?? vendaEscolhida;
+  const vendas = useQuery({
+    queryKey: ["orders"],
+    queryFn: () => listOrders(),
+    enabled: !!escolhido && !search.pedido,
+  });
+  const vendasAbertas = (vendas.data ?? []).filter((o) => o.status !== "cancelado");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
@@ -64,7 +82,7 @@ function FretePage() {
     mutationFn: (quem_paga: "loja" | "cliente") =>
       usarFreteNaVenda({
         data: {
-          order_id: search.pedido!,
+          order_id: pedidoId,
           transportadora: escolhido!.transportadora,
           servico: escolhido!.servico,
           preco: escolhido!.preco,
@@ -75,15 +93,18 @@ function FretePage() {
     onSuccess: () => {
       toast.success("Frete lançado na venda");
       setEscolhido(null);
-      queryClient.invalidateQueries({ queryKey: ["order", search.pedido] });
+      queryClient.invalidateQueries({ queryKey: ["order", pedidoId] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      navigate({ to: "/pedidos/$id", params: { id: search.pedido! } });
+      navigate({ to: "/pedidos/$id", params: { id: pedidoId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const settings = useQuery({ queryKey: ["freight-settings"], queryFn: () => getFreightSettings() });
+  const settings = useQuery({
+    queryKey: ["freight-settings"],
+    queryFn: () => getFreightSettings(),
+  });
   const [origin, setOrigin] = useState("");
   const [email, setEmail] = useState("");
   useEffect(() => {
@@ -131,9 +152,8 @@ function FretePage() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Cotar Frete</h1>
         <p className="text-muted-foreground">
-          {search.pedido
-            ? 'Cotação pelo Melhor Envio. Escolha uma opção e toque em "Usar este frete" para lançar na venda.'
-            : "Cotação pelo Melhor Envio."}
+          Cotação pelo Melhor Envio. Toque em &quot;Usar este frete&quot; para lançar a opção na
+          venda.
         </p>
       </div>
 
@@ -144,7 +164,11 @@ function FretePage() {
         <CardContent className="grid gap-4 sm:grid-cols-3">
           <div className="space-y-1">
             <Label>CEP de origem da loja</Label>
-            <Input value={origin} onChange={(e) => setOrigin(maskCep(e.target.value))} placeholder="00000-000" />
+            <Input
+              value={origin}
+              onChange={(e) => setOrigin(maskCep(e.target.value))}
+              placeholder="00000-000"
+            />
           </div>
           <div className="space-y-1">
             <Label>E-mail de contato (Melhor Envio)</Label>
@@ -172,7 +196,12 @@ function FretePage() {
           >
             <div className="space-y-1">
               <Label>CEP de destino</Label>
-              <Input value={cep} onChange={(e) => setCep(maskCep(e.target.value))} placeholder="00000-000" required />
+              <Input
+                value={cep}
+                onChange={(e) => setCep(maskCep(e.target.value))}
+                placeholder="00000-000"
+                required
+              />
             </div>
             <div className="space-y-1">
               <Label>Peso (kg)</Label>
@@ -217,7 +246,9 @@ function FretePage() {
             {quotes.map((q, i) => (
               <Card key={i}>
                 <CardContent className="flex items-center gap-3 p-4">
-                  {q.logo && <img src={q.logo} alt={q.transportadora} className="h-10 w-16 object-contain" />}
+                  {q.logo && (
+                    <img src={q.logo} alt={q.transportadora} className="h-10 w-16 object-contain" />
+                  )}
                   <div className="min-w-0 flex-1">
                     <p className="font-medium">{q.transportadora}</p>
                     <p className="text-sm text-muted-foreground">{q.servico}</p>
@@ -227,12 +258,10 @@ function FretePage() {
                   </div>
                   <div className="flex flex-col items-end gap-2">
                     <p className="text-lg font-bold">{formatCurrency(q.preco)}</p>
-                    {search.pedido && (
-                      <Button size="sm" onClick={() => setEscolhido(q)}>
-                        <Check className="mr-1 h-4 w-4" />
-                        Usar este frete
-                      </Button>
-                    )}
+                    <Button size="sm" onClick={() => setEscolhido(q)}>
+                      <Check className="mr-1 h-4 w-4" />
+                      Usar este frete
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -249,6 +278,31 @@ function FretePage() {
                 `${escolhido.transportadora} ${escolhido.servico} – ${formatCurrency(escolhido.preco)}`}
             </DialogDescription>
           </DialogHeader>
+          {!search.pedido && (
+            <div className="space-y-2">
+              <Label htmlFor="venda">Em qual venda?</Label>
+              <Select value={vendaEscolhida || undefined} onValueChange={setVendaEscolhida}>
+                <SelectTrigger id="venda">
+                  <SelectValue
+                    placeholder={vendas.isLoading ? "Carregando vendas..." : "Selecione a venda"}
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendasAbertas.map((o, i) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {saleCode(o.order_number ?? vendasAbertas.length - i)} ·{" "}
+                      {o.customers?.name ?? "Cliente"} · {formatCurrency(Number(o.total ?? 0))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!vendas.isLoading && vendasAbertas.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Nenhuma venda aberta. Lance a venda primeiro em Vendas.
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2 text-sm text-muted-foreground">
             <p>
               <strong className="text-foreground">A cliente paga:</strong> o frete fica anotado na
@@ -262,12 +316,15 @@ function FretePage() {
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
-              disabled={aplicar.isPending}
+              disabled={aplicar.isPending || !pedidoId}
               onClick={() => aplicar.mutate("loja")}
             >
               Por minha conta
             </Button>
-            <Button disabled={aplicar.isPending} onClick={() => aplicar.mutate("cliente")}>
+            <Button
+              disabled={aplicar.isPending || !pedidoId}
+              onClick={() => aplicar.mutate("cliente")}
+            >
               A cliente paga
             </Button>
           </DialogFooter>
