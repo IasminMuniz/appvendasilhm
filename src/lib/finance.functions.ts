@@ -416,6 +416,40 @@ export const deleteExpense = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Aportes: dinheiro seu colocado na loja (o inicial e os que vierem depois). */
+const contributionSchema = z.object({
+  contribution_date: z.string().min(8),
+  amount: z.coerce.number().positive("Informe o valor do aporte"),
+  description: z.string().max(200).optional().or(z.literal("")),
+});
+
+export const saveContribution = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => contributionSchema.extend({ id: z.string().uuid().optional() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { id, ...r } = data;
+    const row = { ...r, description: r.description || null };
+    const { error } = id
+      ? await context.supabase.from("capital_contributions").update(row).eq("id", id)
+      : await context.supabase
+          .from("capital_contributions")
+          .insert({ ...row, created_by: context.userId });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteContribution = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) => idSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("capital_contributions")
+      .delete()
+      .eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 /** Indicadores do mês (YYYY-MM) para o dashboard da loja. */
 export const getStoreDashboard = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -522,7 +556,7 @@ export const getCashFlow = createServerFn({ method: "GET" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
     await recountStock(sb);
-    const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes] =
+    const [ordersRes, purchasesRes, expensesRes, productsRes, plan, paymentsRes, contribRes] =
       await Promise.all([
         sb.from("orders").select("*, customers(name)").neq("status", "cancelado"),
         sb.from("purchases").select("*"),
@@ -535,6 +569,11 @@ export const getCashFlow = createServerFn({ method: "GET" })
         fetchCashPlan(sb),
         // Parcelas das clientes (se a migration ainda não foi aplicada, vem com erro e é ignorado).
         sb.from("order_payments").select("order_id, number, due_date, amount, status, paid_at"),
+        // Aportes (se a migration ainda não foi aplicada, vem com erro e é ignorado).
+        sb
+          .from("capital_contributions")
+          .select("*")
+          .order("contribution_date", { ascending: false }),
       ]);
     for (const r of [ordersRes, purchasesRes, expensesRes, productsRes])
       if (r.error) throw new Error(r.error.message);
@@ -661,9 +700,22 @@ export const getCashFlow = createServerFn({ method: "GET" })
       .filter((e) => !isPaid(e) && e.expense_date <= in30)
       .sort((a, b) => a.expense_date.localeCompare(b.expense_date));
 
+    const contributions = contribRes.error ? [] : (contribRes.data ?? []);
+    const contributed = sumBy(contributions, (c) => n(c.amount));
+    // Dinheiro da loja agora: aportes + o que entrou das vendas − tudo que já saiu.
+    const cashOnHand = Math.round((contributed + totalIn - totalOut) * 100) / 100;
+
     return {
       plan,
       balance,
+      contributions: contributions.map((c) => ({
+        id: c.id,
+        date: c.contribution_date,
+        amount: n(c.amount),
+        description: c.description ?? "",
+      })),
+      contributed,
+      cashOnHand,
       totalIn,
       totalOut,
       period,

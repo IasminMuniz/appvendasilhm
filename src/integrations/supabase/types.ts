@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      capital_contributions: {
+        Row: {
+          amount: number
+          contribution_date: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+        }
+        Insert: {
+          amount?: number
+          contribution_date?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          amount?: number
+          contribution_date?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       commercial_alerts: {
         Row: {
           created_at: string

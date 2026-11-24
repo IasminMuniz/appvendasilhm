@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getCashFlow } from "@/lib/finance.functions";
+import { Trash2 } from "lucide-react";
+import { deleteContribution, getCashFlow, saveContribution } from "@/lib/finance.functions";
 import { saveCashPlan } from "@/lib/store.functions";
 import { formatCurrency, formatDate } from "@/lib/commercial-constants";
 
@@ -105,6 +106,32 @@ function CashPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [aporte, setAporte] = useState({
+    contribution_date: new Date().toISOString().slice(0, 10),
+    amount: "",
+    description: "",
+  });
+  const refreshCash = () => {
+    for (const k of ["cash-flow", "dashboard"]) qc.invalidateQueries({ queryKey: [k] });
+  };
+  const addAporte = useMutation({
+    mutationFn: saveContribution,
+    onSuccess: () => {
+      refreshCash();
+      setAporte({ ...aporte, amount: "", description: "" });
+      toast.success("Aporte registrado.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const removeAporte = useMutation({
+    mutationFn: deleteContribution,
+    onSuccess: () => {
+      refreshCash();
+      toast.success("Aporte excluído.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const s = data.split;
   const p = data.plan;
   const pots: { label: string; value: number; hint: string }[] = [
@@ -168,6 +195,16 @@ function CashPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Stat
+          title="Você aportou"
+          value={data.contributed}
+          hint="Dinheiro seu colocado na loja: o aporte inicial e os seguintes."
+        />
+        <Stat
+          title="Dinheiro da loja agora"
+          value={data.cashOnHand}
+          hint="Aportes + o que entrou das vendas − tudo que já saiu. Se ficar negativo, falta aportar."
+        />
         <Stat
           title="Você já investiu"
           value={data.totalOut}
@@ -362,6 +399,92 @@ function CashPage() {
                     {r.count > 1 ? ` · ${r.number}/${r.count}` : ""} · {formatCurrency(r.amount)}
                     {r.overdue ? " (atrasada)" : ""}
                   </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Aportes</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Dinheiro seu colocado na loja. Inclua também a fatura do cartão pessoal quando pagar
+            despesas da loja com o seu dinheiro. Total: {formatCurrency(data.contributed)}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <form
+            className="grid gap-3 sm:grid-cols-[auto_auto_1fr_auto] sm:items-end"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addAporte.mutate({
+                data: { ...aporte, amount: Number(aporte.amount || 0) },
+              });
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="ap-date">Data</Label>
+              <Input
+                id="ap-date"
+                type="date"
+                required
+                value={aporte.contribution_date}
+                onChange={(e) => setAporte({ ...aporte, contribution_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ap-amount">Valor (R$)</Label>
+              <Input
+                id="ap-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={aporte.amount}
+                onChange={(e) => setAporte({ ...aporte, amount: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ap-desc">Descrição</Label>
+              <Input
+                id="ap-desc"
+                placeholder="Ex.: Aporte inicial"
+                value={aporte.description}
+                onChange={(e) => setAporte({ ...aporte, description: e.target.value })}
+              />
+            </div>
+            <Button type="submit" disabled={addAporte.isPending}>
+              {addAporte.isPending ? "Salvando..." : "Adicionar aporte"}
+            </Button>
+          </form>
+          {data.contributions.length === 0 ? (
+            <p className="text-muted-foreground">Nenhum aporte registrado.</p>
+          ) : (
+            <ul className="divide-y">
+              {data.contributions.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2">
+                  <span>
+                    {formatDate(c.date)}
+                    {c.description ? ` · ${c.description}` : ""}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold">{formatCurrency(c.amount)}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Excluir aporte"
+                      title="Excluir aporte"
+                      disabled={removeAporte.isPending}
+                      onClick={() => {
+                        if (window.confirm("Excluir este aporte?"))
+                          removeAporte.mutate({ data: { id: c.id } });
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </span>
                 </li>
               ))}
             </ul>
