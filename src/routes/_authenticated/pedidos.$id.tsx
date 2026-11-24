@@ -152,7 +152,20 @@ function OrderDetailPage() {
             {new Date(order.created_at).toLocaleDateString("pt-BR")}
           </p>
         </div>
-        <Badge variant="outline">{ORDER_STATUS_LABELS[order.status] ?? order.status}</Badge>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link
+              to="/frete"
+              search={{
+                cep: (order.customers as any)?.postal_code ?? undefined,
+                valor: Number(order.total ?? 0) || undefined,
+              }}
+            >
+              Cotar frete
+            </Link>
+          </Button>
+          <Badge variant="outline">{ORDER_STATUS_LABELS[order.status] ?? order.status}</Badge>
+        </div>
       </div>
 
       <Card>

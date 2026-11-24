@@ -23,6 +23,7 @@ import { Route as AuthenticatedDespesasRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedEventosRouteImport } from './routes/_authenticated/eventos'
 import { Route as AuthenticatedExportacaoRouteImport } from './routes/_authenticated/exportacao'
 import { Route as AuthenticatedFornecedoresRouteImport } from './routes/_authenticated/fornecedores'
+import { Route as AuthenticatedFreteRouteImport } from './routes/_authenticated/frete'
 import { Route as AuthenticatedLeadsRouteImport } from './routes/_authenticated/leads'
 import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
 import { Route as AuthenticatedOportunidadesRouteImport } from './routes/_authenticated/oportunidades'
@@ -115,6 +116,11 @@ const AuthenticatedFornecedoresRoute =
     path: '/fornecedores',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFreteRoute = AuthenticatedFreteRouteImport.update({
+  id: '/frete',
+  path: '/frete',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedLeadsRoute = AuthenticatedLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
@@ -237,6 +243,7 @@ export interface FileRoutesByFullPath {
   '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/frete': typeof AuthenticatedFreteRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -271,6 +278,7 @@ export interface FileRoutesByTo {
   '/eventos': typeof AuthenticatedEventosRoute
   '/exportacao': typeof AuthenticatedExportacaoRoute
   '/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/frete': typeof AuthenticatedFreteRoute
   '/leads': typeof AuthenticatedLeadsRoute
   '/metas': typeof AuthenticatedMetasRoute
   '/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -307,6 +315,7 @@ export interface FileRoutesById {
   '/_authenticated/eventos': typeof AuthenticatedEventosRoute
   '/_authenticated/exportacao': typeof AuthenticatedExportacaoRoute
   '/_authenticated/fornecedores': typeof AuthenticatedFornecedoresRoute
+  '/_authenticated/frete': typeof AuthenticatedFreteRoute
   '/_authenticated/leads': typeof AuthenticatedLeadsRoute
   '/_authenticated/metas': typeof AuthenticatedMetasRoute
   '/_authenticated/oportunidades': typeof AuthenticatedOportunidadesRoute
@@ -343,6 +352,7 @@ export interface FileRouteTypes {
     | '/eventos'
     | '/exportacao'
     | '/fornecedores'
+    | '/frete'
     | '/leads'
     | '/metas'
     | '/oportunidades'
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/eventos'
     | '/exportacao'
     | '/fornecedores'
+    | '/frete'
     | '/leads'
     | '/metas'
     | '/oportunidades'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/_authenticated/eventos'
     | '/_authenticated/exportacao'
     | '/_authenticated/fornecedores'
+    | '/_authenticated/frete'
     | '/_authenticated/leads'
     | '/_authenticated/metas'
     | '/_authenticated/oportunidades'
@@ -542,6 +554,13 @@ declare module '@tanstack/react-router' {
       path: '/fornecedores'
       fullPath: '/fornecedores'
       preLoaderRoute: typeof AuthenticatedFornecedoresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/frete': {
+      id: '/_authenticated/frete'
+      path: '/frete'
+      fullPath: '/frete'
+      preLoaderRoute: typeof AuthenticatedFreteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/leads': {
@@ -703,6 +722,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedEventosRoute: typeof AuthenticatedEventosRoute
   AuthenticatedExportacaoRoute: typeof AuthenticatedExportacaoRoute
   AuthenticatedFornecedoresRoute: typeof AuthenticatedFornecedoresRoute
+  AuthenticatedFreteRoute: typeof AuthenticatedFreteRoute
   AuthenticatedLeadsRoute: typeof AuthenticatedLeadsRoute
   AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
   AuthenticatedOportunidadesRoute: typeof AuthenticatedOportunidadesRoute
@@ -730,6 +750,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedEventosRoute: AuthenticatedEventosRoute,
   AuthenticatedExportacaoRoute: AuthenticatedExportacaoRoute,
   AuthenticatedFornecedoresRoute: AuthenticatedFornecedoresRoute,
+  AuthenticatedFreteRoute: AuthenticatedFreteRoute,
   AuthenticatedLeadsRoute: AuthenticatedLeadsRoute,
   AuthenticatedMetasRoute: AuthenticatedMetasRoute,
   AuthenticatedOportunidadesRoute: AuthenticatedOportunidadesRoute,

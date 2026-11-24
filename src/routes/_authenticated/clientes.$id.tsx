@@ -197,12 +197,19 @@ function CustomerDetailPage() {
             Voltar
           </Link>
         </Button>
+        <div className="flex gap-2">
+        <Button variant="outline" asChild>
+          <Link to="/frete" search={{ cep: (c as any).postal_code ?? undefined }}>
+            Cotar frete
+          </Link>
+        </Button>
         <Button variant="outline" asChild>
           <Link to="/clientes/$id/editar" params={{ id: c.id }}>
             <Pencil className="mr-2 h-4 w-4" />
             Editar cadastro
           </Link>
         </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-start justify-between gap-4">

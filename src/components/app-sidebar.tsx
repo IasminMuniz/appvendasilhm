@@ -13,6 +13,7 @@ import {
   Truck,
   BookOpen,
   Wallet,
+  PackageSearch,
 } from "lucide-react";
 
 import {
@@ -39,6 +40,7 @@ const items = [
   { title: "Vendas", url: "/pedidos", icon: ShoppingCart },
   { title: "Compras", url: "/compras", icon: PackagePlus },
   { title: "Fornecedores", url: "/fornecedores", icon: Truck },
+  { title: "Cotar Frete", url: "/frete", icon: PackageSearch },
   { title: "Despesas", url: "/despesas", icon: Receipt },
   { title: "Códigos", url: "/codigos", icon: BookOpen },
   { title: "Exportação", url: "/exportacao", icon: Download },
