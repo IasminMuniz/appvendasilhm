@@ -207,6 +207,47 @@ function CashPage() {
       </div>
 
       <Card>
+        <CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+          <div>
+            <CardTitle>Contas a pagar (próximos 30 dias)</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Despesas lançadas como Pendente. Total: {formatCurrency(data.upcomingTotal)}
+            </p>
+          </div>
+          <Button asChild size="sm" variant="outline">
+            <Link to="/despesas">Ver em Despesas</Link>
+          </Button>
+        </CardHeader>
+        <CardContent className="text-sm">
+          {data.upcoming.length === 0 ? (
+            <p className="text-muted-foreground">Nenhuma conta pendente nos próximos 30 dias.</p>
+          ) : (
+            <table className="w-full">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="py-1 text-left font-medium">Vencimento</th>
+                  <th className="py-1 text-left font-medium">Conta</th>
+                  <th className="py-1 text-right font-medium">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {data.upcoming.map((u) => (
+                  <tr key={u.description + u.date} className={u.overdue ? "text-destructive" : ""}>
+                    <td className="py-1.5">
+                      {formatDate(u.date)}
+                      {u.overdue ? " (vencida)" : ""}
+                    </td>
+                    <td className="py-1.5">{u.description}</td>
+                    <td className="py-1.5 text-right">{formatCurrency(u.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Para onde vai o dinheiro das vendas ({periodLabel})</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -297,22 +338,6 @@ function CashPage() {
               </div>
             ) : (
               <p className="text-muted-foreground">Nenhum produto acabando.</p>
-            )}
-            {data.upcoming.length > 0 && (
-              <div>
-                <p className="font-medium">Contas dos próximos 30 dias:</p>
-                <ul className="mt-1 space-y-1">
-                  {data.upcoming.map((u) => (
-                    <li
-                      key={u.description + u.date}
-                      className={u.overdue ? "text-destructive" : ""}
-                    >
-                      {formatDate(u.date)} · {u.description} · {formatCurrency(u.amount)}
-                      {u.overdue ? " (vencida)" : ""}
-                    </li>
-                  ))}
-                </ul>
-              </div>
             )}
           </CardContent>
         </Card>
