@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { parseQuotes } from "@/lib/freight";
+import { effectivePackaging, profitOf } from "@/lib/sales";
+import { reservePctOf } from "@/lib/order-recalc";
 
 const KEY = "freight_settings";
 
@@ -90,4 +92,85 @@ export const cotarFrete = createServerFn({ method: "POST" })
     if (quotes.length === 0)
       throw new Error("Nenhuma transportadora atende esse CEP com este pacote.");
     return { quotes };
+  });
+
+/**
+ * Lança o frete escolhido na venda.
+ * - "loja": frete por conta da loja → entra em Outros custos (tipo Frete/entrega) e reduz o lucro.
+ * - "cliente": cliente paga à parte → só registra na observação, sem mexer no lucro.
+ * Reaplicar troca o frete anterior em vez de somar de novo.
+ */
+export const usarFreteNaVenda = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        order_id: z.string().uuid(),
+        transportadora: z.string().min(1).max(80),
+        servico: z.string().max(80),
+        preco: z.coerce.number().positive().max(10000),
+        prazo_dias: z.coerce.number().int().min(0).max(120).nullable().optional(),
+        quem_paga: z.enum(["loja", "cliente"]),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: order, error: readError } = await context.supabase
+      .from("orders")
+      .select("*")
+      .eq("id", data.order_id)
+      .single();
+    if (readError || !order) throw new Error("Venda não encontrada.");
+
+    const FRETE = "Frete/entrega";
+    const prevCost = Number(order.other_costs ?? 0);
+    const prevIsFreight = order.other_cost_type === FRETE;
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    let otherCosts = prevCost;
+    let otherType: string | null = order.other_cost_type ?? null;
+    if (data.quem_paga === "loja") {
+      if (prevIsFreight || prevCost === 0) {
+        otherCosts = data.preco;
+        otherType = FRETE;
+      } else {
+        otherCosts = round2(prevCost + data.preco); // já havia outro custo: soma
+      }
+    } else if (prevIsFreight) {
+      otherCosts = 0; // frete que estava por conta da loja passou para a cliente
+      otherType = null;
+    }
+
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const linha =
+      `Frete: ${data.transportadora} ${data.servico} – ${fmt(data.preco)}` +
+      (data.prazo_dias != null ? ` – ${data.prazo_dias} dia(s) úteis` : "") +
+      (data.quem_paga === "loja" ? " (por conta da loja)" : " (pago pela cliente)");
+    const outras = String(order.notes ?? "")
+      .split("\n")
+      .filter((l) => l.trim() && !l.startsWith("Frete: "));
+    const notes = [linha, ...outras].join("\n");
+
+    const { profit, margin } = profitOf({
+      total: Number(order.total ?? 0),
+      channelFee: Number(order.channel_fee ?? 0),
+      otherCosts,
+      productCost: Number(order.product_cost ?? 0),
+      packaging: effectivePackaging(order),
+      reservePct: await reservePctOf(context.supabase),
+    });
+
+    const { error } = await context.supabase
+      .from("orders")
+      .update({
+        other_costs: otherCosts,
+        other_cost_type: otherType,
+        delivery_method: "Correios/plataforma de frete",
+        notes,
+        profit,
+        margin_percent: margin,
+      })
+      .eq("id", data.order_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });

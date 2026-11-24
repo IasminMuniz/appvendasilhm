@@ -1,20 +1,37 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Copy, Truck } from "lucide-react";
+import { Check, Copy, Truck } from "lucide-react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { maskCep } from "@/lib/masks";
-import { cotarFrete, getFreightSettings, saveFreightSettings } from "@/lib/freight.functions";
+import {
+  cotarFrete,
+  getFreightSettings,
+  saveFreightSettings,
+  usarFreteNaVenda,
+} from "@/lib/freight.functions";
 import { freightSummary, type FreightQuote } from "@/lib/freight";
 import { formatCurrency } from "@/lib/commercial-constants";
 
 export const Route = createFileRoute("/_authenticated/frete")({
-  validateSearch: z.object({ cep: z.string().optional(), valor: z.coerce.number().optional() }),
+  validateSearch: z.object({
+    cep: z.string().optional(),
+    valor: z.coerce.number().optional(),
+    pedido: z.string().uuid().optional(),
+  }),
   head: () => ({
     meta: [
       { title: "Cotar Frete | Nexus 360" },
@@ -39,6 +56,32 @@ function FretePage() {
   const [comp, setComp] = useState("25");
   const [valor, setValor] = useState(search.valor ? String(search.valor).replace(".", ",") : "");
   const [quotes, setQuotes] = useState<FreightQuote[]>([]);
+  const [escolhido, setEscolhido] = useState<FreightQuote | null>(null);
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const aplicar = useMutation({
+    mutationFn: (quem_paga: "loja" | "cliente") =>
+      usarFreteNaVenda({
+        data: {
+          order_id: search.pedido!,
+          transportadora: escolhido!.transportadora,
+          servico: escolhido!.servico,
+          preco: escolhido!.preco,
+          prazo_dias: escolhido!.prazo_dias,
+          quem_paga,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Frete lançado na venda");
+      setEscolhido(null);
+      queryClient.invalidateQueries({ queryKey: ["order", search.pedido] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      navigate({ to: "/pedidos/$id", params: { id: search.pedido! } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const settings = useQuery({ queryKey: ["freight-settings"], queryFn: () => getFreightSettings() });
   const [origin, setOrigin] = useState("");
@@ -87,7 +130,11 @@ function FretePage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Cotar Frete</h1>
-        <p className="text-muted-foreground">Cotação pelo Melhor Envio.</p>
+        <p className="text-muted-foreground">
+          {search.pedido
+            ? 'Cotação pelo Melhor Envio. Escolha uma opção e toque em "Usar este frete" para lançar na venda.'
+            : "Cotação pelo Melhor Envio."}
+        </p>
       </div>
 
       <Card>
@@ -178,13 +225,54 @@ function FretePage() {
                       <p className="text-sm text-muted-foreground">{q.prazo_dias} dia(s) úteis</p>
                     )}
                   </div>
-                  <p className="text-lg font-bold">{formatCurrency(q.preco)}</p>
+                  <div className="flex flex-col items-end gap-2">
+                    <p className="text-lg font-bold">{formatCurrency(q.preco)}</p>
+                    {search.pedido && (
+                      <Button size="sm" onClick={() => setEscolhido(q)}>
+                        <Check className="mr-1 h-4 w-4" />
+                        Usar este frete
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
         </div>
       )}
+      <Dialog open={!!escolhido} onOpenChange={(o) => !o && setEscolhido(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Quem paga o frete?</DialogTitle>
+            <DialogDescription>
+              {escolhido &&
+                `${escolhido.transportadora} ${escolhido.servico} – ${formatCurrency(escolhido.preco)}`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              <strong className="text-foreground">A cliente paga:</strong> o frete fica anotado na
+              venda e não muda o lucro (o valor só passa por você).
+            </p>
+            <p>
+              <strong className="text-foreground">Por minha conta:</strong> o frete entra em Outros
+              custos e é descontado do lucro (frete grátis).
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              disabled={aplicar.isPending}
+              onClick={() => aplicar.mutate("loja")}
+            >
+              Por minha conta
+            </Button>
+            <Button disabled={aplicar.isPending} onClick={() => aplicar.mutate("cliente")}>
+              A cliente paga
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

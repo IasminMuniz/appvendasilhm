@@ -159,6 +159,7 @@ function OrderDetailPage() {
               search={{
                 cep: (order.customers as any)?.postal_code ?? undefined,
                 valor: Number(order.total ?? 0) || undefined,
+                pedido: order.id,
               }}
             >
               Cotar frete
