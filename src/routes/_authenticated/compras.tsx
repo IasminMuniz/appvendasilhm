@@ -219,7 +219,7 @@ function PurchasesPage() {
             <div className="divide-y">
               {visible.map((p) => (
                 <div key={p.id} className="flex items-start justify-between gap-3 py-3">
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-xs text-muted-foreground">{code(p.id)}</span>
                       <p className="font-medium">{p.supplier || "Sem fornecedor"}</p>
@@ -237,19 +237,56 @@ function PurchasesPage() {
                         .join(" · ")}
                     </p>
                     {p.purchase_items.length > 0 ? (
-                      <ul className="text-sm">
-                        {p.purchase_items.map((i) => (
-                          <li key={i.id}>
-                            {i.quantity}× {i.products?.name ?? i.description} —{" "}
-                            {formatCurrency(Number(i.amount))}
-                            {i.products?.sku && (
-                              <span className="ml-1 font-mono text-xs text-muted-foreground">
-                                {i.products.sku}
-                              </span>
-                            )}
-                          </li>
-                        ))}
-                      </ul>
+                      <div className="overflow-x-auto rounded-md border">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50 text-xs text-muted-foreground">
+                            <tr>
+                              <th className="px-2 py-1.5 text-left font-medium">Produto</th>
+                              <th className="px-2 py-1.5 text-left font-medium">SKU</th>
+                              <th className="px-2 py-1.5 text-right font-medium">Qtd.</th>
+                              <th className="px-2 py-1.5 text-right font-medium">
+                                Preço de 1 peça
+                              </th>
+                              <th className="px-2 py-1.5 text-right font-medium">Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {p.purchase_items.map((i) => (
+                              <tr key={i.id}>
+                                <td className="px-2 py-1.5">{i.products?.name ?? i.description}</td>
+                                <td className="whitespace-nowrap px-2 py-1.5 font-mono text-xs text-muted-foreground">
+                                  {i.products?.sku ?? "—"}
+                                </td>
+                                <td className="px-2 py-1.5 text-right">{i.quantity}</td>
+                                <td className="whitespace-nowrap px-2 py-1.5 text-right">
+                                  {formatCurrency(
+                                    Number(i.amount) / Math.max(1, Number(i.quantity)),
+                                  )}
+                                </td>
+                                <td className="whitespace-nowrap px-2 py-1.5 text-right">
+                                  {formatCurrency(Number(i.amount))}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot className="border-t text-xs">
+                            <tr>
+                              <td className="px-2 py-1.5 font-medium" colSpan={2}>
+                                Total
+                              </td>
+                              <td className="px-2 py-1.5 text-right font-medium">
+                                {p.purchase_items.reduce((t, i) => t + Number(i.quantity), 0)}
+                              </td>
+                              <td />
+                              <td className="whitespace-nowrap px-2 py-1.5 text-right font-medium">
+                                {formatCurrency(
+                                  p.purchase_items.reduce((t, i) => t + Number(i.amount), 0),
+                                )}
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
                     ) : (
                       <p className="text-sm">{p.description}</p>
                     )}
