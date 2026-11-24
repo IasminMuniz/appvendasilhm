@@ -286,7 +286,7 @@ function PurchasesPage() {
       </Card>
 
       <Dialog open={!!form} onOpenChange={(o) => !o && setForm(null)}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{form?.id ? `Editar compra ${code(form.id)}` : "Nova compra"}</DialogTitle>
           </DialogHeader>
@@ -385,87 +385,86 @@ function PurchasesPage() {
 
               <div className="space-y-2">
                 <Label>Itens</Label>
+                <div className="hidden gap-2 px-1 text-xs text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1fr)_4.5rem_7rem_6.5rem_2.25rem]">
+                  <span>Produto</span>
+                  <span>Qtd.</span>
+                  <span>Preço de 1 peça</span>
+                  <span>Total</span>
+                  <span />
+                </div>
                 {form.items.map((it, idx) => (
-                  <div key={idx} className="space-y-2 rounded-md border p-3">
-                    <div className="flex items-end gap-2">
-                      <div className="flex-1 space-y-1">
-                        <span className="text-xs text-muted-foreground">Produto</span>
-                        <Select
-                          value={it.product_id || NO_PRODUCT}
-                          onValueChange={(v) => {
-                            const prod = products?.find((p) => p.id === v);
-                            setItem(
-                              idx,
-                              v === NO_PRODUCT
-                                ? { product_id: "" }
-                                : { product_id: v, description: prod?.name ?? it.description },
-                            );
-                          }}
-                        >
-                          <SelectTrigger aria-label="Produto">
-                            <SelectValue placeholder="Produto" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NO_PRODUCT}>Sem produto (ex.: embalagem)</SelectItem>
-                            {supplierProducts.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {[p.name, p.supplier, p.size && `Tam. ${p.size}`, p.sku]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        aria-label="Remover item"
-                        disabled={form.items.length === 1}
-                        onClick={() =>
-                          setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })
-                        }
+                  <div
+                    key={idx}
+                    className="grid items-start gap-2 rounded-md border p-2 sm:grid-cols-[minmax(0,1fr)_4.5rem_7rem_6.5rem_2.25rem] sm:border-0 sm:p-0"
+                  >
+                    <div className="min-w-0 space-y-1">
+                      <Select
+                        value={it.product_id || NO_PRODUCT}
+                        onValueChange={(v) => {
+                          const prod = products?.find((p) => p.id === v);
+                          setItem(
+                            idx,
+                            v === NO_PRODUCT
+                              ? { product_id: "", description: "" }
+                              : {
+                                  product_id: v,
+                                  description: [prod?.name, prod?.sku].filter(Boolean).join(" · "),
+                                },
+                          );
+                        }}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="grid gap-2 sm:grid-cols-[1fr_6rem_9rem]">
-                      <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Descrição</span>
+                        <SelectTrigger aria-label="Produto" className="min-w-0 [&>span]:truncate">
+                          <SelectValue placeholder="Produto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NO_PRODUCT}>Sem produto (ex.: embalagem)</SelectItem>
+                          {supplierProducts.map((p) => (
+                            <SelectItem key={p.id} value={p.id}>
+                              {[p.name, p.sku].filter(Boolean).join(" · ")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {!it.product_id && (
                         <Input
-                          placeholder="Descrição"
+                          placeholder="O que comprou (ex.: 10 envelopes)"
                           value={it.description}
                           onChange={(e) => setItem(idx, { description: e.target.value })}
                         />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Quantidade</span>
-                        <Input
-                          type="number"
-                          min="1"
-                          inputMode="numeric"
-                          value={it.quantity}
-                          onChange={(e) => setItem(idx, { quantity: e.target.value })}
-                        />
-                      </label>
-                      <label className="space-y-1">
-                        <span className="text-xs text-muted-foreground">Preço de 1 peça (R$)</span>
-                        <Input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="0,00"
-                          value={it.unit}
-                          onChange={(e) => setItem(idx, { unit: e.target.value })}
-                        />
-                      </label>
+                      )}
                     </div>
-                    {itemTotal(it) > 0 && (
-                      <p className="text-xs text-muted-foreground">
-                        Total do item: {formatCurrency(itemTotal(it))}
-                      </p>
-                    )}
+                    <Input
+                      aria-label="Quantidade"
+                      type="number"
+                      min="1"
+                      inputMode="numeric"
+                      value={it.quantity}
+                      onChange={(e) => setItem(idx, { quantity: e.target.value })}
+                    />
+                    <Input
+                      aria-label="Preço de 1 peça (R$)"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0,00"
+                      value={it.unit}
+                      onChange={(e) => setItem(idx, { unit: e.target.value })}
+                    />
+                    <p className="flex h-10 items-center text-sm font-medium">
+                      {formatCurrency(itemTotal(it))}
+                    </p>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Remover item"
+                      disabled={form.items.length === 1}
+                      onClick={() =>
+                        setForm({ ...form, items: form.items.filter((_, i) => i !== idx) })
+                      }
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
                 <Button
