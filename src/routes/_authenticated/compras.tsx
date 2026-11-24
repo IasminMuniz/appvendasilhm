@@ -34,6 +34,7 @@ import { suppliersQueryOptions } from "@/components/products/product-form";
 import { PAYMENT_METHODS } from "@/lib/sales";
 import { formatCurrency, formatDate } from "@/lib/commercial-constants";
 import { RecordSearch, useRecordSearch } from "@/components/record-search";
+import { COLORS, PATTERNS, SIZES, STYLES } from "@/lib/clothing";
 
 const purchasesQuery = () =>
   queryOptions({ queryKey: ["purchases"], queryFn: () => listPurchases() });
@@ -55,7 +56,22 @@ export const Route = createFileRoute("/_authenticated/compras")({
 });
 
 /** unit = preço de UMA peça; o total do item é calculado (unit × quantidade). */
-type ItemForm = { product_id: string; description: string; quantity: string; unit: string };
+type NewProductForm = {
+  name: string;
+  style: string;
+  color: string;
+  pattern: string;
+  size: string;
+  price: string;
+};
+type ItemForm = {
+  product_id: string;
+  description: string;
+  quantity: string;
+  unit: string;
+  /** Produto que ainda não existe: será cadastrado neste fornecedor ao salvar a compra. */
+  new_product?: NewProductForm | null;
+};
 type Form = {
   id?: string;
   purchase_date: string;
@@ -68,6 +84,15 @@ type Form = {
 };
 
 const NO_PRODUCT = "__none__";
+const NEW_PRODUCT = "__new__";
+const emptyNewProduct = (): NewProductForm => ({
+  name: "",
+  style: "",
+  color: "",
+  pattern: "Liso",
+  size: "Único",
+  price: "",
+});
 const today = () => new Date().toISOString().slice(0, 10);
 const emptyItem = (): ItemForm => ({ product_id: "", description: "", quantity: "1", unit: "" });
 const itemTotal = (i: ItemForm) =>
@@ -168,7 +193,8 @@ function PurchasesPage() {
 
   // Mesmo nome pode existir em mais de um fornecedor: mostra só os produtos do fornecedor da compra.
   const ofSupplier = (products ?? []).filter((p) => form?.supplier && p.supplier === form.supplier);
-  const supplierProducts = ofSupplier.length ? ofSupplier : (products ?? []);
+  // Com fornecedor escolhido, só os produtos dele (o produto pertence ao fornecedor).
+  const supplierProducts = form?.supplier ? ofSupplier : (products ?? []);
 
   const setItem = (idx: number, patch: Partial<ItemForm>) =>
     form &&
@@ -342,12 +368,18 @@ function PurchasesPage() {
                     freight: Number(form.freight || 0),
                     notes: form.notes,
                     items: form.items
-                      .filter((i) => i.description.trim() || i.product_id)
+                      .filter(
+                        (i) => i.description.trim() || i.product_id || i.new_product?.name.trim(),
+                      )
                       .map((i) => ({
                         product_id: i.product_id || null,
-                        description: i.description.trim(),
+                        description: (i.new_product?.name || i.description).trim(),
                         quantity: Number(i.quantity || 1),
                         amount: itemTotal(i),
+                        new_product:
+                          !i.product_id && i.new_product
+                            ? { ...i.new_product, price: Number(i.new_product.price || 0) }
+                            : null,
                       })),
                   },
                 });
@@ -436,17 +468,26 @@ function PurchasesPage() {
                   >
                     <div className="min-w-0 space-y-1">
                       <Select
-                        value={it.product_id || NO_PRODUCT}
+                        value={it.product_id || (it.new_product ? NEW_PRODUCT : NO_PRODUCT)}
                         onValueChange={(v) => {
                           const prod = products?.find((p) => p.id === v);
                           setItem(
                             idx,
                             v === NO_PRODUCT
-                              ? { product_id: "", description: "" }
-                              : {
-                                  product_id: v,
-                                  description: [prod?.name, prod?.sku].filter(Boolean).join(" · "),
-                                },
+                              ? { product_id: "", description: "", new_product: null }
+                              : v === NEW_PRODUCT
+                                ? {
+                                    product_id: "",
+                                    description: "",
+                                    new_product: emptyNewProduct(),
+                                  }
+                                : {
+                                    product_id: v,
+                                    new_product: null,
+                                    description: [prod?.name, prod?.sku]
+                                      .filter(Boolean)
+                                      .join(" · "),
+                                  },
                           );
                         }}
                       >
@@ -454,6 +495,11 @@ function PurchasesPage() {
                           <SelectValue placeholder="Produto" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value={NEW_PRODUCT} disabled={!form.supplier}>
+                            {form.supplier
+                              ? `+ Produto novo da ${form.supplier}`
+                              : "+ Produto novo (escolha o fornecedor antes)"}
+                          </SelectItem>
                           <SelectItem value={NO_PRODUCT}>Sem produto (ex.: embalagem)</SelectItem>
                           {supplierProducts.map((p) => (
                             <SelectItem key={p.id} value={p.id}>
@@ -462,7 +508,7 @@ function PurchasesPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      {!it.product_id && (
+                      {!it.product_id && !it.new_product && (
                         <Input
                           placeholder="O que comprou (ex.: 10 envelopes)"
                           value={it.description}
@@ -502,6 +548,12 @@ function PurchasesPage() {
                     >
                       <X className="h-4 w-4" />
                     </Button>
+                    {it.new_product && (
+                      <NewProductFields
+                        value={it.new_product}
+                        onChange={(np) => setItem(idx, { new_product: np })}
+                      />
+                    )}
                   </div>
                 ))}
                 <Button
@@ -553,6 +605,81 @@ function PurchasesPage() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+/** Campos do produto novo, cadastrado a partir da compra no fornecedor dela (o SKU sai sozinho). */
+function NewProductFields({
+  value,
+  onChange,
+}: {
+  value: NewProductForm;
+  onChange: (v: NewProductForm) => void;
+}) {
+  const set = (patch: Partial<NewProductForm>) => onChange({ ...value, ...patch });
+  const pick = (
+    key: "style" | "color" | "pattern" | "size",
+    label: string,
+    options: readonly string[],
+  ) => (
+    <label className="space-y-1">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <Select value={value[key] || undefined} onValueChange={(v) => set({ [key]: v })}>
+        <SelectTrigger>
+          <SelectValue placeholder="Selecione" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o} value={o}>
+              {o}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </label>
+  );
+  return (
+    <div className="grid gap-2 rounded-md bg-muted/40 p-2 sm:col-span-5 sm:grid-cols-6">
+      <label className="space-y-1 sm:col-span-6">
+        <span className="text-xs text-muted-foreground">Nome do produto novo</span>
+        <Input
+          placeholder="Ex.: Vestido Longo Preto Três Marias com Bojo"
+          value={value.name}
+          onChange={(e) => set({ name: e.target.value })}
+        />
+      </label>
+      {pick(
+        "style",
+        "Estilo",
+        STYLES.map((x) => x.value),
+      )}
+      {pick(
+        "color",
+        "Cor",
+        COLORS.map((x) => x.value),
+      )}
+      {pick(
+        "pattern",
+        "Padrão",
+        PATTERNS.map((x) => x.value),
+      )}
+      {pick("size", "Tamanho", SIZES)}
+      <label className="space-y-1 sm:col-span-2">
+        <span className="text-xs text-muted-foreground">Preço de venda (R$)</span>
+        <Input
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="139,90"
+          value={value.price}
+          onChange={(e) => set({ price: e.target.value })}
+        />
+      </label>
+      <p className="text-xs text-muted-foreground sm:col-span-6">
+        Ao salvar a compra, o produto é cadastrado neste fornecedor com SKU automático e já vai para
+        Produtos. O custo é o preço de 1 peça desta compra.
+      </p>
     </div>
   );
 }

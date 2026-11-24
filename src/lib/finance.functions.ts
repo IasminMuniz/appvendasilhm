@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
+import { buildSku, calcMargin, nextModelNumber } from "@/lib/clothing";
+import { fetchSuppliers } from "@/lib/store.functions";
 import { recountStock } from "@/lib/stock.server";
 import { recalcOrders, recalcSalesForProducts, reservePctOf } from "@/lib/order-recalc";
 import { effectivePackaging, profitOf } from "@/lib/sales";
@@ -9,12 +11,91 @@ import { fetchCashPlan } from "@/lib/store.functions";
 
 export const PURCHASE_STATUSES = ["Pedido", "Recebido", "Cancelado"] as const;
 
+const newProductSchema = z.object({
+  name: z.string().trim().min(1, "Dê um nome ao produto novo").max(200),
+  style: z.string().max(80).optional().or(z.literal("")),
+  color: z.string().max(80).optional().or(z.literal("")),
+  pattern: z.string().max(80).optional().or(z.literal("")),
+  size: z.string().max(20).optional().or(z.literal("")),
+  price: z.coerce.number().min(0).default(0),
+});
+
 const purchaseItemSchema = z.object({
   product_id: z.string().uuid().optional().nullable().or(z.literal("")),
   description: z.string().trim().min(1, "Descreva o item").max(200),
   quantity: z.coerce.number().int().min(1, "Quantidade mínima é 1"),
   amount: z.coerce.number().min(0),
+  /** Produto que ainda não existe: é cadastrado a partir da compra, ligado ao fornecedor dela. */
+  new_product: newProductSchema.optional().nullable(),
 });
+
+/**
+ * Cadastra (ou reaproveita) o produto de um item novo da compra.
+ * O produto pertence ao fornecedor: mesmo nome em outro fornecedor vira outro produto/SKU.
+ */
+async function ensureProductFromPurchase(
+  supabase: any,
+  supplier: string,
+  np: z.infer<typeof newProductSchema>,
+  unitCost: number,
+): Promise<string> {
+  const { data: existing } = await supabase
+    .from("products")
+    .select("id")
+    .eq("supplier", supplier)
+    .eq("name", np.name)
+    .eq("size", np.size || "")
+    .maybeSingle();
+  if (existing?.id) return existing.id;
+
+  const suppliers = (await fetchSuppliers(supabase)).map((x) => ({ value: x.name, code: x.code }));
+  let modelNumber: number | null = null;
+  if (np.style && np.color && np.pattern) {
+    const { data: rows } = await supabase
+      .from("products")
+      .select("model_number")
+      .eq("supplier", supplier)
+      .eq("style", np.style)
+      .eq("color", np.color)
+      .eq("pattern", np.pattern);
+    modelNumber = nextModelNumber(
+      (rows ?? []).map((r: { model_number: number | null }) => r.model_number),
+    );
+  }
+  const sku = buildSku(
+    {
+      supplier,
+      style: np.style,
+      color: np.color,
+      pattern: np.pattern,
+      size: np.size,
+      model_number: modelNumber,
+    },
+    suppliers,
+  );
+  const cost = Math.round(unitCost * 100) / 100;
+  const { data: created, error } = await supabase
+    .from("products")
+    .insert({
+      name: np.name,
+      supplier,
+      style: np.style || null,
+      color: np.color || null,
+      pattern: np.pattern || null,
+      size: np.size || null,
+      model_number: modelNumber,
+      sku,
+      cost,
+      price: np.price,
+      margin_percent: calcMargin(np.price, cost),
+      stock: 0,
+      active: true,
+    })
+    .select("id")
+    .single();
+  if (error) throw new Error(`Não consegui cadastrar "${np.name}": ${error.message}`);
+  return created.id;
+}
 
 const purchaseSchema = z.object({
   purchase_date: z.string().min(8),
@@ -85,7 +166,24 @@ export const savePurchase = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
     const { id, items, ...r } = data;
-    const cleanItems = items.map((i) => ({ ...i, product_id: i.product_id || null }));
+    // Itens com produto novo: cadastra o produto no fornecedor da compra (gera o SKU).
+    if (items.some((i) => i.new_product && !i.product_id) && !r.supplier)
+      throw new Error("Escolha o fornecedor da compra para cadastrar produtos novos.");
+    for (const i of items) {
+      if (i.new_product && !i.product_id) {
+        i.product_id = await ensureProductFromPurchase(
+          sb,
+          r.supplier!,
+          i.new_product,
+          i.amount / Math.max(1, i.quantity),
+        );
+        i.description = i.new_product.name;
+      }
+    }
+    const cleanItems = items.map(({ new_product: _np, ...i }) => ({
+      ...i,
+      product_id: i.product_id || null,
+    }));
     const amount =
       Math.round((cleanItems.reduce((s, i) => s + i.amount, 0) + r.freight) * 100) / 100;
     const description =
