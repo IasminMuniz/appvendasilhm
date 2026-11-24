@@ -14,6 +14,12 @@ export const PAYMENT_METHODS = [
   "Dinheiro",
   "Pago pela Shopee",
 ] as const;
+/** Formas de pagamento das vendas: as gerais + as do Nubank PJ, para separar as taxas. */
+export const SALE_PAYMENT_METHODS = [
+  ...PAYMENT_METHODS,
+  "Tap to Pay (Nubank)",
+  "Link de pagamento (Nubank)",
+] as const;
 export const DELIVERY_METHODS = [
   "Shopee",
   "Correios/plataforma de frete",

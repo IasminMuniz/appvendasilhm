@@ -15,7 +15,7 @@ import {
   CHANNELS,
   DELIVERY_METHODS,
   OTHER_COST_TYPES,
-  PAYMENT_METHODS,
+  SALE_PAYMENT_METHODS,
   calcSale,
   type SaleItem,
 } from "@/lib/sales";
@@ -95,7 +95,7 @@ export function SaleFields({
         id="payment"
         label="Forma de pagamento"
         value={value.payment_method}
-        options={PAYMENT_METHODS}
+        options={SALE_PAYMENT_METHODS}
         onChange={(v) => set({ payment_method: v })}
       />
       <Pick

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, formatDate } from "@/lib/commercial-constants";
 import { buildInstallments, paymentSummary } from "@/lib/payments";
-import { PAYMENT_METHODS } from "@/lib/sales";
+import { SALE_PAYMENT_METHODS } from "@/lib/sales";
 import {
   listOrderPayments,
   resetOrderPayments,
@@ -258,7 +258,7 @@ export function OrderPaymentsCard({
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {PAYMENT_METHODS.map((o) => (
+                      {SALE_PAYMENT_METHODS.map((o) => (
                         <SelectItem key={o} value={o}>
                           {o}
                         </SelectItem>

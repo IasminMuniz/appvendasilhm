@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Megaphone, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,17 @@ import { deleteProduct, getProduct, updateProduct } from "@/lib/products.functio
 import { formatDateTime } from "@/lib/commercial-constants";
 import { ProductForm } from "@/components/products/product-form";
 import { ProductImages } from "@/components/products/product-images";
+import { buildAdText } from "@/lib/ad-text";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const integrationQueryOptions = (id: string) =>
   queryOptions({
@@ -63,6 +74,7 @@ function EditIntegrationPage() {
   const integration = data.product;
 
   const [error, setError] = useState<string | null>(null);
+  const [ad, setAd] = useState("");
 
   const update = useMutation({
     mutationFn: updateProduct,
@@ -99,28 +111,60 @@ function EditIntegrationPage() {
           </Link>
         </Button>
 
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="destructive" disabled={remove.isPending}>
-              <Trash2 className="mr-2 h-4 w-4" />
-              Excluir
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta ação remove o produto permanentemente.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction onClick={() => remove.mutate({ data: { id } })}>
+        <div className="flex items-center gap-2">
+          <Dialog onOpenChange={(o) => o && setAd(buildAdText(integration))}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Megaphone className="mr-2 h-4 w-4" />
+                Gerar anúncio
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Anúncio</DialogTitle>
+                <DialogDescription>
+                  Texto no modelo da loja. Ajuste a frase de abertura e as características se
+                  quiser, e copie.
+                </DialogDescription>
+              </DialogHeader>
+              <Textarea rows={16} value={ad} onChange={(e) => setAd(e.target.value)} />
+              <DialogFooter>
+                <Button
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(ad);
+                    toast.success("Anúncio copiado!");
+                  }}
+                >
+                  <Copy className="mr-2 h-4 w-4" />
+                  Copiar anúncio
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" disabled={remove.isPending}>
+                <Trash2 className="mr-2 h-4 w-4" />
                 Excluir
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir produto?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação remove o produto permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={() => remove.mutate({ data: { id } })}>
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
       </div>
 
       <Card>
