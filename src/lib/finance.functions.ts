@@ -391,13 +391,15 @@ export const deleteExpense = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const sb = context.supabase;
+    const { data: cur, error: readError } = await sb
+      .from("expenses")
+      .select("*")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+    // Já não existe (excluída antes ou lista desatualizada): nada a fazer, a tela só recarrega.
+    if (!cur) return { ok: true, alreadyGone: true };
     if (data.scope === "future") {
-      const { data: cur, error: readError } = await sb
-        .from("expenses")
-        .select("*")
-        .eq("id", data.id)
-        .single();
-      if (readError) throw new Error(readError.message);
       const seriesId = (cur as { series_id?: string | null }).series_id;
       let q = sb
         .from("expenses")
@@ -411,9 +413,15 @@ export const deleteExpense = createServerFn({ method: "POST" })
       if (futureError && !isMissingColumn(futureError.message))
         throw new Error(futureError.message);
     }
-    const { error } = await sb.from("expenses").delete().eq("id", data.id);
+    const { data: gone, error } = await sb
+      .from("expenses")
+      .delete()
+      .eq("id", data.id)
+      .select("id");
     if (error) throw new Error(error.message);
-    return { ok: true };
+    if (!gone?.length)
+      throw new Error("Não foi possível excluir: só quem lançou a despesa ou um administrador pode excluir.");
+    return { ok: true, alreadyGone: false };
   });
 
 /** Aportes: dinheiro seu colocado na loja (o inicial e os que vierem depois). */

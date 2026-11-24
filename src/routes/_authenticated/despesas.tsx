@@ -126,12 +126,16 @@ function ExpensesPage() {
   });
   const remove = useMutation({
     mutationFn: deleteExpense,
-    onSuccess: () => {
+    onSuccess: (r) => {
       done();
       setToDelete(null);
-      toast.success("Despesa excluída.");
+      toast.success(r.alreadyGone ? "Essa despesa já tinha sido excluída." : "Despesa excluída.");
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      done();
+      setToDelete(null);
+      toast.error(e.message);
+    },
   });
 
   const months = useMemo(
