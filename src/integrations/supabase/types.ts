@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      capital_contributions: {
+        Row: {
+          amount: number
+          contribution_date: string
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+        }
+        Insert: {
+          amount?: number
+          contribution_date?: string
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+        }
+        Update: {
+          amount?: number
+          contribution_date?: string
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       commercial_alerts: {
         Row: {
           created_at: string
@@ -402,6 +429,8 @@ export type Database = {
           id: string
           is_fixed: boolean
           paid_at: string | null
+          payment_method: string | null
+          purchase_date: string | null
           series_id: string | null
           status: string
           updated_at: string
@@ -416,6 +445,8 @@ export type Database = {
           id?: string
           is_fixed?: boolean
           paid_at?: string | null
+          payment_method?: string | null
+          purchase_date?: string | null
           series_id?: string | null
           status?: string
           updated_at?: string
@@ -430,6 +461,8 @@ export type Database = {
           id?: string
           is_fixed?: boolean
           paid_at?: string | null
+          payment_method?: string | null
+          purchase_date?: string | null
           series_id?: string | null
           status?: string
           updated_at?: string

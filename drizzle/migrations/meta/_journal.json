@@ -113,6 +113,20 @@
       "when": 1795393279553,
       "tag": "0015_capital_contributions",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795520487370,
+      "tag": "0016_expense_dates_payment_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795520513031,
+      "tag": "0017_capital_contributions",
+      "breakpoints": true
     }
   ]
 }
