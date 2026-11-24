@@ -206,9 +206,9 @@ function CashPage() {
           hint="Aportes + o que entrou das vendas − tudo que já saiu. Se ficar negativo, falta aportar."
         />
         <Stat
-          title="Você já investiu"
+          title="Já saiu da loja"
           value={data.totalOut}
-          hint="Tudo que saiu do seu bolso para a loja: compras, despesas pagas e custos das vendas."
+          hint="Tudo que a loja já gastou: compras de mercadoria, despesas pagas e custos das vendas."
         />
         <Stat
           title="Já entrou das vendas"
@@ -221,8 +221,8 @@ function CashPage() {
           tone={data.balance < 0 ? "bad" : undefined}
           hint={
             data.balance < 0
-              ? "Quanto ainda falta entrar de vendas para pagar tudo que você investiu."
-              : "Você já recuperou o que investiu. Este é o dinheiro que sobrou."
+              ? "Quanto ainda falta entrar de vendas para cobrir tudo que já saiu da loja."
+              : "As vendas já cobriram tudo que saiu da loja. Este é o que sobrou."
           }
         />
         <Stat
