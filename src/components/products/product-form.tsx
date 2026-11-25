@@ -33,6 +33,27 @@ export const emptyProduct: ProductFormValues = {
   condition: "novo", condition_notes: "",
 };
 
+/** Converte um produto do banco nos valores do formulário (usado em editar e duplicar). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function productToFormValues(p: any): ProductFormValues {
+  return {
+    name: p.name ?? "",
+    description: p.description ?? "",
+    price: Number(p.price ?? 0),
+    cost: Number(p.cost ?? 0),
+    stock: Number(p.stock ?? 0),
+    active: p.active ?? true,
+    supplier: p.supplier ?? "",
+    style: p.style ?? "",
+    color: p.color ?? "",
+    pattern: p.pattern ?? "",
+    size: p.size ?? "",
+    model_number: p.model_number ?? null,
+    condition: p.condition === "seminovo" ? "seminovo" : "novo",
+    condition_notes: p.condition_notes ?? "",
+  };
+}
+
 function Pick({ id, label, value, options, onChange }: {
   id: string; label: string; value: string;
   options: readonly { value: string; label: string }[]; onChange: (v: string) => void;

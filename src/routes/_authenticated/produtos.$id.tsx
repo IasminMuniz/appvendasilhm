@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { ArrowLeft, Copy, Megaphone, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, CopyPlus, Megaphone, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { deleteProduct, getProduct, updateProduct } from "@/lib/products.functions";
 import { formatDateTime } from "@/lib/commercial-constants";
-import { ProductForm } from "@/components/products/product-form";
+import { ProductForm, productToFormValues } from "@/components/products/product-form";
 import { ProductImages } from "@/components/products/product-images";
 import { buildAdText } from "@/lib/ad-text";
 import { Textarea } from "@/components/ui/textarea";
@@ -111,7 +111,14 @@ function EditIntegrationPage() {
           </Link>
         </Button>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Button variant="outline" asChild>
+            <Link to="/produtos/novo" search={{ copiar: id }}>
+              <CopyPlus className="mr-2 h-4 w-4" />
+              Duplicar
+            </Link>
+          </Button>
+
           <Dialog onOpenChange={(o) => o && setAd(buildAdText(integration))}>
             <DialogTrigger asChild>
               <Button variant="outline">
@@ -209,22 +216,7 @@ function EditIntegrationPage() {
         </CardHeader>
         <CardContent>
           <ProductForm
-            initial={{
-              name: integration.name ?? "",
-              description: integration.description ?? "",
-              price: Number(integration.price ?? 0),
-              cost: Number(integration.cost ?? 0),
-              stock: Number(integration.stock ?? 0),
-              active: integration.active ?? true,
-              supplier: integration.supplier ?? "",
-              style: integration.style ?? "",
-              color: integration.color ?? "",
-              pattern: integration.pattern ?? "",
-              size: integration.size ?? "",
-              model_number: integration.model_number ?? null,
-              condition: integration.condition === "seminovo" ? "seminovo" : "novo",
-              condition_notes: integration.condition_notes ?? "",
-            }}
+            initial={productToFormValues(integration)}
             productId={id}
             stockLocked={!!data.movement && data.movement.entradas > 0}
             submitLabel="Salvar alterações"
