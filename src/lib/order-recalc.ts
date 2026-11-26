@@ -5,7 +5,12 @@ import { normalizePlan } from "@/lib/cash";
  * Recalcula custo dos produtos, lucro e margem das vendas (não canceladas).
  * orderIds = null → todas as vendas. reservePct = % obrigatório para outros fins.
  */
-export async function recalcOrders(supabase: any, orderIds: string[] | null, reservePct: number) {
+export async function recalcOrders(
+  supabase: any,
+  orderIds: string[] | null,
+  reservePct: number,
+  taxPerSale = 0,
+) {
   if (orderIds && orderIds.length === 0) return;
   let q = supabase
     .from("orders")
@@ -29,6 +34,7 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
       productCost,
       packaging: effectivePackaging(o),
       reservePct,
+      taxPerSale,
     });
     const { error } = await supabase
       .from("orders")
@@ -36,6 +42,19 @@ export async function recalcOrders(supabase: any, orderIds: string[] | null, res
       .eq("id", o.id);
     if (error) console.error("Falha ao recalcular venda", o.id, error.message);
   }
+}
+
+/** Descontos fixos de toda venda, do plano do caixa: % para outros fins e R$ para o DAS. */
+export async function saleDeductionsOf(
+  supabase: any,
+): Promise<{ reservePct: number; taxPerSale: number }> {
+  const { data, error } = await supabase
+    .from("store_settings")
+    .select("value")
+    .eq("key", "cash_plan")
+    .maybeSingle();
+  const plan = normalizePlan(error ? null : data?.value);
+  return { reservePct: plan.otherPurposesPct, taxPerSale: plan.taxPerSale };
 }
 
 /** % para outros fins salvo no plano do caixa (padrão 10). */
@@ -59,5 +78,6 @@ export async function recalcSalesForProducts(supabase: any, productIds: string[]
   const orderIds = [
     ...new Set((rows ?? []).map((r: { order_id: string }) => r.order_id)),
   ] as string[];
-  await recalcOrders(supabase, orderIds, await reservePctOf(supabase));
+  const d = await saleDeductionsOf(supabase);
+  await recalcOrders(supabase, orderIds, d.reservePct, d.taxPerSale);
 }

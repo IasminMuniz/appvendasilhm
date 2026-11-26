@@ -172,13 +172,23 @@ export function SaleSummary({
 }) {
   const { data: plan } = useQuery(cashPlanQuery);
   const reservePct = plan?.otherPurposesPct ?? 10;
-  const r = calcSale({ items, channel, otherCosts, productCost, packagingCost, reservePct });
+  const taxPerSale = plan?.taxPerSale ?? 0;
+  const r = calcSale({
+    items,
+    channel,
+    otherCosts,
+    productCost,
+    packagingCost,
+    reservePct,
+    taxPerSale,
+  });
   const rows: [string, number][] = [
     ["Valor da venda", r.price],
     ["Taxa do canal", -r.channelFee],
     ["Outros custos", -otherCosts],
     ["Custo dos produtos", -productCost],
     ...(r.packaging > 0 ? ([["Embalagem", -r.packaging]] as [string, number][]) : []),
+    ...(r.tax > 0 ? ([["Reserva para o DAS", -r.tax]] as [string, number][]) : []),
     [`Outros fins (${reservePct.toLocaleString("pt-BR")}% da venda)`, -r.reserve],
   ];
   return (

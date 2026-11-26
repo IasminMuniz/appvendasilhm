@@ -4,7 +4,7 @@ import { z } from "zod";
 import { calcSale, takesStock, type SaleItem } from "@/lib/sales";
 import { fetchCashPlan, fetchPackagingCost } from "@/lib/store.functions";
 import { effectivePackaging, profitOf, saleCode } from "@/lib/sales";
-import { reservePctOf } from "@/lib/order-recalc";
+import { saleDeductionsOf } from "@/lib/order-recalc";
 import { insertOrderPayments, paymentPlanSchema } from "@/lib/payments.functions";
 
 type LiveOrder = {
@@ -18,7 +18,7 @@ type LiveOrder = {
 };
 
 /** Custo dos produtos (custo atual do cadastro) e lucro da venda. */
-function liveProfit(o: LiveOrder, reservePct: number) {
+function liveProfit(o: LiveOrder, ded: { reservePct: number; taxPerSale: number }) {
   const productCost =
     Math.round(
       (o.order_items ?? []).reduce(
@@ -34,7 +34,7 @@ function liveProfit(o: LiveOrder, reservePct: number) {
       otherCosts: Number(o.other_costs ?? 0),
       productCost,
       packaging: effectivePackaging(o),
-      reservePct,
+      ...ded,
     }),
   };
 }
@@ -74,7 +74,7 @@ function saleColumns(
   items: SaleItem[],
   productCost: number,
   packagingPerPiece: number,
-  reservePct: number,
+  ded: { reservePct: number; taxPerSale: number },
 ) {
   const r = calcSale({
     items,
@@ -82,7 +82,7 @@ function saleColumns(
     otherCosts: info.other_costs,
     productCost,
     packagingCost: packagingPerPiece,
-    reservePct,
+    ...ded,
   });
   return {
     channel: info.channel || null,
@@ -161,11 +161,11 @@ export const listOrders = createServerFn({ method: "GET" })
       }
     }
     // Lucro sempre calculado na hora, com o custo atual dos produtos e o % para outros fins.
-    const reservePct = await reservePctOf(context.supabase);
+    const ded = await saleDeductionsOf(context.supabase);
     return (data ?? []).map((o) => ({
       ...o,
       packaging_cost: effectivePackaging(o),
-      profit: liveProfit(o, reservePct).profit,
+      profit: liveProfit(o, ded).profit,
     }));
   });
 
@@ -203,8 +203,7 @@ export const getOrder = createServerFn({ method: "GET" })
       orderNumber = count ?? null;
     }
 
-    const reservePct = await reservePctOf(context.supabase);
-    const live = liveProfit(orderRes.data, reservePct);
+    const live = liveProfit(orderRes.data, await saleDeductionsOf(context.supabase));
 
     return {
       order: {
@@ -241,7 +240,7 @@ export const createOrder = createServerFn({ method: "POST" })
         data.items,
         productCost,
         packagingPerPiece,
-        (await fetchCashPlan(context.supabase)).otherPurposesPct,
+        await saleDeductionsOf(context.supabase),
       ),
     };
     let res = await context.supabase.from("orders").insert(insertRow).select().single();
@@ -408,7 +407,7 @@ export const updateOrderSaleInfo = createServerFn({ method: "POST" })
       items,
       productCost,
       packagingPerPiece,
-      (await fetchCashPlan(context.supabase)).otherPurposesPct,
+      await saleDeductionsOf(context.supabase),
     );
     let { error } = await context.supabase.from("orders").update(cols).eq("id", data.id);
     if (error && /uses_packaging/.test(error.message)) {

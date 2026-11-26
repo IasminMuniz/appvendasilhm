@@ -85,6 +85,7 @@ function CashPage() {
   const [plan, setPlan] = useState({
     initialCapital: String(data.plan.initialCapital),
     otherPurposesPct: String(data.plan.otherPurposesPct),
+    taxPerSale: String(data.plan.taxPerSale),
     reservePct: String(data.plan.reservePct),
     growthPct: String(data.plan.growthPct),
   });
@@ -92,6 +93,7 @@ function CashPage() {
     setPlan({
       initialCapital: String(data.plan.initialCapital),
       otherPurposesPct: String(data.plan.otherPurposesPct),
+      taxPerSale: String(data.plan.taxPerSale),
       reservePct: String(data.plan.reservePct),
       growthPct: String(data.plan.growthPct),
     });
@@ -151,6 +153,11 @@ function CashPage() {
       hint: "Envelope, sacola, tag e afins de cada peça vendida.",
     },
     {
+      label: "Reserva para o DAS",
+      value: s.tax,
+      hint: `${p.taxPerSale.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} de cada venda, para pagar o DAS do MEI (vence dia 20).`,
+    },
+    {
       label: `Outros fins (${p.otherPurposesPct}% da venda)`,
       value: s.otherPurposes,
       hint: "Separado para o que você definir. Não é lucro.",
@@ -158,7 +165,7 @@ function CashPage() {
     {
       label: `Reserva de caixa (${p.reservePct}% do lucro)`,
       value: s.reserve,
-      hint: "Para emergências, meses fracos e contas fixas (DAS, apps).",
+      hint: "Para emergências, meses fracos e contas fixas (apps, assinaturas).",
     },
     {
       label: `Crescimento (${p.growthPct}% do lucro)`,
@@ -499,13 +506,14 @@ function CashPage() {
         </CardHeader>
         <CardContent>
           <form
-            className="grid gap-4 sm:grid-cols-3"
+            className="grid gap-4 sm:grid-cols-2"
             onSubmit={(e) => {
               e.preventDefault();
               save.mutate({
                 data: {
                   initialCapital: Number(plan.initialCapital || 0),
                   otherPurposesPct: Number(plan.otherPurposesPct || 0),
+                  taxPerSale: Number(plan.taxPerSale || 0),
                   reservePct: Number(plan.reservePct || 0),
                   growthPct: Number(plan.growthPct || 0),
                 },
@@ -518,6 +526,11 @@ function CashPage() {
                   "otherPurposesPct",
                   "Outros fins (% da venda)",
                   "Ex.: 10% de cada venda para outros objetivos.",
+                ],
+                [
+                  "taxPerSale",
+                  "Reserva para o DAS (R$ por venda)",
+                  "Ex.: R$ 8. Use 0 se lançar o DAS em Despesas.",
                 ],
                 [
                   "reservePct",
@@ -537,14 +550,14 @@ function CashPage() {
                   id={key}
                   type="number"
                   min="0"
-                  step="1"
+                  step={key === "taxPerSale" ? "0.01" : "1"}
                   value={plan[key]}
                   onChange={(e) => setPlan({ ...plan, [key]: e.target.value })}
                 />
                 <p className="text-xs text-muted-foreground">{hint}</p>
               </div>
             ))}
-            <div className="sm:col-span-3">
+            <div className="sm:col-span-2">
               <Button type="submit" disabled={save.isPending}>
                 {save.isPending ? "Salvando..." : "Salvar plano"}
               </Button>

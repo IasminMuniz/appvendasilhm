@@ -210,6 +210,7 @@ export const saveCashPlan = createServerFn({ method: "POST" })
       .object({
         initialCapital: z.coerce.number().min(0).max(10_000_000),
         otherPurposesPct: z.coerce.number().min(0).max(100),
+        taxPerSale: z.coerce.number().min(0).max(10_000),
         reservePct: z.coerce.number().min(0).max(100),
         growthPct: z.coerce.number().min(0).max(100),
       })
@@ -227,8 +228,8 @@ export const saveCashPlan = createServerFn({ method: "POST" })
       updated_at: new Date().toISOString(),
     });
     if (error) throw new Error(error.message);
-    // O % para outros fins entra no lucro de toda venda: atualiza as vendas já lançadas.
-    await recalcOrders(context.supabase, null, data.otherPurposesPct);
+    // O % para outros fins e o DAS entram no lucro de toda venda: atualiza as vendas já lançadas.
+    await recalcOrders(context.supabase, null, data.otherPurposesPct, data.taxPerSale);
     return { ok: true };
   });
 

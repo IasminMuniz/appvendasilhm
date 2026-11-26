@@ -3,12 +3,16 @@ import { z } from "zod";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { parseQuotes } from "@/lib/freight";
 import { effectivePackaging, profitOf } from "@/lib/sales";
-import { reservePctOf } from "@/lib/order-recalc";
+import { saleDeductionsOf } from "@/lib/order-recalc";
 
 const KEY = "freight_settings";
 
 async function readSettings(supabase: any): Promise<{ origin_cep: string; contact_email: string }> {
-  const { data } = await supabase.from("store_settings").select("value").eq("key", KEY).maybeSingle();
+  const { data } = await supabase
+    .from("store_settings")
+    .select("value")
+    .eq("key", KEY)
+    .maybeSingle();
   const v = (data?.value ?? {}) as any;
   return { origin_cep: String(v.origin_cep ?? ""), contact_email: String(v.contact_email ?? "") };
 }
@@ -80,7 +84,9 @@ export const cotarFrete = createServerFn({ method: "POST" })
     });
     const body = await res.json().catch(() => null);
     if (res.status === 401 || res.status === 403)
-      throw new Error("Token do Melhor Envio inválido ou expirado. Atualize o token nas configurações.");
+      throw new Error(
+        "Token do Melhor Envio inválido ou expirado. Atualize o token nas configurações.",
+      );
     if (!res.ok) {
       console.error("Melhor Envio", res.status, body);
       const txt = JSON.stringify(body ?? "").toLowerCase();
@@ -157,7 +163,7 @@ export const usarFreteNaVenda = createServerFn({ method: "POST" })
       otherCosts,
       productCost: Number(order.product_cost ?? 0),
       packaging: effectivePackaging(order),
-      reservePct: await reservePctOf(context.supabase),
+      ...(await saleDeductionsOf(context.supabase)),
     });
 
     const { error } = await context.supabase

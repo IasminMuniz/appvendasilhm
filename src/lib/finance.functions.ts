@@ -4,7 +4,7 @@ import { z } from "zod";
 import { buildSku, calcMargin, nextModelNumber } from "@/lib/clothing";
 import { fetchSuppliers } from "@/lib/store.functions";
 import { recountStock } from "@/lib/stock.server";
-import { recalcOrders, recalcSalesForProducts, reservePctOf } from "@/lib/order-recalc";
+import { recalcOrders, recalcSalesForProducts, saleDeductionsOf } from "@/lib/order-recalc";
 import { effectivePackaging, profitOf } from "@/lib/sales";
 import { splitSales } from "@/lib/cash";
 import { fetchCashPlan } from "@/lib/store.functions";
@@ -413,14 +413,12 @@ export const deleteExpense = createServerFn({ method: "POST" })
       if (futureError && !isMissingColumn(futureError.message))
         throw new Error(futureError.message);
     }
-    const { data: gone, error } = await sb
-      .from("expenses")
-      .delete()
-      .eq("id", data.id)
-      .select("id");
+    const { data: gone, error } = await sb.from("expenses").delete().eq("id", data.id).select("id");
     if (error) throw new Error(error.message);
     if (!gone?.length)
-      throw new Error("Não foi possível excluir: só quem lançou a despesa ou um administrador pode excluir.");
+      throw new Error(
+        "Não foi possível excluir: só quem lançou a despesa ou um administrador pode excluir.",
+      );
     return { ok: true, alreadyGone: false };
   });
 
@@ -516,7 +514,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
 
     const orders = ordersRes.data ?? [];
     // Lucro calculado na hora com o custo atual dos produtos e o % para outros fins.
-    const reservePct = await reservePctOf(sb);
+    const ded = await saleDeductionsOf(sb);
     const byChannel: Record<
       string,
       { channel: string; revenue: number; profit: number; count: number }
@@ -540,7 +538,7 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
             0,
           ),
           packaging: effectivePackaging(o),
-          reservePct,
+          ...ded,
         }).profit;
       revenue += t;
       profit += p;
@@ -554,9 +552,10 @@ export const getStoreDashboard = createServerFn({ method: "GET" })
           itemsTotal > 0
             ? (Number(i.quantity ?? 0) * Number(i.unit_price ?? 0)) / itemsTotal
             : 1 / its.length;
-        const c = (i.products as { condition?: string } | null)?.condition === "seminovo"
-          ? "seminovo"
-          : "novo";
+        const c =
+          (i.products as { condition?: string } | null)?.condition === "seminovo"
+            ? "seminovo"
+            : "novo";
         byCondition[c].revenue += t * share;
         byCondition[c].profit += p * share;
         byCondition[c].pieces += Number(i.quantity ?? 0);

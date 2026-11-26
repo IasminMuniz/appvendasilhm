@@ -68,6 +68,8 @@ export interface SaleCalc {
   packaging: number;
   /** Valor separado para outros fins (% obrigatório de toda venda, definido no Caixa). */
   reserve: number;
+  /** Reserva para o DAS (R$ por venda, definido no Caixa). */
+  tax: number;
   profit: number;
   margin: number;
 }
@@ -81,15 +83,18 @@ export function calcSale(p: {
   packagingCost?: number;
   /** % do valor da venda separado para outros fins (padrão 0). */
   reservePct?: number;
+  /** R$ separado desta venda para o DAS (padrão 0). */
+  taxPerSale?: number;
 }): SaleCalc {
   const price = round2(p.items.reduce((s, i) => s + Number(i.unit_price) * Number(i.quantity), 0));
   const pieces = p.items.reduce((s, i) => s + Number(i.quantity), 0);
   const fee = channelFee(p.channel, p.items);
   const packaging = round2((p.packagingCost ?? DEFAULT_PACKAGING_COST) * pieces);
   const reserve = round2((price * (p.reservePct ?? 0)) / 100);
-  const profit = round2(price - fee - p.otherCosts - p.productCost - packaging - reserve);
+  const tax = price > 0 ? round2(p.taxPerSale ?? 0) : 0;
+  const profit = round2(price - fee - p.otherCosts - p.productCost - packaging - tax - reserve);
   const margin = price > 0 ? round2((profit / price) * 100) : 0;
-  return { price, channelFee: fee, packaging, reserve, profit, margin };
+  return { price, channelFee: fee, packaging, reserve, tax, profit, margin };
 }
 
 export const SALE_STATUSES = [
@@ -116,10 +121,13 @@ export function profitOf(o: {
   productCost: number;
   packaging: number;
   reservePct: number;
+  /** R$ separado da venda para o DAS (padrão 0). */
+  taxPerSale?: number;
 }) {
   const reserve = round2((o.total * o.reservePct) / 100);
+  const tax = o.total > 0 ? round2(o.taxPerSale ?? 0) : 0;
   const profit = round2(
-    o.total - o.channelFee - o.otherCosts - o.productCost - o.packaging - reserve,
+    o.total - o.channelFee - o.otherCosts - o.productCost - o.packaging - tax - reserve,
   );
   return { profit, margin: o.total > 0 ? round2((profit / o.total) * 100) : 0 };
 }

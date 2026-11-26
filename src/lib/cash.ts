@@ -5,6 +5,8 @@ export interface CashPlan {
   initialCapital: number;
   /** % do valor de cada venda separado para outros fins (não é lucro). */
   otherPurposesPct: number;
+  /** R$ separado de cada venda para pagar o DAS do MEI. */
+  taxPerSale: number;
   /** % do lucro de cada venda guardado como reserva de caixa (emergências, meses fracos). */
   reservePct: number;
   /** % do lucro de cada venda para crescer: comprar mais peças além da reposição. */
@@ -14,6 +16,7 @@ export interface CashPlan {
 export const DEFAULT_CASH_PLAN: CashPlan = {
   initialCapital: 0,
   otherPurposesPct: 10,
+  taxPerSale: 8,
   reservePct: 20,
   growthPct: 30,
 };
@@ -35,6 +38,8 @@ export interface SaleSplit {
   restock: number;
   /** Repõe as embalagens usadas. */
   packaging: number;
+  /** Reserva para o DAS (R$ por venda). */
+  tax: number;
   /** Separado para outros fins (% da venda). */
   otherPurposes: number;
   /** Reserva de caixa (% do lucro). */
@@ -56,8 +61,10 @@ export function splitSales(sales: PaidSale[], plan: CashPlan): SaleSplit {
   const fees = sum((s) => s.channel_fee) + sum((s) => s.other_costs);
   const restock = sum((s) => s.product_cost);
   const packaging = sum((s) => s.packaging_cost);
-  const profit = revenue - fees - restock - packaging;
+  const tax = (plan.taxPerSale || 0) * sales.length;
   const otherPurposes = Math.max(0, revenue * (plan.otherPurposesPct / 100));
+  // Lucro da venda já descontado o DAS (o mesmo que aparece em cada venda, antes dos outros fins).
+  const profit = revenue - fees - restock - packaging - tax;
   const afterOther = profit - otherPurposes;
   const base = Math.max(0, afterOther);
   const reserve = base * (plan.reservePct / 100);
@@ -68,6 +75,7 @@ export function splitSales(sales: PaidSale[], plan: CashPlan): SaleSplit {
     fees: r2(fees),
     restock: r2(restock),
     packaging: r2(packaging),
+    tax: r2(tax),
     otherPurposes: r2(otherPurposes),
     reserve: r2(reserve),
     growth: r2(growth),
@@ -86,6 +94,7 @@ export function normalizePlan(raw: unknown): CashPlan {
   return {
     initialCapital: num(o.initialCapital, DEFAULT_CASH_PLAN.initialCapital, 10_000_000),
     otherPurposesPct: num(o.otherPurposesPct, DEFAULT_CASH_PLAN.otherPurposesPct, 100),
+    taxPerSale: num(o.taxPerSale, DEFAULT_CASH_PLAN.taxPerSale, 10_000),
     reservePct: num(o.reservePct, DEFAULT_CASH_PLAN.reservePct, 100),
     growthPct: num(o.growthPct, DEFAULT_CASH_PLAN.growthPct, 100),
   };
