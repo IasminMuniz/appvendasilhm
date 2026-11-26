@@ -19,11 +19,15 @@ import {
 import { maskCep } from "@/lib/masks";
 import {
   cotarFrete,
+  dadosEnvioDaVenda,
+  enviarParaMelhorEnvio,
   getFreightSettings,
   saveFreightSettings,
   usarFreteNaVenda,
+  type Sender,
 } from "@/lib/freight.functions";
-import { freightSummary, type FreightQuote } from "@/lib/freight";
+import { freightSummary, splitAddress, type FreightQuote } from "@/lib/freight";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatCurrency } from "@/lib/commercial-constants";
 import { listOrders } from "@/lib/orders.functions";
 import { saleCode } from "@/lib/sales";
@@ -56,6 +60,56 @@ export const Route = createFileRoute("/_authenticated/frete")({
 
 const num = (s: string) => Number(s.replace(",", "."));
 
+const EMPTY_SENDER: Sender = {
+  name: "",
+  document: "",
+  phone: "",
+  address: "",
+  number: "",
+  complement: "",
+  district: "",
+  city: "",
+  state: "",
+};
+const SENDER_FIELDS: [keyof Sender, string, string][] = [
+  ["name", "Nome do remetente", "Seu nome ou nome da loja"],
+  ["document", "CPF ou CNPJ", "Só números"],
+  ["phone", "Telefone", "(11) 90000-0000"],
+  ["address", "Rua", ""],
+  ["number", "Número", ""],
+  ["complement", "Complemento", "Opcional"],
+  ["district", "Bairro", ""],
+  ["city", "Cidade", ""],
+  ["state", "UF", "SP"],
+];
+
+type Dest = {
+  name: string;
+  document: string;
+  phone: string;
+  email: string;
+  address: string;
+  number: string;
+  complement: string;
+  district: string;
+  city: string;
+  state: string;
+  postal_code: string;
+};
+const DEST_FIELDS: [keyof Dest, string][] = [
+  ["name", "Nome da cliente"],
+  ["document", "CPF da cliente"],
+  ["phone", "Telefone"],
+  ["email", "E-mail"],
+  ["postal_code", "CEP"],
+  ["address", "Rua"],
+  ["number", "Número"],
+  ["complement", "Complemento"],
+  ["district", "Bairro"],
+  ["city", "Cidade"],
+  ["state", "UF"],
+];
+
 function FretePage() {
   const search = Route.useSearch();
   const [cep, setCep] = useState(maskCep(search.cep ?? ""));
@@ -77,6 +131,58 @@ function FretePage() {
   const vendasAbertas = (vendas.data ?? []).filter((o) => o.status !== "cancelado");
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  // Etiqueta no Melhor Envio: depois de lançar o frete, coloca o envio no carrinho de lá.
+  const [mandarME, setMandarME] = useState(true);
+  const [etiqueta, setEtiqueta] = useState<{ order_id: string; quote: FreightQuote } | null>(null);
+  const [dest, setDest] = useState<Dest | null>(null);
+  const cliente = useQuery({
+    queryKey: ["dados-envio", etiqueta?.order_id],
+    queryFn: () => dadosEnvioDaVenda({ data: { order_id: etiqueta!.order_id } }),
+    enabled: !!etiqueta,
+  });
+  useEffect(() => {
+    if (!etiqueta || !cliente.data) return;
+    const c = cliente.data;
+    const a = splitAddress(c.address);
+    setDest({
+      name: c.name,
+      document: c.document,
+      phone: c.phone,
+      email: c.email,
+      address: a.street,
+      number: a.number,
+      complement: a.complement,
+      district: a.district,
+      city: c.city,
+      state: c.state.slice(0, 2).toUpperCase(),
+      postal_code: maskCep(c.postal_code || cep),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [etiqueta, cliente.data]);
+
+  const enviarME = useMutation({
+    mutationFn: () =>
+      enviarParaMelhorEnvio({
+        data: {
+          order_id: etiqueta!.order_id,
+          service_id: etiqueta!.quote.service_id!,
+          package: { height: num(alt), width: num(larg), length: num(comp), weight: num(peso) },
+          insurance_value: valor ? num(valor) : (cliente.data?.total ?? 0),
+          to: dest!,
+        },
+      }),
+    onSuccess: () => {
+      const id = etiqueta!.order_id;
+      toast.success(
+        "Envio colocado no carrinho do Melhor Envio. Agora é só pagar e imprimir a etiqueta lá.",
+      );
+      setEtiqueta(null);
+      setDest(null);
+      queryClient.invalidateQueries({ queryKey: ["order", id] });
+      navigate({ to: "/pedidos/$id", params: { id } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const aplicar = useMutation({
     mutationFn: (quem_paga: "loja" | "cliente") =>
@@ -92,11 +198,15 @@ function FretePage() {
       }),
     onSuccess: () => {
       toast.success("Frete lançado na venda");
+      const quote = escolhido;
       setEscolhido(null);
       queryClient.invalidateQueries({ queryKey: ["order", pedidoId] });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      navigate({ to: "/pedidos/$id", params: { id: pedidoId } });
+      if (mandarME && quote?.service_id) {
+        setDest(null);
+        setEtiqueta({ order_id: pedidoId, quote });
+      } else navigate({ to: "/pedidos/$id", params: { id: pedidoId } });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -107,15 +217,24 @@ function FretePage() {
   });
   const [origin, setOrigin] = useState("");
   const [email, setEmail] = useState("");
+  const [sender, setSender] = useState<Sender>(EMPTY_SENDER);
   useEffect(() => {
     if (settings.data) {
       setOrigin(maskCep(settings.data.origin_cep));
       setEmail(settings.data.contact_email);
+      setSender({ ...EMPTY_SENDER, ...settings.data.sender });
     }
   }, [settings.data]);
 
   const save = useMutation({
-    mutationFn: () => saveFreightSettings({ data: { origin_cep: origin, contact_email: email } }),
+    mutationFn: () =>
+      saveFreightSettings({
+        data: {
+          origin_cep: origin,
+          contact_email: email,
+          sender: { ...sender, state: sender.state.toUpperCase().slice(0, 2) },
+        },
+      }),
     onSuccess: () => {
       toast.success("Configuração salva");
       settings.refetch();
@@ -174,7 +293,25 @@ function FretePage() {
             <Label>E-mail de contato (Melhor Envio)</Label>
             <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
-          <div className="flex items-end">
+          <div className="sm:col-span-3">
+            <p className="text-sm font-medium">Remetente (vai na etiqueta)</p>
+            <p className="text-xs text-muted-foreground">
+              Preencha uma vez. É usado quando você manda o envio para o Melhor Envio.
+            </p>
+          </div>
+          {SENDER_FIELDS.map(([k, label, ph]) => (
+            <div key={k} className="space-y-1">
+              <Label htmlFor={`s_${k}`}>{label}</Label>
+              <Input
+                id={`s_${k}`}
+                value={sender[k]}
+                placeholder={ph}
+                maxLength={k === "state" ? 2 : undefined}
+                onChange={(e) => setSender({ ...sender, [k]: e.target.value })}
+              />
+            </div>
+          ))}
+          <div className="flex items-end sm:col-span-3">
             <Button variant="outline" onClick={() => save.mutate()} disabled={save.isPending}>
               Salvar configuração
             </Button>
@@ -313,6 +450,22 @@ function FretePage() {
               custos e é descontado do lucro (frete grátis).
             </p>
           </div>
+          {escolhido?.service_id && (
+            <label className="flex items-start gap-2 text-sm">
+              <Checkbox
+                checked={mandarME}
+                onCheckedChange={(c) => setMandarME(c === true)}
+                className="mt-0.5"
+              />
+              <span>
+                Também mandar este envio para o Melhor Envio
+                <span className="block text-xs text-muted-foreground">
+                  Os dados da cliente e do pacote vão sozinhos. Lá você só paga e imprime a
+                  etiqueta.
+                </span>
+              </span>
+            </label>
+          )}
           <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
@@ -326,6 +479,76 @@ function FretePage() {
               onClick={() => aplicar.mutate("cliente")}
             >
               A cliente paga
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={!!etiqueta}
+        onOpenChange={(o) => {
+          if (!o && etiqueta) {
+            const id = etiqueta.order_id;
+            setEtiqueta(null);
+            navigate({ to: "/pedidos/$id", params: { id } });
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Mandar para o Melhor Envio</DialogTitle>
+            <DialogDescription>
+              {etiqueta &&
+                `${etiqueta.quote.transportadora} ${etiqueta.quote.servico} – ${formatCurrency(etiqueta.quote.preco)}. `}
+              Confira os dados da cliente para a etiqueta.
+            </DialogDescription>
+          </DialogHeader>
+          {!dest ? (
+            <p className="text-sm text-muted-foreground">Carregando dados da cliente...</p>
+          ) : (
+            <form
+              id="form-etiqueta"
+              className="grid gap-3 sm:grid-cols-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                enviarME.mutate();
+              }}
+            >
+              {DEST_FIELDS.map(([k, label]) => (
+                <div key={k} className={k === "address" ? "space-y-1 sm:col-span-2" : "space-y-1"}>
+                  <Label htmlFor={`d_${k}`}>{label}</Label>
+                  <Input
+                    id={`d_${k}`}
+                    value={dest[k]}
+                    maxLength={k === "state" ? 2 : undefined}
+                    onChange={(e) =>
+                      setDest({
+                        ...dest,
+                        [k]: k === "postal_code" ? maskCep(e.target.value) : e.target.value,
+                      })
+                    }
+                  />
+                </div>
+              ))}
+              <p className="text-xs text-muted-foreground sm:col-span-2">
+                Pacote: {peso} kg, {alt} × {larg} × {comp} cm. Vai com declaração de conteúdo (sem
+                nota fiscal).
+              </p>
+            </form>
+          )}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => {
+                const id = etiqueta!.order_id;
+                setEtiqueta(null);
+                navigate({ to: "/pedidos/$id", params: { id } });
+              }}
+            >
+              Agora não
+            </Button>
+            <Button type="submit" form="form-etiqueta" disabled={!dest || enviarME.isPending}>
+              {enviarME.isPending ? "Enviando..." : "Mandar para o Melhor Envio"}
             </Button>
           </DialogFooter>
         </DialogContent>

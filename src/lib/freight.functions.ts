@@ -7,15 +7,60 @@ import { saleDeductionsOf } from "@/lib/order-recalc";
 
 const KEY = "freight_settings";
 
-async function readSettings(supabase: any): Promise<{ origin_cep: string; contact_email: string }> {
+/** Remetente: dados da loja impressos na etiqueta do Melhor Envio. */
+export interface Sender {
+  name: string;
+  document: string;
+  phone: string;
+  address: string;
+  number: string;
+  complement: string;
+  district: string;
+  city: string;
+  state: string;
+}
+const EMPTY_SENDER: Sender = {
+  name: "",
+  document: "",
+  phone: "",
+  address: "",
+  number: "",
+  complement: "",
+  district: "",
+  city: "",
+  state: "",
+};
+
+async function readSettings(
+  supabase: any,
+): Promise<{ origin_cep: string; contact_email: string; sender: Sender }> {
   const { data } = await supabase
     .from("store_settings")
     .select("value")
     .eq("key", KEY)
     .maybeSingle();
   const v = (data?.value ?? {}) as any;
-  return { origin_cep: String(v.origin_cep ?? ""), contact_email: String(v.contact_email ?? "") };
+  const sender = { ...EMPTY_SENDER };
+  for (const k of Object.keys(EMPTY_SENDER) as (keyof Sender)[])
+    sender[k] = String(v.sender?.[k] ?? "");
+  return {
+    origin_cep: String(v.origin_cep ?? ""),
+    contact_email: String(v.contact_email ?? ""),
+    sender,
+  };
 }
+
+const senderSchema = z.object({
+  name: z.string().max(120).default(""),
+  document: z.string().max(20).default(""),
+  phone: z.string().max(20).default(""),
+  address: z.string().max(200).default(""),
+  number: z.string().max(20).default(""),
+  complement: z.string().max(100).default(""),
+  district: z.string().max(100).default(""),
+  city: z.string().max(100).default(""),
+  state: z.string().max(2).default(""),
+});
 
 export const getFreightSettings = createServerFn({ method: "GET" })
   .middleware([requireAuth])
@@ -28,13 +73,19 @@ export const saveFreightSettings = createServerFn({ method: "POST" })
       .object({
         origin_cep: z.string().regex(/^\d{5}-?\d{3}$/, "CEP de origem inválido"),
         contact_email: z.string().email("E-mail inválido").max(200),
+        sender: senderSchema.optional(),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
+    const prev = await readSettings(context.supabase);
     const { error } = await context.supabase.from("store_settings").upsert({
       key: KEY,
-      value: { origin_cep: data.origin_cep.replace(/\D/g, ""), contact_email: data.contact_email },
+      value: {
+        origin_cep: data.origin_cep.replace(/\D/g, ""),
+        contact_email: data.contact_email,
+        sender: { ...(data.sender ?? prev.sender) },
+      },
       updated_by: context.userId,
       updated_at: new Date().toISOString(),
     });
@@ -179,4 +230,188 @@ export const usarFreteNaVenda = createServerFn({ method: "POST" })
       .eq("id", data.order_id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+const digits = (s: string) => s.replace(/\D/g, "");
+
+/** Mensagem legível a partir do erro do Melhor Envio. */
+function meError(status: number, body: any): string {
+  if (status === 401 || status === 403)
+    return "O token do Melhor Envio não tem permissão para criar envios. Gere um novo token no Melhor Envio marcando as permissões de carrinho (cart-read e cart-write) e atualize no Nexus.";
+  const errs = body?.errors && typeof body.errors === "object" ? Object.values(body.errors) : [];
+  const first = errs.flat().find((e) => typeof e === "string") as string | undefined;
+  if (first) return `Melhor Envio: ${first}`;
+  if (typeof body?.message === "string") return `Melhor Envio: ${body.message}`;
+  return "Não foi possível enviar ao Melhor Envio agora. Tente novamente em instantes.";
+}
+
+/**
+ * Coloca o envio da venda no carrinho do Melhor Envio, já com remetente, destinatária,
+ * produtos e pacote. Pagar e imprimir a etiqueta continua sendo feito no Melhor Envio.
+ */
+export const enviarParaMelhorEnvio = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        order_id: z.string().uuid(),
+        service_id: z.coerce.number().int().positive(),
+        package: z.object({
+          height: z.coerce.number().positive().max(200),
+          width: z.coerce.number().positive().max(200),
+          length: z.coerce.number().positive().max(200),
+          weight: z.coerce.number().positive().max(30),
+        }),
+        insurance_value: z.coerce.number().min(0).max(100000).default(0),
+        to: z.object({
+          name: z.string().min(1, "Informe o nome da cliente").max(120),
+          document: z
+            .string()
+            .refine((v) => [11, 14].includes(digits(v).length), "CPF da cliente inválido"),
+          phone: z.string().max(20).default(""),
+          email: z.string().max(200).default(""),
+          address: z.string().min(1, "Informe a rua da cliente").max(200),
+          number: z.string().min(1, "Informe o número do endereço").max(20),
+          complement: z.string().max(100).default(""),
+          district: z.string().min(1, "Informe o bairro da cliente").max(100),
+          city: z.string().min(1, "Informe a cidade da cliente").max(100),
+          state: z.string().length(2, "Informe a UF da cliente (ex.: SP)"),
+          postal_code: z.string().regex(/^\d{5}-?\d{3}$/, "CEP da cliente inválido"),
+        }),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const token = process.env["MELHOR_ENVIO_TOKEN"];
+    if (!token) throw new Error("Token do Melhor Envio não configurado.");
+    const s = await readSettings(context.supabase);
+    const f = s.sender;
+    const missing = (
+      [
+        ["nome", f.name],
+        ["CPF/CNPJ", f.document],
+        ["telefone", f.phone],
+        ["rua", f.address],
+        ["número", f.number],
+        ["bairro", f.district],
+        ["cidade", f.city],
+        ["UF", f.state],
+        ["CEP de origem", s.origin_cep],
+      ] as const
+    )
+      .filter(([, v]) => !String(v).trim())
+      .map(([k]) => k);
+    if (missing.length)
+      throw new Error(
+        `Complete os dados do remetente em Cotar Frete → Configuração da loja: ${missing.join(", ")}.`,
+      );
+
+    const { data: order, error } = await context.supabase
+      .from("orders")
+      .select("*, order_items(quantity, unit_price, products(name))")
+      .eq("id", data.order_id)
+      .single();
+    if (error || !order) throw new Error("Venda não encontrada.");
+
+    const products = (order.order_items ?? []).map((i: any) => ({
+      name: String(i.products?.name ?? "Peça de roupa").slice(0, 100),
+      quantity: Number(i.quantity ?? 1),
+      unitary_value: Number(i.unit_price ?? 0),
+    }));
+    const senderDoc = digits(f.document);
+    const to = data.to;
+
+    const res = await fetch("https://melhorenvio.com.br/api/v2/me/cart", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "User-Agent": `Nexus360 (${s.contact_email || "contato@nexus360.app"})`,
+      },
+      body: JSON.stringify({
+        service: data.service_id,
+        from: {
+          name: f.name,
+          phone: digits(f.phone),
+          email: s.contact_email,
+          ...(senderDoc.length === 14 ? { company_document: senderDoc } : { document: senderDoc }),
+          address: f.address,
+          number: f.number,
+          complement: f.complement,
+          district: f.district,
+          city: f.city,
+          state_abbr: f.state.toUpperCase(),
+          country_id: "BR",
+          postal_code: digits(s.origin_cep),
+        },
+        to: {
+          name: to.name,
+          phone: digits(to.phone),
+          email: to.email,
+          document: digits(to.document),
+          address: to.address,
+          number: to.number,
+          complement: to.complement,
+          district: to.district,
+          city: to.city,
+          state_abbr: to.state.toUpperCase(),
+          country_id: "BR",
+          postal_code: digits(to.postal_code),
+        },
+        products,
+        volumes: [data.package],
+        options: {
+          insurance_value: data.insurance_value,
+          receipt: false,
+          own_hand: false,
+          reverse: false,
+          // Sem nota fiscal: segue com declaração de conteúdo.
+          non_commercial: true,
+          platform: "Nexus 360",
+        },
+      }),
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      console.error("Melhor Envio carrinho", res.status, body);
+      throw new Error(meError(res.status, body));
+    }
+
+    // Anota na venda que o envio já está no carrinho do Melhor Envio.
+    const linha = `Melhor Envio: envio no carrinho${body?.protocol ? ` (${body.protocol})` : ""}`;
+    const outras = String(order.notes ?? "")
+      .split("\n")
+      .filter((l) => l.trim() && !l.startsWith("Melhor Envio:"));
+    await context.supabase
+      .from("orders")
+      .update({ notes: [...outras, linha].join("\n") })
+      .eq("id", data.order_id);
+
+    return { ok: true, id: body?.id ?? null, protocol: body?.protocol ?? null };
+  });
+
+/** Dados da cliente da venda, para preencher a etiqueta. */
+export const dadosEnvioDaVenda = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .inputValidator((d: { order_id: string }) => z.object({ order_id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: order, error } = await context.supabase
+      .from("orders")
+      .select("total, customers(name, document, phone, email, address, city, state, postal_code)")
+      .eq("id", data.order_id)
+      .single();
+    if (error || !order) throw new Error("Venda não encontrada.");
+    const c = (order.customers ?? {}) as Record<string, string | null>;
+    return {
+      total: Number(order.total ?? 0),
+      name: c.name ?? "",
+      document: c.document ?? "",
+      phone: c.phone ?? "",
+      email: c.email ?? "",
+      address: c.address ?? "",
+      city: c.city ?? "",
+      state: c.state ?? "",
+      postal_code: c.postal_code ?? "",
+    };
   });
