@@ -7,7 +7,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryOptions } from "@tanstack/react-query";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,8 @@ import {
 import { listCustomers } from "@/lib/customers.functions";
 import { listProducts } from "@/lib/products.functions";
 import { createOrder } from "@/lib/orders.functions";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice } from "@/components/draft-notice";
 import {
   SaleFields,
   SaleSummary,
@@ -81,6 +83,30 @@ function NewOrderPage() {
   const [sale, setSale] = useState(emptySaleInfo);
   const [payPlan, setPayPlan] = useState(emptyPaymentPlan);
 
+  // Rascunho: tudo que foi preenchido volta se a tela fechar antes de salvar.
+  const draftValue = useMemo(
+    () => ({ customerId, notes, items, sale, payPlan }),
+    [customerId, notes, items, sale, payPlan],
+  );
+  const draft = useDraft("venda-nova", draftValue, {
+    onRestore: (d) => {
+      setCustomerId(d.customerId ?? "");
+      setNotes(d.notes ?? "");
+      if (d.items?.length) setItems(d.items);
+      if (d.sale) setSale({ ...emptySaleInfo, ...d.sale });
+      if (d.payPlan) setPayPlan(d.payPlan);
+    },
+    isEmpty: (d) => !d.customerId && !d.notes && d.items.every((i) => !i.product_id),
+  });
+  const discardDraft = () => {
+    draft.clear();
+    setCustomerId("");
+    setNotes("");
+    setItems([{ product_id: "", quantity: 1, unit_price: 0 }]);
+    setSale(emptySaleInfo);
+    setPayPlan(emptyPaymentPlan());
+  };
+
   const activeProducts = products.filter((p) => p.active);
 
   const updateItem = (index: number, field: keyof OrderItem, value: string | number) => {
@@ -115,6 +141,7 @@ function NewOrderPage() {
   const mutation = useMutation({
     mutationFn: createOrder,
     onSuccess: () => {
+      draft.clear();
       queryClient.invalidateQueries({ queryKey: ["orders"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       navigate({ to: "/pedidos" });
@@ -160,7 +187,8 @@ function NewOrderPage() {
         <CardHeader>
           <CardTitle>Nova venda</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {draft.restored && <DraftNotice onDiscard={discardDraft} />}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="customer">Cliente *</Label>

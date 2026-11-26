@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { COLORS, PATTERNS, SIZES, STYLES, buildSku, calcMargin } from "@/lib/clothing";
 import { getNextModelNumber, listSuppliers } from "@/lib/store.functions";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice } from "@/components/draft-notice";
 
 export interface ProductFormValues {
   name: string;
@@ -76,22 +78,29 @@ const withCode = (l: readonly { value: string; code: string }[]) =>
 
 export const suppliersQueryOptions = { queryKey: ["suppliers"], queryFn: () => listSuppliers() };
 
-export function ProductForm({ initial, submitLabel, pending, error, onSubmit, productId, stockLocked = false }: {
+export function ProductForm({ initial, submitLabel, pending, error, onSubmit, productId, stockLocked = false, draftKey }: {
   initial: ProductFormValues; submitLabel: string; pending: boolean; error: string | null;
   onSubmit: (v: ProductFormValues) => void;
   /** Id do produto em edição (para não contar ele mesmo no próximo Modelo nº). */
   productId?: string;
   /** Estoque calculado pelas entradas e saídas (campo bloqueado). */
   stockLocked?: boolean;
+  /** Guarda rascunho automático com esta chave (cadastro novo). */
+  draftKey?: string;
 }) {
   const { data: supplierRows } = useQuery(suppliersQueryOptions);
   const suppliers = (supplierRows ?? []).map((x) => ({ value: x.name, code: x.code }));
-  const [f, setF] = useState({
+  const blank = {
     ...initial,
     price: String(initial.price ?? 0),
     cost: String(initial.cost ?? 0),
     stock: String(initial.stock ?? 0),
     model_number: initial.model_number == null ? "" : String(initial.model_number),
+  };
+  const [f, setF] = useState(blank);
+  const draft = useDraft(draftKey ?? null, f, {
+    onRestore: (d) => setF({ ...blank, ...d }),
+    isEmpty: (v) => JSON.stringify(v) === JSON.stringify(blank),
   });
   const set = (patch: Partial<typeof f>) => setF((p) => ({ ...p, ...patch }));
   // Preenche o Modelo nº sozinho em produtos novos ou quando a combinação muda (editável).
@@ -120,6 +129,14 @@ export function ProductForm({ initial, submitLabel, pending, error, onSubmit, pr
         onSubmit({ ...f, price, cost, stock: Number(f.stock || 0), model_number: model });
       }}
     >
+      {draft.restored && (
+        <DraftNotice
+          onDiscard={() => {
+            draft.clear();
+            setF(blank);
+          }}
+        />
+      )}
       <div className="space-y-2">
         <Label htmlFor="name">Nome do produto *</Label>
         <Input id="name" required value={f.name} onChange={(e) => set({ name: e.target.value })} />

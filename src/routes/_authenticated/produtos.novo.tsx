@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ProductForm, emptyProduct, productToFormValues } from "@/components/products/product-form";
 import { createProduct, getProduct } from "@/lib/products.functions";
+import { clearDraft } from "@/hooks/use-draft";
 
 export const Route = createFileRoute("/_authenticated/produtos/novo")({
   // ?copiar=<id> abre o cadastro já preenchido com os dados desse produto (Duplicar).
@@ -40,10 +41,12 @@ function NewProductPage() {
     enabled: !!copiar,
   });
   const original = source.data?.product;
+  const draftKey = copiar ? `produto-copia-${copiar}` : "produto-novo";
 
   const mutation = useMutation({
     mutationFn: createProduct,
     onSuccess: (created) => {
+      clearDraft(draftKey);
       queryClient.invalidateQueries({ queryKey: ["products"] });
       if (copiar)
         toast.success("Produto duplicado com sucesso. Agora adicione as fotos desta peça.");
@@ -93,6 +96,7 @@ function NewProductPage() {
           ) : (
             <ProductForm
               key={copiar ?? "novo"}
+              draftKey={draftKey}
               initial={initial}
               submitLabel={copiar ? "Salvar cópia e adicionar fotos" : "Salvar e adicionar fotos"}
               pending={mutation.isPending}

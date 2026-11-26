@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { CheckCircle2, Pencil, Plus, Repeat, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice, PendingDraftBanner } from "@/components/draft-notice";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -99,6 +101,16 @@ function ExpensesPage() {
   const { data } = useSuspenseQuery(expensesQuery());
   const qc = useQueryClient();
   const [form, setForm] = useState<Form | null>(null);
+  // Rascunho do cadastro novo: volta se a tela fechar antes de salvar.
+  const draft = useDraft<Form>("despesa-nova", form && !form.id ? form : null, {
+    isEmpty: (v) => JSON.stringify(v) === JSON.stringify(empty()),
+  });
+  const [fromDraft, setFromDraft] = useState(false);
+  const openNew = () => {
+    const d = draft.readDraft();
+    setFromDraft(!!d);
+    setForm(d ? { ...empty(), ...d } : empty());
+  };
   const [toDelete, setToDelete] = useState<Expense | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("Todas");
   const [month, setMonth] = useState(ALL_MONTHS);
@@ -111,6 +123,7 @@ function ExpensesPage() {
     mutationFn: saveExpense,
     onSuccess: (r) => {
       done();
+      if (!form?.id) draft.clear();
       setForm(null);
       toast.success(r.created > 1 ? `${r.created} lançamentos mensais criados.` : "Despesa salva.");
     },
@@ -188,6 +201,9 @@ function ExpensesPage() {
 
   return (
     <div className="space-y-6">
+      {draft.hasDraft && !form && (
+        <PendingDraftBanner label="uma despesa" onContinue={openNew} onDiscard={draft.clear} />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Despesas</h1>
@@ -195,7 +211,7 @@ function ExpensesPage() {
             Despesas fixas (DAS, assinaturas) podem ser lançadas de uma vez para os próximos meses.
           </p>
         </div>
-        <Button onClick={() => setForm(empty())}>
+        <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" />
           Nova despesa
         </Button>
@@ -412,6 +428,15 @@ function ExpensesPage() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Editar despesa" : "Nova despesa"}</DialogTitle>
           </DialogHeader>
+          {form && !form.id && fromDraft && (
+            <DraftNotice
+              onDiscard={() => {
+                draft.clear();
+                setFromDraft(false);
+                setForm(empty());
+              }}
+            />
+          )}
           {form && (
             <form
               className="space-y-4"

@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice, PendingDraftBanner } from "@/components/draft-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -52,6 +54,16 @@ function SuppliersPage() {
   ]);
   const qc = useQueryClient();
   const [form, setForm] = useState<Form | null>(null);
+  // Rascunho do cadastro novo: volta se a tela fechar antes de salvar.
+  const draft = useDraft<Form>("fornecedor-novo", form && !form.id ? form : null, {
+    isEmpty: (v) => JSON.stringify(v) === JSON.stringify(empty()),
+  });
+  const [fromDraft, setFromDraft] = useState(false);
+  const openNew = () => {
+    const d = draft.readDraft();
+    setFromDraft(!!d);
+    setForm(d ? { ...empty(), ...d } : empty());
+  };
   const pending = data.some((s) => s.id === null);
   const done = () => {
     qc.invalidateQueries({ queryKey: ["suppliers"] });
@@ -61,6 +73,7 @@ function SuppliersPage() {
     mutationFn: saveSupplier,
     onSuccess: (r) => {
       done();
+      if (!form?.id) draft.clear();
       setForm(null);
       toast.success(
         "code" in r && r.code ? `Fornecedor salvo com o código ${r.code}.` : "Fornecedor salvo.",
@@ -79,6 +92,9 @@ function SuppliersPage() {
 
   return (
     <div className="space-y-6">
+      {draft.hasDraft && !form && (
+        <PendingDraftBanner label="um fornecedor" onContinue={openNew} onDiscard={draft.clear} />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Fornecedores</h1>
@@ -86,7 +102,7 @@ function SuppliersPage() {
             O código (F01, F02...) é criado sozinho e entra no SKU das peças.
           </p>
         </div>
-        <Button onClick={() => setForm(empty())} disabled={pending}>
+        <Button onClick={openNew} disabled={pending}>
           <Plus className="mr-2 h-4 w-4" />
           Novo fornecedor
         </Button>
@@ -172,6 +188,15 @@ function SuppliersPage() {
           <DialogHeader>
             <DialogTitle>{form?.id ? "Editar fornecedor" : "Novo fornecedor"}</DialogTitle>
           </DialogHeader>
+          {form && !form.id && fromDraft && (
+            <DraftNotice
+              onDiscard={() => {
+                draft.clear();
+                setFromDraft(false);
+                setForm(empty());
+              }}
+            />
+          )}
           {form && (
             <form
               className="space-y-4"

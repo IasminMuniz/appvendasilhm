@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice } from "@/components/draft-notice";
 import { ArrowLeft, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -61,6 +63,32 @@ function NewQuotePage() {
   const [validUntil, setValidUntil] = useState("");
   const [items, setItems] = useState<Item[]>([]);
 
+  // Rascunho: o orçamento começado volta se a tela fechar antes de salvar.
+  const draftValue = useMemo(
+    () => ({ customerId, discount, notes, terms, validUntil, items }),
+    [customerId, discount, notes, terms, validUntil, items],
+  );
+  const draft = useDraft("orcamento-novo", draftValue, {
+    onRestore: (d) => {
+      setCustomerId(d.customerId ?? "");
+      setDiscount(d.discount ?? 0);
+      setNotes(d.notes ?? "");
+      setTerms(d.terms ?? "");
+      setValidUntil(d.validUntil ?? "");
+      setItems(d.items ?? []);
+    },
+    isEmpty: (d) => !d.customerId && !d.notes && !d.terms && d.items.length === 0,
+  });
+  const discardDraft = () => {
+    draft.clear();
+    setCustomerId("");
+    setDiscount(0);
+    setNotes("");
+    setTerms("");
+    setValidUntil("");
+    setItems([]);
+  };
+
   const activeProducts = data.products.filter((p) => p.active);
 
   const subtotal = items.reduce((sum, i) => sum + i.quantity * i.unit_price, 0);
@@ -75,6 +103,7 @@ function NewQuotePage() {
   const mutation = useMutation({
     mutationFn: createQuote,
     onSuccess: (quote) => {
+      draft.clear();
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast.success("Orçamento criado");
       navigate({ to: "/orcamentos/$id", params: { id: quote.id } });
@@ -113,7 +142,8 @@ function NewQuotePage() {
         <CardHeader>
           <CardTitle>Novo orçamento</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {draft.restored && <DraftNotice onDiscard={discardDraft} />}
           <form
             className="space-y-5"
             onSubmit={(e) => {

@@ -12,6 +12,8 @@ import {
   toCustomerPayload,
 } from "@/components/customers/customer-form-fields";
 import { validateContactFields } from "@/lib/masks";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice } from "@/components/draft-notice";
 
 export const Route = createFileRoute("/_authenticated/clientes/novo")({
   component: NewCustomerPage,
@@ -35,6 +37,10 @@ function NewCustomerPage() {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(emptyCustomerForm);
   const [error, setError] = useState<string | null>(null);
+  const draft = useDraft("cliente-novo", form, {
+    onRestore: setForm,
+    isEmpty: (v) => JSON.stringify(v) === JSON.stringify(emptyCustomerForm),
+  });
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -53,6 +59,7 @@ function NewCustomerPage() {
       return customer;
     },
     onSuccess: (customer) => {
+      draft.clear();
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       toast.success("Cliente cadastrado.");
       navigate({ to: "/clientes/$id", params: { id: customer.id } });
@@ -77,7 +84,15 @@ function NewCustomerPage() {
         <CardHeader>
           <CardTitle>Novo cliente</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {draft.restored && (
+            <DraftNotice
+              onDiscard={() => {
+                draft.clear();
+                setForm(emptyCustomerForm);
+              }}
+            />
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();

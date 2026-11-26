@@ -12,6 +12,8 @@ import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useDraft } from "@/hooks/use-draft";
+import { DraftNotice, PendingDraftBanner } from "@/components/draft-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -121,6 +123,16 @@ function PurchasesPage() {
   const { data: suppliers } = useQuery(suppliersQueryOptions);
   const qc = useQueryClient();
   const [form, setForm] = useState<Form | null>(null);
+  // Rascunho do cadastro novo: volta se a tela fechar antes de salvar.
+  const draft = useDraft<Form>("compra-nova", form && !form.id ? form : null, {
+    isEmpty: (v) => JSON.stringify(v) === JSON.stringify(empty()),
+  });
+  const [fromDraft, setFromDraft] = useState(false);
+  const openNew = () => {
+    const d = draft.readDraft();
+    setFromDraft(!!d);
+    setForm(d ? { ...empty(), ...d } : empty());
+  };
   const done = () => {
     for (const k of ["purchases", "store-dashboard", "products", "orders", "order", "cash-flow"])
       qc.invalidateQueries({ queryKey: [k] });
@@ -129,6 +141,7 @@ function PurchasesPage() {
     mutationFn: savePurchase,
     onSuccess: () => {
       done();
+      if (!form?.id) draft.clear();
       setForm(null);
       toast.success("Compra salva.");
     },
@@ -206,12 +219,15 @@ function PurchasesPage() {
 
   return (
     <div className="space-y-6">
+      {draft.hasDraft && !form && (
+        <PendingDraftBanner label="uma compra" onContinue={openNew} onDiscard={draft.clear} />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Compras</h1>
           <p className="text-muted-foreground">Total investido: {formatCurrency(total)}</p>
         </div>
-        <Button onClick={() => setForm(empty())} disabled={data.migrationPending}>
+        <Button onClick={openNew} disabled={data.migrationPending}>
           <Plus className="mr-2 h-4 w-4" />
           Nova compra
         </Button>
@@ -353,6 +369,15 @@ function PurchasesPage() {
           <DialogHeader>
             <DialogTitle>{form?.id ? `Editar compra ${code(form.id)}` : "Nova compra"}</DialogTitle>
           </DialogHeader>
+          {form && !form.id && fromDraft && (
+            <DraftNotice
+              onDiscard={() => {
+                draft.clear();
+                setFromDraft(false);
+                setForm(empty());
+              }}
+            />
+          )}
           {form && (
             <form
               className="space-y-4"
