@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { deleteContribution, getCashFlow, saveContribution } from "@/lib/finance.functions";
 import { saveCashPlan } from "@/lib/store.functions";
 import { formatCurrency, formatDate } from "@/lib/commercial-constants";
@@ -186,20 +186,116 @@ function CashPage() {
             Quanto dinheiro a loja tem e para onde vai o dinheiro de cada venda.
           </p>
         </div>
-        <Select value={month} onValueChange={setMonth}>
-          <SelectTrigger className="w-56" aria-label="Período">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {lastMonths(12).map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
-              </SelectItem>
-            ))}
-            <SelectItem value="all">Desde o início</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="outline">
+            <a href="#aportes">
+              <Plus className="mr-2 h-4 w-4" />
+              Registrar aporte
+            </a>
+          </Button>
+          <Select value={month} onValueChange={setMonth}>
+            <SelectTrigger className="w-56" aria-label="Período">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {lastMonths(12).map((m) => (
+                <SelectItem key={m.value} value={m.value}>
+                  {m.label}
+                </SelectItem>
+              ))}
+              <SelectItem value="all">Desde o início</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
+      <Card id="aportes" className="scroll-mt-4">
+        <CardHeader>
+          <CardTitle>Aportes</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Dinheiro seu colocado na loja: o investimento inicial (ex.: R$ 1.000 para as primeiras
+            compras) e cada valor extra que você colocar depois. Inclua também a fatura do cartão
+            pessoal quando pagar despesas da loja com o seu dinheiro. Total:{" "}
+            {formatCurrency(data.contributed)}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4 text-sm">
+          <form
+            className="grid gap-3 sm:grid-cols-[auto_auto_1fr_auto] sm:items-end"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addAporte.mutate({
+                data: { ...aporte, amount: Number(aporte.amount || 0) },
+              });
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="ap-date">Data</Label>
+              <Input
+                id="ap-date"
+                type="date"
+                required
+                value={aporte.contribution_date}
+                onChange={(e) => setAporte({ ...aporte, contribution_date: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ap-amount">Valor (R$)</Label>
+              <Input
+                id="ap-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                required
+                value={aporte.amount}
+                onChange={(e) => setAporte({ ...aporte, amount: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ap-desc">Descrição</Label>
+              <Input
+                id="ap-desc"
+                placeholder="Ex.: Aporte inicial"
+                value={aporte.description}
+                onChange={(e) => setAporte({ ...aporte, description: e.target.value })}
+              />
+            </div>
+            <Button type="submit" disabled={addAporte.isPending}>
+              {addAporte.isPending ? "Salvando..." : "Adicionar aporte"}
+            </Button>
+          </form>
+          {data.contributions.length === 0 ? (
+            <p className="text-muted-foreground">Nenhum aporte registrado.</p>
+          ) : (
+            <ul className="divide-y">
+              {data.contributions.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-3 py-2">
+                  <span>
+                    {formatDate(c.date)}
+                    {c.description ? ` · ${c.description}` : ""}
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold">{formatCurrency(c.amount)}</span>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label="Excluir aporte"
+                      title="Excluir aporte"
+                      disabled={removeAporte.isPending}
+                      onClick={() => {
+                        if (window.confirm("Excluir este aporte?"))
+                          removeAporte.mutate({ data: { id: c.id } });
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Stat
@@ -406,92 +502,6 @@ function CashPage() {
                     {r.count > 1 ? ` · ${r.number}/${r.count}` : ""} · {formatCurrency(r.amount)}
                     {r.overdue ? " (atrasada)" : ""}
                   </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Aportes</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Dinheiro seu colocado na loja. Inclua também a fatura do cartão pessoal quando pagar
-            despesas da loja com o seu dinheiro. Total: {formatCurrency(data.contributed)}
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4 text-sm">
-          <form
-            className="grid gap-3 sm:grid-cols-[auto_auto_1fr_auto] sm:items-end"
-            onSubmit={(e) => {
-              e.preventDefault();
-              addAporte.mutate({
-                data: { ...aporte, amount: Number(aporte.amount || 0) },
-              });
-            }}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="ap-date">Data</Label>
-              <Input
-                id="ap-date"
-                type="date"
-                required
-                value={aporte.contribution_date}
-                onChange={(e) => setAporte({ ...aporte, contribution_date: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ap-amount">Valor (R$)</Label>
-              <Input
-                id="ap-amount"
-                type="number"
-                min="0.01"
-                step="0.01"
-                required
-                value={aporte.amount}
-                onChange={(e) => setAporte({ ...aporte, amount: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ap-desc">Descrição</Label>
-              <Input
-                id="ap-desc"
-                placeholder="Ex.: Aporte inicial"
-                value={aporte.description}
-                onChange={(e) => setAporte({ ...aporte, description: e.target.value })}
-              />
-            </div>
-            <Button type="submit" disabled={addAporte.isPending}>
-              {addAporte.isPending ? "Salvando..." : "Adicionar aporte"}
-            </Button>
-          </form>
-          {data.contributions.length === 0 ? (
-            <p className="text-muted-foreground">Nenhum aporte registrado.</p>
-          ) : (
-            <ul className="divide-y">
-              {data.contributions.map((c) => (
-                <li key={c.id} className="flex items-center justify-between gap-3 py-2">
-                  <span>
-                    {formatDate(c.date)}
-                    {c.description ? ` · ${c.description}` : ""}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="font-semibold">{formatCurrency(c.amount)}</span>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      aria-label="Excluir aporte"
-                      title="Excluir aporte"
-                      disabled={removeAporte.isPending}
-                      onClick={() => {
-                        if (window.confirm("Excluir este aporte?"))
-                          removeAporte.mutate({ data: { id: c.id } });
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </span>
                 </li>
               ))}
             </ul>
