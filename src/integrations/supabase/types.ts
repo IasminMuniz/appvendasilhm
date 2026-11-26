@@ -1701,6 +1701,7 @@ export type Database = {
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
       is_leader: { Args: { _user_id: string }; Returns: boolean }
+      is_staff: { Args: { _user_id: string }; Returns: boolean }
       role_has: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
