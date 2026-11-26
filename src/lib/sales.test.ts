@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcSale, channelFee, shopeeFee } from "./sales";
+import { calcSale, channelFee, normalizePackagingItems, shopeeFee } from "./sales";
 
 describe("shopeeFee", () => {
   it("abaixo de 80: 20% + 4,50", () => expect(shopeeFee(50)).toBe(14.5));
@@ -56,5 +56,17 @@ describe("calcSale com % para outros fins", () => {
     });
     expect(r.reserve).toBe(12.99);
     expect(r.profit).toBe(43.91);
+  });
+});
+
+describe("normalizePackagingItems", () => {
+  it("mantém as três sacolas e usa os valores salvos", () => {
+    const r = normalizePackagingItems([
+      { id: "sacola_rosa", price: 0.5 },
+      { id: "x", price: 9 },
+    ]);
+    expect(r.map((i) => i.id)).toEqual(["sacola_transparente", "sacola_rosa", "sacola_postagem"]);
+    expect(r.find((i) => i.id === "sacola_rosa")?.price).toBe(0.5);
+    expect(normalizePackagingItems(null).every((i) => i.price === 0)).toBe(true);
   });
 });

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireAuth } from "@/lib/supabase-auth.middleware";
 import { z } from "zod";
 import { SUPPLIERS, nextModelNumber, nextSupplierCode } from "@/lib/clothing";
-import { DEFAULT_PACKAGING_COST } from "@/lib/sales";
+import { DEFAULT_PACKAGING_COST, normalizePackagingItems } from "@/lib/sales";
 import { type CashPlan, normalizePlan } from "@/lib/cash";
 import { recalcOrders } from "@/lib/order-recalc";
 
@@ -158,6 +158,43 @@ export const savePackagingCost = createServerFn({ method: "POST" })
     const { error } = await context.supabase.from("store_settings").upsert({
       key: "packaging_cost",
       value: data.value,
+      updated_by: context.userId,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Valores de cada tipo de embalagem (sacolas), marcados na venda. */
+export const getPackagingItems = createServerFn({ method: "GET" })
+  .middleware([requireAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("store_settings")
+      .select("value")
+      .eq("key", "packaging_items")
+      .maybeSingle();
+    return normalizePackagingItems(error ? null : data?.value);
+  });
+
+export const savePackagingItems = createServerFn({ method: "POST" })
+  .middleware([requireAuth])
+  .inputValidator((d) =>
+    z
+      .array(
+        z.object({
+          id: z.string().max(60),
+          name: z.string().max(120),
+          price: z.coerce.number().min(0).max(1000),
+        }),
+      )
+      .max(20)
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("store_settings").upsert({
+      key: "packaging_items",
+      value: normalizePackagingItems(data).map((i) => ({ ...i })),
       updated_by: context.userId,
       updated_at: new Date().toISOString(),
     });

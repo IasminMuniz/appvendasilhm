@@ -35,6 +35,27 @@ export const OTHER_COST_TYPES = [
   "Outro",
 ] as const;
 
+/** Tipos de embalagem que podem ser marcados na venda; o valor de cada um fica nas configurações. */
+export interface PackagingItem {
+  id: string;
+  name: string;
+  price: number;
+}
+export const DEFAULT_PACKAGING_ITEMS: PackagingItem[] = [
+  { id: "sacola_transparente", name: "Sacola plástica transparente", price: 0 },
+  { id: "sacola_rosa", name: "Sacola rosa (de carregar)", price: 0 },
+  { id: "sacola_postagem", name: "Sacola preta de postagem (Correios)", price: 0 },
+];
+
+/** Junta os valores salvos com a lista padrão (mantém os três tipos sempre na tela). */
+export function normalizePackagingItems(raw: unknown): PackagingItem[] {
+  const saved = Array.isArray(raw) ? (raw as Partial<PackagingItem>[]) : [];
+  return DEFAULT_PACKAGING_ITEMS.map((d) => {
+    const n = Number(saved.find((x) => x?.id === d.id)?.price);
+    return { ...d, price: Number.isFinite(n) && n >= 0 ? n : d.price };
+  });
+}
+
 /** Custo padrão de embalagem por peça, usado se a configuração da loja não estiver disponível. */
 export const DEFAULT_PACKAGING_COST = 1.84;
 

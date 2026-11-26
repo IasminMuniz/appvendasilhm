@@ -1,6 +1,9 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getCashPlan } from "@/lib/store.functions";
+import { getCashPlan, getPackagingItems, savePackagingItems } from "@/lib/store.functions";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -16,7 +19,9 @@ import {
   DELIVERY_METHODS,
   OTHER_COST_TYPES,
   SALE_PAYMENT_METHODS,
+  DEFAULT_PACKAGING_ITEMS,
   calcSale,
+  type PackagingItem,
   type SaleItem,
 } from "@/lib/sales";
 
@@ -30,6 +35,8 @@ export interface SaleInfoValues {
   include_packaging: boolean;
   /** Valor gasto com embalagem nesta venda (R$), só quando marcado. */
   packaging_value: string;
+  /** Sacolas marcadas nesta venda (só na tela; somam no valor da embalagem). */
+  packaging_items?: string[];
 }
 
 export const emptySaleInfo: SaleInfoValues = {
@@ -40,7 +47,130 @@ export const emptySaleInfo: SaleInfoValues = {
   other_cost_type: "",
   include_packaging: false,
   packaging_value: "",
+  packaging_items: [],
 };
+
+export const packagingItemsQuery = queryOptions({
+  queryKey: ["packaging-items"],
+  queryFn: () => getPackagingItems(),
+});
+
+const brl = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const sumOf = (items: PackagingItem[], ids: string[]) =>
+  Math.round(items.filter((i) => ids.includes(i.id)).reduce((t, i) => t + i.price, 0) * 100) / 100;
+
+/** Sacolas da venda: marcar soma o valor de cada uma no total de embalagem. */
+function PackagingPicker({
+  value,
+  onChange,
+}: {
+  value: SaleInfoValues;
+  onChange: (patch: Partial<SaleInfoValues>) => void;
+}) {
+  const qc = useQueryClient();
+  const { data } = useQuery(packagingItemsQuery);
+  const items = data ?? DEFAULT_PACKAGING_ITEMS;
+  const selected = value.packaging_items ?? [];
+  const [editing, setEditing] = useState(false);
+  const [prices, setPrices] = useState<Record<string, string>>({});
+  const save = useMutation({
+    mutationFn: savePackagingItems,
+    onSuccess: (_r, vars) => {
+      qc.invalidateQueries({ queryKey: ["packaging-items"] });
+      // Atualiza o total desta venda com os novos valores.
+      if (selected.length)
+        onChange({
+          packaging_value: String(sumOf((vars?.data ?? items) as PackagingItem[], selected)),
+        });
+      setEditing(false);
+      toast.success("Valores das embalagens salvos.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggle = (id: string, on: boolean) => {
+    const next = on ? [...selected, id] : selected.filter((x) => x !== id);
+    onChange({
+      packaging_items: next,
+      packaging_value: next.length ? String(sumOf(items, next)) : "",
+    });
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-medium">Quais embalagens usou?</p>
+        <Button
+          type="button"
+          variant="link"
+          size="sm"
+          className="h-auto p-0"
+          onClick={() => {
+            setPrices(Object.fromEntries(items.map((i) => [i.id, String(i.price)])));
+            setEditing((e) => !e);
+          }}
+        >
+          {editing ? "Fechar" : "Alterar valores"}
+        </Button>
+      </div>
+      {editing ? (
+        <div className="space-y-2">
+          {items.map((i) => (
+            <div key={i.id} className="flex items-center justify-between gap-3">
+              <Label htmlFor={`price_${i.id}`} className="font-normal">
+                {i.name}
+              </Label>
+              <Input
+                id={`price_${i.id}`}
+                type="number"
+                min="0"
+                step="0.01"
+                className="w-28"
+                value={prices[i.id] ?? ""}
+                onChange={(e) => setPrices({ ...prices, [i.id]: e.target.value })}
+              />
+            </div>
+          ))}
+          <Button
+            type="button"
+            size="sm"
+            disabled={save.isPending}
+            onClick={() =>
+              save.mutate({
+                data: items.map((i) => ({ ...i, price: Number(prices[i.id] || 0) })),
+              })
+            }
+          >
+            {save.isPending ? "Salvando..." : "Salvar valores"}
+          </Button>
+        </div>
+      ) : (
+        <>
+          {items.map((i) => (
+            <label key={i.id} className="flex items-center justify-between gap-3 text-sm">
+              <span className="flex items-center gap-2">
+                <Checkbox
+                  checked={selected.includes(i.id)}
+                  onCheckedChange={(c) => toggle(i.id, c === true)}
+                />
+                {i.name}
+              </span>
+              <span className={i.price > 0 ? "" : "text-muted-foreground"}>
+                {i.price > 0 ? brl(i.price) : "defina o valor"}
+              </span>
+            </label>
+          ))}
+          {items.some((i) => i.price <= 0) && (
+            <p className="text-xs text-muted-foreground">
+              Clique em "Alterar valores" para informar quanto custa cada sacola. Os valores ficam
+              salvos para as próximas vendas.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 function Pick({
   id,
@@ -130,8 +260,9 @@ export function SaleFields({
             checked={value.include_packaging}
             onCheckedChange={(c) => set({ include_packaging: c === true })}
           />
-          Usei embalagem nesta venda (envelope, sacola, tag)
+          Usei embalagem nesta venda (sacolas, envelope, tag)
         </label>
+        {value.include_packaging && <PackagingPicker value={value} onChange={set} />}
         {value.include_packaging && (
           <div className="max-w-xs space-y-1">
             <Label htmlFor="packaging_value">Quanto gastou de embalagem nesta venda (R$)</Label>
@@ -140,7 +271,7 @@ export function SaleFields({
               type="number"
               min="0"
               step="0.01"
-              placeholder="Ex.: 1,84"
+              placeholder="Soma das sacolas marcadas"
               value={value.packaging_value}
               onChange={(e) => set({ packaging_value: e.target.value })}
             />
@@ -209,7 +340,7 @@ export function SaleSummary({
   );
 }
 
-export const toSaleInput = (v: SaleInfoValues) => ({
+export const toSaleInput = ({ packaging_items: _items, ...v }: SaleInfoValues) => ({
   ...v,
   other_costs: Number(v.other_costs || 0),
   packaging_value: v.include_packaging ? Number(v.packaging_value || 0) : 0,
